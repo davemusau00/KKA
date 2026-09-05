@@ -39,6 +39,12 @@ export const IntegrationsWorkspace: React.FC = () => {
   const [isTesting, setIsTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
 
+  React.useEffect(() => {
+    if (apiSettings) {
+      setFormData(apiSettings);
+    }
+  }, [apiSettings]);
+
   // Test simulation inputs
   const [testPhone, setTestPhone] = useState('+254 722 123 456');
   const [testAmount, setTestAmount] = useState('15000');
@@ -166,7 +172,7 @@ export const IntegrationsWorkspace: React.FC = () => {
           <span>Google Workspace</span>
           <span
             className={`w-2 h-2 rounded-full ${
-              formData.googleWorkspace.isConnected ? 'bg-emerald-400' : 'bg-rose-500'
+              (formData.google?.isConnected ?? false) ? 'bg-emerald-400' : 'bg-rose-500'
             }`}
           />
         </button>
@@ -270,20 +276,20 @@ export const IntegrationsWorkspace: React.FC = () => {
                   </span>
                   <span
                     className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                      formData.googleWorkspace.isConnected
+                      (formData.google?.isConnected ?? false)
                         ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                         : 'bg-rose-950 text-rose-400 border border-rose-800'
                     }`}
                   >
-                    {formData.googleWorkspace.isConnected ? 'ACTIVE & SYNCED' : 'DISCONNECTED'}
+                    {(formData.google?.isConnected ?? false) ? 'ACTIVE & SYNCED' : 'DISCONNECTED'}
                   </span>
                 </div>
                 <p className="text-slate-400 text-xs mt-2">
                   2-way sync with Milimani court diary and automatic Google Meet virtual court links generation.
                 </p>
                 <div className="mt-3 text-[11px] font-mono text-slate-500 space-y-0.5">
-                  <div>Account: {formData.googleWorkspace.clientEmail}</div>
-                  <div>Calendar: {formData.googleWorkspace.calendarId}</div>
+                  <div>Account: {formData.google?.clientEmail || 'court-diary@kklaw.co.ke'}</div>
+                  <div>Calendar: {formData.google?.calendarId || 'advocates.calendar@kklaw.co.ke'}</div>
                 </div>
               </div>
 
@@ -510,17 +516,17 @@ export const IntegrationsWorkspace: React.FC = () => {
               <label className="text-xs text-slate-400 font-medium">Service Status:</label>
               <input
                 type="checkbox"
-                checked={formData.googleWorkspace.isConnected}
+                checked={formData.google?.isConnected ?? false}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    googleWorkspace: { ...prev.googleWorkspace, isConnected: e.target.checked },
+                    google: { ...prev.google, isConnected: e.target.checked },
                   }))
                 }
                 className="w-4 h-4 accent-amber-500 cursor-pointer"
               />
               <span className="font-mono text-xs font-bold text-slate-300">
-                {formData.googleWorkspace.isConnected ? 'Connected' : 'Disabled'}
+                {(formData.google?.isConnected ?? false) ? 'Connected' : 'Disabled'}
               </span>
             </div>
           </div>
@@ -530,11 +536,11 @@ export const IntegrationsWorkspace: React.FC = () => {
               <label className="block text-slate-300 mb-1 font-medium">Google OAuth Client ID</label>
               <input
                 type="text"
-                value={formData.googleWorkspace.clientId}
+                value={formData.google?.clientId || ''}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    googleWorkspace: { ...prev.googleWorkspace, clientId: e.target.value },
+                    google: { ...prev.google, clientId: e.target.value },
                   }))
                 }
                 placeholder="e.g. 7482910492-apps.googleusercontent.com"
@@ -546,11 +552,11 @@ export const IntegrationsWorkspace: React.FC = () => {
               <label className="block text-slate-300 mb-1 font-medium">Workspace Admin Account Email</label>
               <input
                 type="email"
-                value={formData.googleWorkspace.clientEmail}
+                value={formData.google?.clientEmail || ''}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    googleWorkspace: { ...prev.googleWorkspace, clientEmail: e.target.value },
+                    google: { ...prev.google, clientEmail: e.target.value },
                   }))
                 }
                 placeholder="e.g. litigation-calendar@kklaw.co.ke"
@@ -562,11 +568,11 @@ export const IntegrationsWorkspace: React.FC = () => {
               <label className="block text-slate-300 mb-1 font-medium">Primary Litigation Calendar ID</label>
               <input
                 type="text"
-                value={formData.googleWorkspace.calendarId}
+                value={formData.google?.calendarId || ''}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    googleWorkspace: { ...prev.googleWorkspace, calendarId: e.target.value },
+                    google: { ...prev.google, calendarId: e.target.value },
                   }))
                 }
                 placeholder="e.g. kklaw.co.ke_court_diary@group.calendar.google.com"
@@ -578,12 +584,12 @@ export const IntegrationsWorkspace: React.FC = () => {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.googleWorkspace.syncCourtCalendar}
+                  checked={formData.google?.syncCourtCalendar ?? false}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      googleWorkspace: {
-                        ...prev.googleWorkspace,
+                      google: {
+                        ...prev.google,
                         syncCourtCalendar: e.target.checked,
                       },
                     }))
@@ -598,12 +604,12 @@ export const IntegrationsWorkspace: React.FC = () => {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.googleWorkspace.autoGenerateMeetLinks}
+                  checked={formData.google?.autoGenerateMeetLinks ?? false}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      googleWorkspace: {
-                        ...prev.googleWorkspace,
+                      google: {
+                        ...prev.google,
                         autoGenerateMeetLinks: e.target.checked,
                       },
                     }))
@@ -619,7 +625,7 @@ export const IntegrationsWorkspace: React.FC = () => {
 
           <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
             <span className="text-[11px] text-slate-500 font-mono">
-              Last Calendar Handshake: {formData.googleWorkspace.lastSyncTimestamp || '2026-03-05 08:30 EAT'}
+              Last Calendar Handshake: {formData.google?.lastSyncTimestamp || '2026-03-05 08:30 EAT'}
             </span>
             <div className="flex gap-2">
               <button

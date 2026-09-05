@@ -11,6 +11,7 @@ export interface Branch {
 }
 
 export type RoleId = 
+  | 'managing_partner'
   | 'senior_partner'
   | 'advocate'
   | 'paralegal'
@@ -25,7 +26,8 @@ export interface UserProfile {
   email: string;
   phone: string;
   jobTitle: string;
-  role: RoleId;
+  role: RoleId; // Primary display role
+  roles: RoleId[]; // Multi-role support (union of permissions)
   homeBranchId: BranchId;
   additionalBranchIds?: BranchId[];
   isActive: boolean;
@@ -34,14 +36,61 @@ export interface UserProfile {
 }
 
 export type PermissionKey =
-  | 'matter.read'
+  // Module Access Permissions
+  | 'module.dashboard'
+  | 'module.matters'
+  | 'module.clients'
+  | 'module.tasks'
+  | 'module.calendar'
+  | 'module.documents'
+  | 'module.comms'
+  | 'module.finance'
+  | 'module.reports'
+  | 'module.admin'
+  | 'module.integrations'
+  | 'module.settings'
+  // Matter Permissions
+  | 'matter.view'
   | 'matter.create'
+  | 'matter.edit'
+  | 'matter.delete'
+  | 'matter.stage_advance'
+  | 'matter.settlement_approve'
+  // Task Permissions
+  | 'task.view'
+  | 'task.create'
+  | 'task.edit'
+  | 'task.complete'
+  | 'task.delete'
+  // Document Permissions
+  | 'document.view'
+  | 'document.upload'
+  | 'document.review_submit'
+  | 'document.approve'
+  | 'document.sign'
+  | 'document.file'
+  | 'document.revert'
+  | 'document.delete'
+  // Finance Permissions
+  | 'finance.view'
+  | 'finance.expense_create'
+  | 'finance.expense_approve'
+  | 'finance.expense_disburse'
+  | 'finance.trust_ledger'
+  | 'finance.billing_manage'
+  // Administration Permissions
+  | 'admin.users_manage'
+  | 'admin.roles_manage'
+  | 'admin.workflows_manage'
+  | 'admin.branches_manage'
+  | 'admin.settings_manage'
+  | 'admin.audit_view'
+  // Legacy Aliases
+  | 'matter.read'
   | 'matter.update'
   | 'matter.assign'
   | 'matter.close'
   | 'document.read'
-  | 'document.upload'
-  | 'document.approve'
   | 'finance.expense.create'
   | 'finance.expense.approve'
   | 'finance.client_money.read'
@@ -178,14 +227,40 @@ export interface CourtProceeding {
   status: 'active' | 'concluded' | 'stayed';
 }
 
-export interface WorkflowStageDefinition {
+export interface WorkflowStageConfig {
   id: number;
   name: string;
   description: string;
   targetDurationDays: number;
-  defaultRole: RoleId;
-  requiredDocumentTypes: string[];
-  checklistItems: string[];
+  responsibleRoles?: RoleId[];
+  assignedStaffIds?: string[];
+  requiredTasks?: string[];
+  requiredDocuments?: string[];
+  requiredDocumentTypes?: string[];
+  checklistItems?: string[];
+  requiresApproval?: boolean;
+  approvalRole?: RoleId;
+  autoCreateTasks?: {
+    title: string;
+    role: RoleId;
+    dueInDays: number;
+    priority: MatterPriority;
+  }[];
+}
+
+export interface PracticeAreaWorkflow {
+  id: string;
+  practiceArea: string; // e.g. "Personal Injury (Motor Accident)", "Commercial Litigation", "Conveyancing & Land"
+  name: string;
+  description: string;
+  isDefault: boolean;
+  stages: WorkflowStageConfig[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowStageDefinition extends WorkflowStageConfig {
+  defaultRole: RoleId; // alias for backwards compatibility
 }
 
 export interface StageHandoff {
@@ -228,6 +303,7 @@ export interface Task {
   completedAt?: string;
   blockedReason?: string;
   isRecurring?: boolean;
+  dependsOnTaskIds?: string[]; // Prerequisite task IDs that must be completed first
   createdAt: string;
   updatedAt: string;
 }
@@ -280,13 +356,15 @@ export interface CalendarEvent {
 
 export type DocumentStatus = 
   | 'draft'
-  | 'review'
+  | 'in_review'
   | 'approved'
   | 'signed'
   | 'filed'
   | 'served'
+  | 'rejected'
   | 'superseded'
-  | 'archived';
+  | 'archived'
+  | 'review'; // backwards compatibility alias
 
 export interface DocumentVersion {
   id: string;
@@ -301,7 +379,17 @@ export interface DocumentVersion {
   createdAt: string;
   status: DocumentStatus;
   notes?: string;
+  changeSummary?: string; // Short description of changes made in this version
+  contentSnippet?: string; // Full or preview text of this version for diff & inspection
+  reviewedBy?: string; // userId
+  reviewedAt?: string;
+  reviewComment?: string;
+  signedBy?: string; // userId
+  signedAt?: string;
+  signatureHash?: string;
   courtFilingRef?: string;
+  courtFiledAt?: string;
+  revertedFromVersionNumber?: number; // if created by reverting to a previous version
 }
 
 export interface LegalDocument {
@@ -507,6 +595,67 @@ export interface ApiSettingsConfig {
     senderId: string;
     enableSmsReminders: boolean;
     isConnected: boolean;
+  };
+}
+
+export interface FirmSettingsConfig {
+  firmProfile: {
+    firmName: string;
+    firmTagline: string;
+    lskFirmRegistrationNo: string;
+    kraPin: string;
+    vatRegistrationNo: string;
+    headOfficeAddress: string;
+    physicalBuilding: string;
+    floorAndWing: string;
+    city: string;
+    postalAddress: string;
+    primaryPhone: string;
+    hotlinePhone: string;
+    primaryEmail: string;
+    billingEmail: string;
+    websiteUrl: string;
+  };
+  courtRules: {
+    defaultCourtStation: string;
+    statutoryLimitationWarningDays: number;
+    filingDeadlineNoticeHours: number;
+    enableJudiciarySync: boolean;
+    autoPollMentions: boolean;
+    enforceCourtHolidays: boolean;
+    strictCourtAttireDressCodeNotice: boolean;
+  };
+  financePolicies: {
+    currencyCode: string;
+    hourlyRates: {
+      senior_partner: number;
+      advocate: number;
+      paralegal: number;
+    };
+    maxPettyCashDisbursementWithoutPartner: number;
+    clientTrustAccountBank: string;
+    clientTrustAccountNumber: string;
+    officeOperationsAccountBank: string;
+    officeOperationsAccountNumber: string;
+    defaultMpesaPaybill: string;
+    defaultMpesaAccountRef: string;
+    vatRatePercent: number;
+  };
+  documentPolicies: {
+    mandatoryAdvocateSignOff: boolean;
+    enableWatermarkOnDrafts: boolean;
+    watermarkText: string;
+    maxUploadFileSizeBytes: number;
+    allowedMimeTypes: string[];
+    archivalRetentionYears: number;
+    enforceCourtBarcodeSeal: boolean;
+  };
+  security: {
+    twoFactorEnforced: boolean;
+    sessionTimeoutMinutes: number;
+    ipWhitelistingEnabled: boolean;
+    allowedIpRanges: string[];
+    strictAuditLogging: boolean;
   };
 }
 

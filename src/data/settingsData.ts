@@ -1,0 +1,68 @@
+import { FirmSettingsConfig } from '../types';
+
+export const DEFAULT_FIRM_SETTINGS: FirmSettingsConfig = {
+  firmProfile: {
+    firmName: 'Kariuki Kagunda & Co. Advocates',
+    firmTagline: 'Excellence in Civil, Commercial & Personal Injury Practice',
+    lskFirmRegistrationNo: 'LSK/FIRM/NRB/2004/0892',
+    kraPin: 'P051289401Z',
+    vatRegistrationNo: 'VAT-01928490-X',
+    headOfficeAddress: 'View Park Towers, 5th Floor, Wing B, Uhuru Highway',
+    physicalBuilding: 'View Park Towers',
+    floorAndWing: '5th Floor, Suite 504-508',
+    city: 'Nairobi',
+    postalAddress: 'P.O. Box 48291 - 00100 GPO Nairobi, Kenya',
+    primaryPhone: '+254 20 221 4455',
+    hotlinePhone: '+254 722 100 200',
+    primaryEmail: 'info@kklaw.co.ke',
+    billingEmail: 'accounts@kklaw.co.ke',
+    websiteUrl: 'https://www.kklaw.co.ke',
+  },
+  courtRules: {
+    defaultCourtStation: "Milimani Chief Magistrate's Commercial & Civil Court",
+    statutoryLimitationWarningDays: 90,
+    filingDeadlineNoticeHours: 48,
+    enableJudiciarySync: true,
+    autoPollMentions: true,
+    enforceCourtHolidays: true,
+    strictCourtAttireDressCodeNotice: true,
+  },
+  financePolicies: {
+    currencyCode: 'KES',
+    hourlyRates: {
+      senior_partner: 35000,
+      advocate: 18000,
+      paralegal: 6500,
+    },
+    maxPettyCashDisbursementWithoutPartner: 25000,
+    clientTrustAccountBank: 'Kenya Commercial Bank (KCB) - Kipande House Branch',
+    clientTrustAccountNumber: '110-449-8239',
+    officeOperationsAccountBank: 'Standard Chartered Bank - Kenyatta Avenue Branch',
+    officeOperationsAccountNumber: '010-882-9912',
+    defaultMpesaPaybill: '522522',
+    defaultMpesaAccountRef: 'MATTER_REF',
+    vatRatePercent: 16,
+  },
+  documentPolicies: {
+    mandatoryAdvocateSignOff: true,
+    enableWatermarkOnDrafts: true,
+    watermarkText: 'DRAFT - PRIVILEGED & CONFIDENTIAL - KARIUKI KAGUNDA & CO.',
+    maxUploadFileSizeBytes: 26214400, // 25 MB
+    allowedMimeTypes: [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+    ],
+    archivalRetentionYears: 7,
+    enforceCourtBarcodeSeal: true,
+  },
+  security: {
+    twoFactorEnforced: true,
+    sessionTimeoutMinutes: 30,
+    ipWhitelistingEnabled: false,
+    allowedIpRanges: ['197.232.0.0/16', '102.222.0.0/16'],
+    strictAuditLogging: true,
+  },
+};

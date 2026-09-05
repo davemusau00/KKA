@@ -59,6 +59,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     matters,
     expenses,
     intakes,
+    hasUserPermission,
+    effectivePermissions,
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,19 +76,24 @@ export const AppShell: React.FC<Props> = ({ children }) => {
   const activeMatterCount = matters.filter((m) => m.status === 'active').length;
   const newIntakeCount = intakes.filter((i) => i.disposition === 'new' || i.disposition === 'under_review').length;
 
-  const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'matters', label: 'Matters', icon: Briefcase, badge: activeMatterCount },
-    { id: 'clients', label: 'Clients & Intake', icon: Users, badge: newIntakeCount > 0 ? `${newIntakeCount} leads` : undefined },
-    { id: 'tasks', label: 'Tasks & Deadlines', icon: CheckSquare, badge: overdueTaskCount > 0 ? overdueTaskCount : undefined, badgeColor: 'bg-rose-600' },
-    { id: 'calendar', label: 'Court & Calendar', icon: Calendar },
-    { id: 'documents', label: 'Documents', icon: FileText },
-    { id: 'comms', label: 'Communications', icon: MessageSquare },
-    { id: 'finance', label: 'Finance & Accounts', icon: DollarSign, badge: pendingExpenseCount > 0 ? pendingExpenseCount : undefined, badgeColor: 'bg-amber-600' },
-    { id: 'reports', label: 'Reports & Stalled', icon: BarChart3 },
-    { id: 'admin', label: 'Admin & Staff', icon: Shield },
-    { id: 'integrations', label: 'Integrations', icon: Settings2 },
+  const allNavigationItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
+    { id: 'matters', label: 'Matters', icon: Briefcase, badge: activeMatterCount, permission: 'matters.view' as const },
+    { id: 'clients', label: 'Clients & Intake', icon: Users, badge: newIntakeCount > 0 ? `${newIntakeCount} leads` : undefined, permission: 'clients.view' as const },
+    { id: 'tasks', label: 'Tasks & Deadlines', icon: CheckSquare, badge: overdueTaskCount > 0 ? overdueTaskCount : undefined, badgeColor: 'bg-rose-600', permission: 'tasks.view' as const },
+    { id: 'calendar', label: 'Court & Calendar', icon: Calendar, permission: 'court.view' as const },
+    { id: 'documents', label: 'Documents', icon: FileText, permission: 'documents.view' as const },
+    { id: 'comms', label: 'Communications', icon: MessageSquare, permission: 'comms.view' as const },
+    { id: 'finance', label: 'Finance & Accounts', icon: DollarSign, badge: pendingExpenseCount > 0 ? pendingExpenseCount : undefined, badgeColor: 'bg-amber-600', permission: 'finance.view' as const },
+    { id: 'reports', label: 'Reports & Stalled', icon: BarChart3, permission: 'reports.view' as const },
+    { id: 'admin', label: 'Admin & Staff', icon: Shield, permission: 'admin.settings' as const },
+    { id: 'integrations', label: 'Integrations', icon: Settings2, permission: 'admin.settings' as const },
   ];
+
+  // Filter navigation items based on current user's effective permissions
+  const navigationItems = allNavigationItems.filter(
+    (item) => !item.permission || hasUserPermission(item.permission)
+  );
 
   const handleNavClick = (id: string) => {
     setActiveWorkspace(id);
@@ -312,7 +319,13 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                       <div className="truncate flex-1">
                         <div className="font-semibold truncate">{u.fullName}</div>
                         <div className="text-[11px] text-slate-400 truncate">{u.jobTitle}</div>
-                        <div className="text-[10px] font-mono text-amber-400 uppercase tracking-wide">{u.role}</div>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {(u.roles && u.roles.length > 0 ? u.roles : [u.role]).map((r) => (
+                            <span key={r} className="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-800 text-amber-400 border border-slate-700 uppercase">
+                              {r.replace('_', ' ')}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       {u.id === currentUser.id && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">

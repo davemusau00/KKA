@@ -51,6 +51,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 722 100 200',
     jobTitle: 'Senior Managing Partner',
     role: 'senior_partner',
+    roles: ['managing_partner', 'advocate'],
     homeBranchId: 'branch-nairobi',
     additionalBranchIds: ['branch-two'],
     isActive: true,
@@ -64,6 +65,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 723 456 789',
     jobTitle: 'Senior Litigation Advocate',
     role: 'advocate',
+    roles: ['advocate'],
     homeBranchId: 'branch-nairobi',
     isActive: true,
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
@@ -76,6 +78,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 733 987 654',
     jobTitle: 'Senior Litigation Paralegal',
     role: 'paralegal',
+    roles: ['paralegal'],
     homeBranchId: 'branch-nairobi',
     isActive: true,
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
@@ -87,6 +90,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 720 112 233',
     jobTitle: 'Practice & Operations Administrator',
     role: 'administrator',
+    roles: ['administrator'],
     homeBranchId: 'branch-nairobi',
     additionalBranchIds: ['branch-two'],
     isActive: true,
@@ -99,6 +103,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 711 345 678',
     jobTitle: 'Registry & Court Clerk',
     role: 'court_clerk',
+    roles: ['court_clerk'],
     homeBranchId: 'branch-nairobi',
     isActive: true,
     avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
@@ -110,6 +115,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 722 889 900',
     jobTitle: 'Head of Finance & Accounts',
     role: 'finance_officer',
+    roles: ['finance_officer'],
     homeBranchId: 'branch-nairobi',
     additionalBranchIds: ['branch-two'],
     isActive: true,
@@ -122,6 +128,7 @@ export const SEED_USERS: UserProfile[] = [
     phone: '+254 701 445 566',
     jobTitle: 'Legal Technology Admin',
     role: 'technical_admin',
+    roles: ['technical_admin'],
     homeBranchId: 'branch-nairobi',
     isActive: true,
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -692,6 +699,7 @@ export const SEED_TASKS: Task[] = [
     priority: 'medium',
     status: 'todo',
     dueAt: '2026-09-09T17:00:00Z',
+    dependsOnTaskIds: ['tsk-002'],
     createdAt: '2026-09-01T11:00:00Z',
     updatedAt: '2026-09-01T11:00:00Z',
   },
@@ -721,6 +729,7 @@ export const SEED_TASKS: Task[] = [
     priority: 'high',
     status: 'blocked',
     blockedReason: 'Waiting for process server return of service affidavit.',
+    dependsOnTaskIds: ['tsk-004'],
     dueAt: '2026-09-12T17:00:00Z',
     officialDeadlineAt: '2026-09-18T17:00:00Z',
     createdAt: '2026-08-22T10:05:00Z',
@@ -755,6 +764,7 @@ export const SEED_TASKS: Task[] = [
     status: 'todo',
     dueAt: '2026-09-06T09:00:00Z', // tomorrow morning
     officialDeadlineAt: '2026-09-06T09:00:00Z',
+    dependsOnTaskIds: ['tsk-006'],
     createdAt: '2026-08-30T10:00:00Z',
     updatedAt: '2026-09-05T08:00:00Z',
   },
@@ -956,6 +966,13 @@ export const SEED_DOCUMENTS: LegalDocument[] = [
         createdAt: '2026-08-10T14:00:00Z',
         status: 'draft',
         notes: 'Initial internal draft.',
+        changeSummary: 'Initial draft of Plaint alleging driver negligence on Mombasa Road.',
+        contentSnippet: `1. The Plaintiff is a male adult of sound mind residing within Nairobi County in the Republic of Kenya.
+2. The 1st Defendant is a limited liability company and the registered beneficial owner of motor vehicle registration number KBZ 829Q (Commercial Haulage Truck).
+3. On or about 15th July 2026, the Plaintiff was driving his motor vehicle along Mombasa Road near Bellevue when the 1st Defendant's driver negligently rammed the Plaintiff's vehicle from the rear.
+4. Particulars of Negligence: Failing to brake in time; Driving at excessive speed; Failing to have regard for traffic.
+5. The Plaintiff suffered soft tissue neck and back injuries.
+REASONS WHEREFORE the Plaintiff prays for General Damages and Costs of the suit.`,
       },
       {
         id: 'ver-003-2',
@@ -970,6 +987,20 @@ export const SEED_DOCUMENTS: LegalDocument[] = [
         createdAt: '2026-08-15T16:00:00Z',
         status: 'approved',
         notes: 'Signed off for commissioning and e-filing.',
+        changeSummary: 'Added specialist orthopedic report findings, spinal disc displacement particulars, and quantified special damages of KES 485,200.',
+        contentSnippet: `1. The Plaintiff is a male adult of sound mind residing within Nairobi County in the Republic of Kenya.
+2. The 1st Defendant is a limited liability company and the registered beneficial owner of motor vehicle registration number KBZ 829Q (Commercial Haulage Truck).
+3. On or about 15th July 2026, the Plaintiff was driving his motor vehicle along Mombasa Road near Bellevue when the 1st Defendant's driver negligently rammed the Plaintiff's vehicle from the rear.
+4. Particulars of Negligence: Failing to brake in time; Driving at excessive speed; Failing to have regard for traffic; Operating an overloaded commercial vehicle with defective air brakes.
+5. By reason of the said collision, the Plaintiff sustained severe L4-L5 spinal disc herniation, traumatic cervical whiplash, and permanent nervous shock as per Consultant Medico-Legal Report.
+6. Particulars of Special Damages: Medical examination & MRI scan (KES 120,000); Vehicle total loss assessment (KES 365,200). Total: KES 485,200.
+REASONS WHEREFORE the Plaintiff prays for:
+(a) General Damages for pain, suffering, and loss of amenities;
+(b) Special Damages of KES 485,200;
+(c) Costs of this suit and Interest at court rates.`,
+        reviewedBy: 'usr-adv-1',
+        reviewedAt: '2026-08-15T16:00:00Z',
+        reviewComment: 'Approved for commissioning by Commissioner for Oaths and e-filing.',
       },
       {
         id: 'ver-003-3',
@@ -985,6 +1016,24 @@ export const SEED_DOCUMENTS: LegalDocument[] = [
         status: 'filed',
         notes: 'Certified stamped filed plaint with court barcode & seal.',
         courtFilingRef: 'JUD/2026/EFIL/99412',
+        courtFiledAt: '2026-08-18T10:15:00Z',
+        changeSummary: 'Judiciary CTS electronic filing stamp, barcode seal JUD/2026/EFIL/99412, and official case number Demo MCCC E1234/2026 affixed.',
+        contentSnippet: `[REPUBLIC OF KENYA - IN THE CHIEF MAGISTRATE'S COURT AT NAIROBI]
+[COMMERCIAL & CIVIL DIVISION - CASE NO. DEMO MCCC E1234 OF 2026]
+[FILED & STAMPED ON 18TH AUGUST 2026 - BARCODE: JUD/2026/EFIL/99412]
+
+1. The Plaintiff is a male adult of sound mind residing within Nairobi County in the Republic of Kenya.
+2. The 1st Defendant is a limited liability company and the registered beneficial owner of motor vehicle registration number KBZ 829Q (Commercial Haulage Truck).
+3. On or about 15th July 2026, the Plaintiff was driving his motor vehicle along Mombasa Road near Bellevue when the 1st Defendant's driver negligently rammed the Plaintiff's vehicle from the rear.
+4. Particulars of Negligence: Failing to brake in time; Driving at excessive speed; Failing to have regard for traffic; Operating an overloaded commercial vehicle with defective air brakes.
+5. By reason of the said collision, the Plaintiff sustained severe L4-L5 spinal disc herniation, traumatic cervical whiplash, and permanent nervous shock as per Consultant Medico-Legal Report.
+6. Particulars of Special Damages: Medical examination & MRI scan (KES 120,000); Vehicle total loss assessment (KES 365,200). Total: KES 485,200.
+REASONS WHEREFORE the Plaintiff prays for:
+(a) General Damages for pain, suffering, and loss of amenities;
+(b) Special Damages of KES 485,200;
+(c) Costs of this suit and Interest at court rates.
+
+Drawn & Filed By: Kariuki Kagunda & Co. Advocates, View Park Towers, 5th Floor, Nairobi.`,
       },
     ],
   },

@@ -8,6 +8,8 @@ import {
   MatterParty,
   CourtProceeding,
   WorkflowStageDefinition,
+  PracticeAreaWorkflow,
+  WorkflowStageConfig,
   Task,
   Deadline,
   CalendarEvent,
@@ -24,6 +26,9 @@ import {
   CourtEventStatus,
   TimeEntry,
   ApiSettingsConfig,
+  FirmSettingsConfig,
+  RoleId,
+  PermissionKey,
 } from '../types';
 import {
   SEED_BRANCHES,
@@ -48,6 +53,19 @@ import {
   SEED_TIME_ENTRIES,
   DEFAULT_API_SETTINGS,
 } from '../data/seedData';
+import {
+  INITIAL_ROLES,
+  ALL_PERMISSIONS,
+  hasPermission,
+  hasAnyPermission,
+  getEffectivePermissions,
+} from '../data/rbacData';
+import {
+  SEED_PRACTICE_WORKFLOWS,
+  WORKFLOW_STAGES_PI_CONFIG,
+} from '../data/workflowEngineData';
+import { DEFAULT_FIRM_SETTINGS } from '../data/settingsData';
+import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
 
 export interface ActiveTimerState {
   matterId: string;
@@ -73,6 +91,15 @@ interface AppContextType {
   currentBranchFilter: 'all' | BranchId;
   setCurrentBranchFilter: (branch: 'all' | BranchId) => void;
   
+  // RBAC
+  rolePermissionsMap: Record<RoleId, PermissionKey[]>;
+  updateRolePermissions: (role: RoleId, permissions: PermissionKey[]) => void;
+  resetRolePermissionsToDefault: () => void;
+  updateUserRoles: (userId: string, newRoles: RoleId[]) => void;
+  hasUserPermission: (permission: PermissionKey) => boolean;
+  hasUserAnyPermission: (permissions: PermissionKey[]) => boolean;
+  effectivePermissions: Set<PermissionKey>;
+
   // Offline & Sync
   isOnline: boolean;
   setIsOnline: (online: boolean) => void;
@@ -105,6 +132,7 @@ interface AppContextType {
   parties: MatterParty[];
   proceedings: CourtProceeding[];
   workflowStages: WorkflowStageDefinition[];
+  practiceWorkflows: PracticeAreaWorkflow[];
   tasks: Task[];
   deadlines: Deadline[];
   calendarEvents: CalendarEvent[];
@@ -118,7 +146,16 @@ interface AppContextType {
   auditLogs: AuditEvent[];
   timeEntries: TimeEntry[];
   apiSettings: ApiSettingsConfig;
+  firmSettings: FirmSettingsConfig;
   activeTimer: ActiveTimerState | null;
+
+  // Workflow Engine functions
+  createPracticeWorkflow: (workflow: Omit<PracticeAreaWorkflow, 'id' | 'createdAt' | 'updatedAt'>) => PracticeAreaWorkflow;
+  updatePracticeWorkflow: (id: string, updates: Partial<PracticeAreaWorkflow>) => void;
+  deletePracticeWorkflow: (id: string) => void;
+  addStageToWorkflow: (workflowId: string, stage: WorkflowStageConfig) => void;
+  updateStageInWorkflow: (workflowId: string, stageId: number, updates: Partial<WorkflowStageConfig>) => void;
+  deleteStageFromWorkflow: (workflowId: string, stageId: number) => void;
 
   // Operational Functions
   createMatter: (data: Partial<Matter> & { clientDisplayName: string; clientPhone: string; clientNationalId: string }) => Matter;
@@ -128,12 +165,16 @@ interface AppContextType {
   updateClient: (id: string, updates: Partial<Client>) => void;
   convertIntakeToMatter: (intakeId: string) => void;
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  completeTask: (id: string) => void;
+  updateTask: (id: string, updates: Partial<Task>, force?: boolean) => { success: boolean; error?: string };
+  completeTask: (id: string, force?: boolean) => { success: boolean; error?: string };
   createCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
   recordCourtOutcome: (eventId: string, status: CourtEventStatus, outcomeNotes: string, nextHearingDate?: string) => void;
-  uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string }, notes?: string) => void;
-  approveDocumentVersion: (documentId: string, versionId: string) => void;
+  uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string }, notes?: string) => void;
+  submitDocumentForReview: (documentId: string, versionId: string, reviewNotes?: string) => void;
+  approveDocumentVersion: (documentId: string, versionId: string, comment?: string) => void;
+  rejectDocumentVersion: (documentId: string, versionId: string, reason: string) => void;
+  signDocumentVersion: (documentId: string, versionId: string, signatureHash?: string) => void;
+  revertDocumentToVersion: (documentId: string, targetVersionId: string, revertNotes?: string) => DocumentVersion | null;
   markDocumentFiled: (documentId: string, versionId: string, filingRef: string) => void;
   createExpenseRequest: (expense: Omit<ExpenseRecord, 'id' | 'createdAt' | 'status'>) => ExpenseRecord;
   approveExpense: (expenseId: string) => void;
@@ -146,6 +187,7 @@ interface AppContextType {
   stopAndLogTimer: (notes?: string) => TimeEntry | null;
   discardTimer: () => void;
   updateApiSettings: (settings: Partial<ApiSettingsConfig>) => void;
+  updateFirmSettings: (settings: Partial<FirmSettingsConfig>) => void;
   sendMessage: (channelId: string, text: string, mentions?: string[], attachments?: { name: string; size: string }[]) => void;
   convertMessageToTask: (messageId: string, title: string, assigneeId: string, dueAt: string, priority: Task['priority']) => void;
   markNotificationRead: (id: string) => void;
@@ -186,8 +228,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Core Data Collections
   const [branches] = useState<typeof SEED_BRANCHES>(SEED_BRANCHES);
-  const [users] = useState<UserProfile[]>(SEED_USERS);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
+    return saved ? JSON.parse(saved) : SEED_USERS;
+  });
   const [workflowStages] = useState<WorkflowStageDefinition[]>(WORKFLOW_STAGES_PI);
+
+  const [rolePermissionsMap, setRolePermissionsMap] = useState<Record<RoleId, PermissionKey[]>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_role_permissions`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // fallback
+      }
+    }
+    const initial: Record<RoleId, PermissionKey[]> = {
+      managing_partner: [...INITIAL_ROLES.managing_partner.defaultPermissions],
+      senior_partner: [...INITIAL_ROLES.senior_partner.defaultPermissions],
+      advocate: [...INITIAL_ROLES.advocate.defaultPermissions],
+      paralegal: [...INITIAL_ROLES.paralegal.defaultPermissions],
+      administrator: [...INITIAL_ROLES.administrator.defaultPermissions],
+      court_clerk: [...INITIAL_ROLES.court_clerk.defaultPermissions],
+      finance_officer: [...INITIAL_ROLES.finance_officer.defaultPermissions],
+      technical_admin: [...INITIAL_ROLES.technical_admin.defaultPermissions],
+    };
+    return initial;
+  });
+
+  const [practiceWorkflows, setPracticeWorkflows] = useState<PracticeAreaWorkflow[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_practice_workflows`);
+    return saved ? JSON.parse(saved) : SEED_PRACTICE_WORKFLOWS;
+  });
+
+  const [firmSettings, setFirmSettings] = useState<FirmSettingsConfig>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_firm_settings`);
+    return saved ? JSON.parse(saved) : DEFAULT_FIRM_SETTINGS;
+  });
 
   const [clients, setClients] = useState<Client[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_clients`);
@@ -276,7 +353,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [apiSettings, setApiSettings] = useState<ApiSettingsConfig>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_api_settings`);
-    return saved ? JSON.parse(saved) : DEFAULT_API_SETTINGS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_API_SETTINGS,
+          ...parsed,
+          google: {
+            ...DEFAULT_API_SETTINGS.google,
+            ...(parsed.google || parsed.googleWorkspace || {}),
+          },
+          whatsapp: {
+            ...DEFAULT_API_SETTINGS.whatsapp,
+            ...(parsed.whatsapp || {}),
+          },
+          judiciaryCts: {
+            ...DEFAULT_API_SETTINGS.judiciaryCts,
+            ...(parsed.judiciaryCts || {}),
+          },
+          mpesaDaraja: {
+            ...DEFAULT_API_SETTINGS.mpesaDaraja,
+            ...(parsed.mpesaDaraja || {}),
+          },
+          africasTalkingSms: {
+            ...DEFAULT_API_SETTINGS.africasTalkingSms,
+            ...(parsed.africasTalkingSms || {}),
+          },
+        };
+      } catch {
+        return DEFAULT_API_SETTINGS;
+      }
+    }
+    return DEFAULT_API_SETTINGS;
   });
 
   const [activeTimer, setActiveTimer] = useState<ActiveTimerState | null>(() => {
@@ -286,6 +394,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Local storage auto-sync
   useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_role_permissions`, JSON.stringify(rolePermissionsMap));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_practice_workflows`, JSON.stringify(practiceWorkflows));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_firm_settings`, JSON.stringify(firmSettings));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(clients));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_intakes`, JSON.stringify(intakes));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_matters`, JSON.stringify(matters));
@@ -309,7 +421,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } else {
       localStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
     }
-  }, [clients, intakes, matters, parties, proceedings, tasks, deadlines, calendarEvents, documents, channels, messages, expenses, accounts, payments, notifications, auditLogs, timeEntries, apiSettings, activeTimer]);
+  }, [users, rolePermissionsMap, practiceWorkflows, firmSettings, clients, intakes, matters, parties, proceedings, tasks, deadlines, calendarEvents, documents, channels, messages, expenses, accounts, payments, notifications, auditLogs, timeEntries, apiSettings, activeTimer]);
 
   // Global keyboard shortcuts (Cmd+K for search)
   useEffect(() => {
@@ -483,6 +595,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const fromStageId = targetMatter.currentStageId;
     const now = new Date().toISOString();
 
+    // Match workflow stage configuration from practiceWorkflows
+    const targetWf = practiceWorkflows.find(
+      (w) => w.practiceArea.toLowerCase() === targetMatter.practiceArea.toLowerCase()
+    ) || practiceWorkflows[0];
+    const targetStageConfig = targetWf?.stages.find((s) => s.id === toStageId);
+    const stageName = targetStageConfig?.name || WORKFLOW_STAGES_PI.find((s) => s.id === toStageId)?.name || 'Next Stage';
+
     setMatters((prev) =>
       prev.map((m) =>
         m.id === matterId
@@ -492,17 +611,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               supervisingUserId: newOwnerId,
               assignedUserIds: Array.from(new Set([...m.assignedUserIds, newOwnerId])),
               lastActivityAt: now,
-              nextAction: `Stage ${toStageId}: ${WORKFLOW_STAGES_PI.find((s) => s.id === toStageId)?.name || 'Next Stage'} in progress.`,
+              nextAction: `Stage ${toStageId}: ${stageName} in progress.`,
             }
           : m
       )
     );
 
-    // Create stage handoff task for new owner
-    const stageDef = WORKFLOW_STAGES_PI.find((s) => s.id === toStageId);
+    // Create primary stage handoff task for new owner
     const handoffTask: Task = {
       id: `tsk-${Date.now()}`,
-      title: `Execute Stage ${toStageId} tasks (${stageDef?.name || 'Workflow'})`,
+      title: `Execute Stage ${toStageId}: ${stageName}`,
       description: `Handoff notes from ${currentUser.fullName}: ${handoffNotes}`,
       matterId,
       stageId: toStageId,
@@ -510,28 +628,56 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdBy: currentUser.id,
       priority: 'high',
       status: 'todo',
-      dueAt: new Date(Date.now() + (stageDef?.targetDurationDays || 7) * 86400000).toISOString(),
+      dueAt: new Date(Date.now() + (targetStageConfig?.targetDurationDays || 7) * 86400000).toISOString(),
       createdAt: now,
       updatedAt: now,
+      dependsOnTaskIds: [],
     };
-    setTasks((prev) => [handoffTask, ...prev]);
+
+    const newTasksToAdd: Task[] = [handoffTask];
+
+    // Automatically provision stage-specific tasks defined in workflow template
+    if (targetStageConfig?.autoCreateTasks && targetStageConfig.autoCreateTasks.length > 0) {
+      targetStageConfig.autoCreateTasks.forEach((tpl, idx) => {
+        // Resolve assignee: if role matches newOwner or default to newOwnerId
+        const autoTask: Task = {
+          id: `tsk-auto-${Date.now()}-${idx + 1}`,
+          title: tpl.title,
+          description: `Auto-generated workflow checklist task for Stage ${toStageId} (${stageName}). Role: ${tpl.role}`,
+          matterId,
+          stageId: toStageId,
+          assignedTo: newOwnerId,
+          createdBy: currentUser.id,
+          priority: tpl.priority,
+          status: 'todo',
+          dueAt: new Date(Date.now() + tpl.dueInDays * 86400000).toISOString(),
+          createdAt: now,
+          updatedAt: now,
+          dependsOnTaskIds: idx > 0 ? [handoffTask.id] : [],
+        };
+        newTasksToAdd.push(autoTask);
+      });
+    }
+
+    setTasks((prev) => [...newTasksToAdd, ...prev]);
 
     logAudit('matter.stage_changed', 'handoff', matterId, matterId, {
       fromStage: fromStageId,
       toStage: toStageId,
       newOwner: newOwnerId,
       notes: handoffNotes,
+      autoTasksCreated: newTasksToAdd.length,
     });
 
     notify(
       newOwnerId,
       `Matter Reassigned (Stage ${toStageId})`,
-      `${currentUser.fullName} transferred ${targetMatter.internalReference} to you. Notes: ${handoffNotes}`,
+      `${currentUser.fullName} transferred ${targetMatter.internalReference} (${stageName}) to you. Notes: ${handoffNotes}`,
       'assignment',
       matterId,
       'urgent'
     );
-  }, [matters, currentUser, logAudit, notify]);
+  }, [matters, practiceWorkflows, currentUser, logAudit, notify]);
 
   // Client operations
   const createClient = useCallback((clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -626,6 +772,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newTask: Task = {
       ...taskData,
       id: `tsk-${Date.now()}`,
+      dependsOnTaskIds: taskData.dependsOnTaskIds || [],
       createdAt: now,
       updatedAt: now,
     };
@@ -643,16 +790,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newTask;
   }, [currentUser, logAudit, notify, isOnline, queueMutation]);
 
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+  const updateTask = useCallback((id: string, updates: Partial<Task>, force: boolean = false): { success: boolean; error?: string } => {
+    const currentTask = tasks.find((t) => t.id === id);
+    if (!currentTask) return { success: false, error: 'Task not found' };
+
+    // Enforce dependency gate if moving to in_progress or completed
+    if (!force && updates.status && (updates.status === 'in_progress' || updates.status === 'completed')) {
+      const depCheck = canUpdateTaskStatus(currentTask, updates.status, tasks);
+      if (!depCheck.allowed) {
+        notify(
+          currentUser.id,
+          'Task Dependency Blocked',
+          depCheck.reason || 'Prerequisite tasks must be completed before updating status.',
+          'deadline',
+          currentTask.matterId,
+          'urgent'
+        );
+        return { success: false, error: depCheck.reason };
+      }
+    }
+
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t))
     );
     if (!isOnline) {
       queueMutation('task', 'update', { id, ...updates });
     }
-  }, [isOnline, queueMutation]);
+    return { success: true };
+  }, [tasks, currentUser.id, notify, isOnline, queueMutation]);
 
-  const completeTask = useCallback((id: string) => {
+  const completeTask = useCallback((id: string, force: boolean = false): { success: boolean; error?: string } => {
+    const currentTask = tasks.find((t) => t.id === id);
+    if (!currentTask) return { success: false, error: 'Task not found' };
+
+    if (!force) {
+      const depCheck = canUpdateTaskStatus(currentTask, 'completed', tasks);
+      if (!depCheck.allowed) {
+        notify(
+          currentUser.id,
+          'Task Dependency Blocked',
+          depCheck.reason || 'Cannot complete task while prerequisite tasks remain incomplete.',
+          'deadline',
+          currentTask.matterId,
+          'urgent'
+        );
+        return { success: false, error: depCheck.reason };
+      }
+    }
+
     const now = new Date().toISOString();
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'completed', completedAt: now, updatedAt: now } : t))
@@ -661,7 +846,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!isOnline) {
       queueMutation('task', 'update', { id, status: 'completed', completedAt: now });
     }
-  }, [logAudit, isOnline, queueMutation]);
+    return { success: true };
+  }, [tasks, currentUser.id, logAudit, notify, isOnline, queueMutation]);
 
   // Calendar Operations
   const createCalendarEvent = useCallback((eventData: Omit<CalendarEvent, 'id'>) => {
@@ -727,49 +913,205 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [calendarEvents, currentUser.id, logAudit, notify]);
 
-  // Document Management
-  const uploadDocumentVersion = useCallback((documentId: string, file: { name: string; size: number; mimeType?: string }, notes?: string) => {
-    setDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id !== documentId) return doc;
-        const nextVerNum = doc.versions.length + 1;
-        const newVersion: DocumentVersion = {
-          id: `ver-${doc.id}-${nextVerNum}`,
-          documentId: doc.id,
-          versionNumber: nextVerNum,
-          storagePath: `matters/${doc.matterId}/documents/${doc.id}/v${nextVerNum}_${file.name}`,
-          originalFilename: file.name,
-          mimeType: file.mimeType || 'application/pdf',
-          fileSizeBytes: file.size,
-          checksum: `sha256_${Math.random().toString(36).substring(2, 10)}`,
-          uploadedBy: currentUser.id,
-          createdAt: new Date().toISOString(),
-          status: 'review',
-          notes: notes || 'New version submitted for advocate review',
-        };
-        return {
-          ...doc,
-          currentVersionId: newVersion.id,
-          updatedAt: new Date().toISOString(),
-          versions: [...doc.versions, newVersion],
-        };
-      })
-    );
-    logAudit('document.version_uploaded', 'document', documentId, undefined, { filename: file.name });
-  }, [currentUser.id, logAudit]);
+  // Document Management & Comprehensive Versioning Flow
+  const uploadDocumentVersion = useCallback(
+    (
+      documentId: string,
+      file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string },
+      notes?: string
+    ) => {
+      setDocuments((prev) =>
+        prev.map((doc) => {
+          if (doc.id !== documentId) return doc;
+          const nextVerNum = doc.versions.length + 1;
+          const newVersion: DocumentVersion = {
+            id: `ver-${doc.id}-${nextVerNum}`,
+            documentId: doc.id,
+            versionNumber: nextVerNum,
+            storagePath: `matters/${doc.matterId}/documents/${doc.id}/v${nextVerNum}_${file.name}`,
+            originalFilename: file.name,
+            mimeType: file.mimeType || 'application/pdf',
+            fileSizeBytes: file.size,
+            checksum: `sha256_${Math.random().toString(36).substring(2, 10)}`,
+            uploadedBy: currentUser.id,
+            createdAt: new Date().toISOString(),
+            status: 'draft',
+            notes: notes || 'New version created in working draft status.',
+            changeSummary: file.changeSummary || `Version ${nextVerNum} amendments and updates.`,
+            contentSnippet: file.contentSnippet || 'Document content draft updated with revised pleadings and verification clauses.',
+          };
+          return {
+            ...doc,
+            currentVersionId: newVersion.id,
+            updatedAt: new Date().toISOString(),
+            versions: [...doc.versions, newVersion],
+          };
+        })
+      );
+      logAudit('document.version_uploaded', 'document', documentId, undefined, { filename: file.name });
+      notify(currentUser.id, 'New Document Version Created', `Version created for document. You can now submit it for review.`, 'document_review');
+    },
+    [currentUser.id, logAudit, notify]
+  );
 
-  const approveDocumentVersion = useCallback((documentId: string, versionId: string) => {
+  const submitDocumentForReview = useCallback((documentId: string, versionId: string, reviewNotes?: string) => {
     setDocuments((prev) =>
       prev.map((doc) => {
         if (doc.id !== documentId) return doc;
         return {
           ...doc,
-          versions: doc.versions.map((v) => (v.id === versionId ? { ...v, status: 'approved' } : v)),
+          updatedAt: new Date().toISOString(),
+          versions: doc.versions.map((v) =>
+            v.id === versionId
+              ? {
+                  ...v,
+                  status: 'in_review' as const,
+                  notes: reviewNotes || 'Submitted for senior advocate review and verification.',
+                }
+              : v
+          ),
         };
       })
     );
-    logAudit('document.approved', 'document', documentId, undefined, { versionId });
-  }, [logAudit]);
+    logAudit('document.submitted_review', 'document', documentId, undefined, { versionId, reviewNotes });
+    notify(
+      'usr-adv-1',
+      'Document Submitted for Review',
+      `${currentUser.fullName} submitted a document version for formal legal review.`,
+      'document_review'
+    );
+  }, [currentUser.fullName, logAudit, notify]);
+
+  const approveDocumentVersion = useCallback((documentId: string, versionId: string, comment?: string) => {
+    const now = new Date().toISOString();
+    setDocuments((prev) =>
+      prev.map((doc) => {
+        if (doc.id !== documentId) return doc;
+        return {
+          ...doc,
+          updatedAt: now,
+          versions: doc.versions.map((v) =>
+            v.id === versionId
+              ? {
+                  ...v,
+                  status: 'approved' as const,
+                  reviewedBy: currentUser.id,
+                  reviewedAt: now,
+                  reviewComment: comment || 'Approved by reviewing counsel.',
+                }
+              : v
+          ),
+        };
+      })
+    );
+    logAudit('document.approved', 'document', documentId, undefined, { versionId, comment });
+    notify(currentUser.id, 'Document Approved', 'Document version has been approved and is ready for signing or court filing.', 'document_review');
+  }, [currentUser.id, logAudit, notify]);
+
+  const rejectDocumentVersion = useCallback((documentId: string, versionId: string, reason: string) => {
+    const now = new Date().toISOString();
+    setDocuments((prev) =>
+      prev.map((doc) => {
+        if (doc.id !== documentId) return doc;
+        return {
+          ...doc,
+          updatedAt: now,
+          versions: doc.versions.map((v) =>
+            v.id === versionId
+              ? {
+                  ...v,
+                  status: 'rejected' as const,
+                  reviewedBy: currentUser.id,
+                  reviewedAt: now,
+                  reviewComment: reason,
+                }
+              : v
+          ),
+        };
+      })
+    );
+    logAudit('document.rejected', 'document', documentId, undefined, { versionId, reason });
+    notify(currentUser.id, 'Document Amendments Requested', `Document was rejected/needs amendment: ${reason}`, 'document_review', undefined, 'urgent');
+  }, [currentUser.id, logAudit, notify]);
+
+  const signDocumentVersion = useCallback((documentId: string, versionId: string, signatureHash?: string) => {
+    const now = new Date().toISOString();
+    const hash = signatureHash || `LSK-SIG-${currentUser.barNumber || 'ADVOCATE'}-${Date.now().toString(36).toUpperCase()}`;
+    setDocuments((prev) =>
+      prev.map((doc) => {
+        if (doc.id !== documentId) return doc;
+        return {
+          ...doc,
+          updatedAt: now,
+          versions: doc.versions.map((v) =>
+            v.id === versionId
+              ? {
+                  ...v,
+                  status: 'signed' as const,
+                  signedBy: currentUser.id,
+                  signedAt: now,
+                  signatureHash: hash,
+                }
+              : v
+          ),
+        };
+      })
+    );
+    logAudit('document.signed', 'document', documentId, undefined, { versionId, signatureHash: hash });
+    notify(currentUser.id, 'Document Digitally Signed', `Signed under advocate seal ${hash}. Ready for e-filing.`, 'document_review');
+  }, [currentUser.barNumber, currentUser.id, logAudit, notify]);
+
+  const revertDocumentToVersion = useCallback(
+    (documentId: string, targetVersionId: string, revertNotes?: string): DocumentVersion | null => {
+      let createdVersion: DocumentVersion | null = null;
+      setDocuments((prev) =>
+        prev.map((doc) => {
+          if (doc.id !== documentId) return doc;
+          const targetVersion = doc.versions.find((v) => v.id === targetVersionId);
+          if (!targetVersion) return doc;
+
+          const nextVerNum = doc.versions.length + 1;
+          const now = new Date().toISOString();
+          createdVersion = {
+            id: `ver-${doc.id}-${nextVerNum}`,
+            documentId: doc.id,
+            versionNumber: nextVerNum,
+            storagePath: `matters/${doc.matterId}/documents/${doc.id}/v${nextVerNum}_reverted_from_v${targetVersion.versionNumber}.pdf`,
+            originalFilename: targetVersion.originalFilename,
+            mimeType: targetVersion.mimeType,
+            fileSizeBytes: targetVersion.fileSizeBytes,
+            checksum: targetVersion.checksum,
+            uploadedBy: currentUser.id,
+            createdAt: now,
+            status: 'draft',
+            notes: revertNotes || `Rollback restored from Version ${targetVersion.versionNumber}`,
+            changeSummary: `Reverted to content from Version ${targetVersion.versionNumber}: ${targetVersion.changeSummary || ''}`,
+            contentSnippet: targetVersion.contentSnippet,
+            revertedFromVersionNumber: targetVersion.versionNumber,
+          };
+
+          return {
+            ...doc,
+            currentVersionId: createdVersion.id,
+            updatedAt: now,
+            versions: [...doc.versions, createdVersion],
+          };
+        })
+      );
+
+      if (createdVersion) {
+        logAudit('document.reverted', 'document', documentId, undefined, { targetVersionId, revertNotes });
+        notify(
+          currentUser.id,
+          'Document Version Restored',
+          `Restored Version ${(createdVersion as DocumentVersion).versionNumber} from historical snapshot.`,
+          'document_review'
+        );
+      }
+      return createdVersion;
+    },
+    [currentUser.id, logAudit, notify]
+  );
 
   const markDocumentFiled = useCallback((documentId: string, versionId: string, filingRef: string) => {
     setDocuments((prev) =>
@@ -777,12 +1119,142 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (doc.id !== documentId) return doc;
         return {
           ...doc,
-          versions: doc.versions.map((v) => (v.id === versionId ? { ...v, status: 'filed', courtFilingRef: filingRef } : v)),
+          versions: doc.versions.map((v) => (v.id === versionId ? { ...v, status: 'filed' as const, courtFilingRef: filingRef } : v)),
         };
       })
     );
     logAudit('document.filed', 'document', documentId, undefined, { versionId, filingRef });
+    notify(currentUser.id, 'Court Filing Confirmed', `Judiciary CTS confirmation reference: ${filingRef}`, 'court_event');
+  }, [currentUser.id, logAudit, notify]);
+
+  // Workflow Engine Management Functions
+  const createPracticeWorkflow = useCallback(
+    (wfData: Omit<PracticeAreaWorkflow, 'id' | 'createdAt' | 'updatedAt'>): PracticeAreaWorkflow => {
+      const now = new Date().toISOString();
+      const newWf: PracticeAreaWorkflow = {
+        ...wfData,
+        id: `wf-${Date.now()}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setPracticeWorkflows((prev) => [...prev, newWf]);
+      logAudit('workflow.created', 'system', newWf.id, undefined, { name: newWf.name });
+      return newWf;
+    },
+    [logAudit]
+  );
+
+  const updatePracticeWorkflow = useCallback((id: string, updates: Partial<PracticeAreaWorkflow>) => {
+    setPracticeWorkflows((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, ...updates, updatedAt: new Date().toISOString() } : w))
+    );
+    logAudit('workflow.updated', 'system', id, undefined, updates);
   }, [logAudit]);
+
+  const deletePracticeWorkflow = useCallback((id: string) => {
+    setPracticeWorkflows((prev) => prev.filter((w) => w.id !== id));
+    logAudit('workflow.deleted', 'system', id);
+  }, [logAudit]);
+
+  const addStageToWorkflow = useCallback((workflowId: string, stage: WorkflowStageConfig) => {
+    setPracticeWorkflows((prev) =>
+      prev.map((w) => {
+        if (w.id !== workflowId) return w;
+        return {
+          ...w,
+          updatedAt: new Date().toISOString(),
+          stages: [...w.stages, stage],
+        };
+      })
+    );
+    logAudit('workflow.stage_added', 'system', workflowId, undefined, { stageName: stage.name });
+  }, [logAudit]);
+
+  const updateStageInWorkflow = useCallback((workflowId: string, stageId: number, updates: Partial<WorkflowStageConfig>) => {
+    setPracticeWorkflows((prev) =>
+      prev.map((w) => {
+        if (w.id !== workflowId) return w;
+        return {
+          ...w,
+          updatedAt: new Date().toISOString(),
+          stages: w.stages.map((s) => (s.id === stageId ? { ...s, ...updates } : s)),
+        };
+      })
+    );
+  }, []);
+
+  const deleteStageFromWorkflow = useCallback((workflowId: string, stageId: number) => {
+    setPracticeWorkflows((prev) =>
+      prev.map((w) => {
+        if (w.id !== workflowId) return w;
+        return {
+          ...w,
+          updatedAt: new Date().toISOString(),
+          stages: w.stages.filter((s) => s.id !== stageId),
+        };
+      })
+    );
+  }, []);
+
+  // RBAC Management Functions
+  const updateUserRoles = useCallback((userId: string, newRoles: RoleId[]) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, roles: newRoles, role: newRoles[0] || u.role } : u))
+    );
+    setCurrentUser((prev) =>
+      prev.id === userId ? { ...prev, roles: newRoles, role: newRoles[0] || prev.role } : prev
+    );
+    logAudit('admin.user_roles_updated', 'system', userId, undefined, { newRoles });
+  }, [logAudit]);
+
+  const updateRolePermissions = useCallback((role: RoleId, permissions: PermissionKey[]) => {
+    setRolePermissionsMap((prev) => ({
+      ...prev,
+      [role]: permissions,
+    }));
+    logAudit('admin.role_permissions_updated', 'system', role, undefined, { role, permissionsCount: permissions.length });
+  }, [logAudit]);
+
+  const resetRolePermissionsToDefault = useCallback(() => {
+    const initial: Record<RoleId, PermissionKey[]> = {
+      managing_partner: [...INITIAL_ROLES.managing_partner.defaultPermissions],
+      senior_partner: [...INITIAL_ROLES.senior_partner.defaultPermissions],
+      advocate: [...INITIAL_ROLES.advocate.defaultPermissions],
+      paralegal: [...INITIAL_ROLES.paralegal.defaultPermissions],
+      administrator: [...INITIAL_ROLES.administrator.defaultPermissions],
+      court_clerk: [...INITIAL_ROLES.court_clerk.defaultPermissions],
+      finance_officer: [...INITIAL_ROLES.finance_officer.defaultPermissions],
+      technical_admin: [...INITIAL_ROLES.technical_admin.defaultPermissions],
+    };
+    setRolePermissionsMap(initial);
+    logAudit('admin.role_permissions_reset', 'system', 'all');
+  }, [logAudit]);
+
+  const hasUserPermission = useCallback(
+    (permission: PermissionKey): boolean => {
+      return hasPermission(currentUser, permission, rolePermissionsMap);
+    },
+    [currentUser, rolePermissionsMap]
+  );
+
+  const hasUserAnyPermission = useCallback(
+    (permissions: PermissionKey[]): boolean => {
+      return hasAnyPermission(currentUser, permissions, rolePermissionsMap);
+    },
+    [currentUser, rolePermissionsMap]
+  );
+
+  const effectivePermissions = getEffectivePermissions(currentUser, rolePermissionsMap);
+
+  // Platform Settings Management
+  const updateFirmSettings = useCallback((updates: Partial<FirmSettingsConfig>) => {
+    setFirmSettings((prev) => ({
+      ...prev,
+      ...updates,
+    }));
+    logAudit('admin.firm_settings_updated', 'system', 'firm_settings');
+    notify(currentUser.id, 'Firm Settings Updated', 'Firm profile, financial policies, and rules updated.', 'system');
+  }, [currentUser.id, logAudit, notify]);
 
   // Finance Operations
   const createExpenseRequest = useCallback((expenseData: Omit<ExpenseRecord, 'id' | 'createdAt' | 'status'>) => {
@@ -1044,6 +1516,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Demo state reset
   const resetToDemoData = useCallback(() => {
     localStorage.clear();
+    setUsers(SEED_USERS);
+    setPracticeWorkflows(SEED_PRACTICE_WORKFLOWS);
+    setFirmSettings(DEFAULT_FIRM_SETTINGS);
+    const initial: Record<RoleId, PermissionKey[]> = {
+      managing_partner: [...INITIAL_ROLES.managing_partner.defaultPermissions],
+      senior_partner: [...INITIAL_ROLES.senior_partner.defaultPermissions],
+      advocate: [...INITIAL_ROLES.advocate.defaultPermissions],
+      paralegal: [...INITIAL_ROLES.paralegal.defaultPermissions],
+      administrator: [...INITIAL_ROLES.administrator.defaultPermissions],
+      court_clerk: [...INITIAL_ROLES.court_clerk.defaultPermissions],
+      finance_officer: [...INITIAL_ROLES.finance_officer.defaultPermissions],
+      technical_admin: [...INITIAL_ROLES.technical_admin.defaultPermissions],
+    };
+    setRolePermissionsMap(initial);
     setClients(SEED_CLIENTS);
     setIntakes(SEED_INTAKES);
     setMatters(SEED_MATTERS);
@@ -1104,6 +1590,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         parties,
         proceedings,
         workflowStages,
+        practiceWorkflows,
+        firmSettings,
+        rolePermissionsMap,
+        effectivePermissions,
         tasks,
         deadlines,
         calendarEvents,
@@ -1125,6 +1615,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         discardTimer,
         recordTimeEntry,
         updateApiSettings,
+        updateFirmSettings,
+        createPracticeWorkflow,
+        updatePracticeWorkflow,
+        deletePracticeWorkflow,
+        addStageToWorkflow,
+        updateStageInWorkflow,
+        deleteStageFromWorkflow,
+        updateUserRoles,
+        updateRolePermissions,
+        resetRolePermissionsToDefault,
+        hasUserPermission,
+        hasUserAnyPermission,
         createMatter,
         updateMatter,
         advanceMatterStage,
@@ -1137,7 +1639,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createCalendarEvent,
         recordCourtOutcome,
         uploadDocumentVersion,
+        submitDocumentForReview,
         approveDocumentVersion,
+        rejectDocumentVersion,
+        signDocumentVersion,
+        revertDocumentToVersion,
         markDocumentFiled,
         createExpenseRequest,
         approveExpense,

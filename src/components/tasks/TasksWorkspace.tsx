@@ -10,9 +10,22 @@ import {
   Filter,
   Columns,
   List,
+  Lock,
+  Unlock,
+  GitBranch,
+  ArrowRight,
+  ShieldAlert,
+  X,
+  Info,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Task, TaskPriority, TaskStatus } from '../../types';
+import {
+  evaluateTaskDependencies,
+  canUpdateTaskStatus,
+  getTasksDependentOn,
+  wouldCreateCircularDependency,
+} from '../../utils/taskDependencies';
 
 export const TasksWorkspace: React.FC = () => {
   const {
@@ -27,9 +40,20 @@ export const TasksWorkspace: React.FC = () => {
     setActiveWorkspace,
   } = useApp();
 
-  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
-  const [filterScope, setFilterScope] = useState<'my' | 'all' | 'overdue'>('my');
+  const [viewMode, setViewMode] = useState<'list' | 'dependencies'>('list');
+  const [filterScope, setFilterScope] = useState<'my' | 'all' | 'overdue' | 'blocked'>('my');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Blocked alert modal state
+  const [blockedNotice, setBlockedNotice] = useState<{
+    task: Task;
+    attemptedStatus: TaskStatus;
+    reason: string;
+    blockingTasks: Task[];
+  } | null>(null);
+
+  // Task Dependency Editor Modal
+  const [editingDepTask, setEditingDepTask] = useState<Task | null>(null);
 
   // New task form state
   const [title, setTitle] = useState('');
@@ -39,14 +63,40 @@ export const TasksWorkspace: React.FC = () => {
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueAt, setDueAt] = useState(new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]);
   const [officialDeadline, setOfficialDeadline] = useState('');
+  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
 
-  const filteredTasks = tasks.filter((t) => {
-    if (filterScope === 'my') return t.assignedTo === currentUser.id;
-    if (filterScope === 'overdue') {
-      return t.status !== 'completed' && t.status !== 'cancelled' && new Date(t.dueAt) < new Date();
+  // Tasks belonging to currently selected matter in creation modal
+  const matterTasksForDep = tasks.filter((t) => t.matterId === matterId);
+
+  const handleStatusChange = (task: Task, newStatus: TaskStatus) => {
+    const res = updateTask(task.id, { status: newStatus });
+    if (!res.success) {
+      const evalResult = evaluateTaskDependencies(task, tasks);
+      setBlockedNotice({
+        task,
+        attemptedStatus: newStatus,
+        reason: res.error || 'Prerequisite tasks must be completed first.',
+        blockingTasks: evalResult.pendingDependencies,
+      });
     }
-    return true;
-  });
+  };
+
+  const handleToggleComplete = (task: Task) => {
+    if (task.status === 'completed') {
+      updateTask(task.id, { status: 'todo' }, true);
+      return;
+    }
+    const res = completeTask(task.id);
+    if (!res.success) {
+      const evalResult = evaluateTaskDependencies(task, tasks);
+      setBlockedNotice({
+        task,
+        attemptedStatus: 'completed',
+        reason: res.error || 'Prerequisite tasks must be completed first.',
+        blockingTasks: evalResult.pendingDependencies,
+      });
+    }
+  };
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,16 +112,34 @@ export const TasksWorkspace: React.FC = () => {
       status: 'todo',
       dueAt: `${dueAt}T17:00:00Z`,
       officialDeadlineAt: officialDeadline ? `${officialDeadline}T17:00:00Z` : undefined,
+      dependsOnTaskIds: selectedDependencies,
     });
 
     setShowCreateModal(false);
     setTitle('');
     setDescription('');
+    setSelectedDependencies([]);
   };
+
+  const filteredTasks = tasks.filter((t) => {
+    if (filterScope === 'my') return t.assignedTo === currentUser.id;
+    if (filterScope === 'overdue') {
+      return t.status !== 'completed' && t.status !== 'cancelled' && new Date(t.dueAt) < new Date();
+    }
+    if (filterScope === 'blocked') {
+      const evalResult = evaluateTaskDependencies(t, tasks);
+      return evalResult.isBlocked && t.status !== 'completed' && t.status !== 'cancelled';
+    }
+    return true;
+  });
 
   const overdueCount = tasks.filter(
     (t) => t.status !== 'completed' && t.status !== 'cancelled' && new Date(t.dueAt) < new Date()
   ).length;
+
+  const blockedCount = tasks.filter((t) => {
+    return evaluateTaskDependencies(t, tasks).isBlocked && t.status !== 'completed' && t.status !== 'cancelled';
+  }).length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full text-xs">
@@ -85,6 +153,11 @@ export const TasksWorkspace: React.FC = () => {
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
               {tasks.length} Active Work Items
             </span>
+            {blockedCount > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-bold flex items-center gap-1">
+                <Lock className="w-3 h-3" /> {blockedCount} Blocked by Dependencies
+              </span>
+            )}
             {overdueCount > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 font-bold">
                 {overdueCount} Overdue
@@ -92,11 +165,33 @@ export const TasksWorkspace: React.FC = () => {
             )}
           </div>
           <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-100 mt-1">
-            Tasks, Filings &amp; Statutory Deadlines
+            Tasks, Filings &amp; Dependency Orders
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
+                viewMode === 'list' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>List View</span>
+            </button>
+            <button
+              onClick={() => setViewMode('dependencies')}
+              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
+                viewMode === 'dependencies' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>Dependency Chains</span>
+            </button>
+          </div>
+
           <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex">
             <button
               onClick={() => setFilterScope('my')}
@@ -113,6 +208,14 @@ export const TasksWorkspace: React.FC = () => {
               }`}
             >
               Firm-Wide
+            </button>
+            <button
+              onClick={() => setFilterScope('blocked')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1 ${
+                filterScope === 'blocked' ? 'bg-amber-700 text-white shadow' : 'text-amber-400 hover:text-amber-200'
+              }`}
+            >
+              <Lock className="w-3 h-3" /> Blocked ({blockedCount})
             </button>
             <button
               onClick={() => setFilterScope('overdue')}
@@ -134,111 +237,449 @@ export const TasksWorkspace: React.FC = () => {
         </div>
       </div>
 
-      {/* Task List */}
-      <div className="space-y-3">
-        {filteredTasks.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 border border-dashed border-slate-800 rounded-2xl">
-            No tasks found in this view.
+      {/* Dependency Chains Map View */}
+      {viewMode === 'dependencies' && (
+        <div className="space-y-6">
+          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-3">
+            <GitBranch className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-slate-200 text-sm">Execution Order of Operations</h3>
+              <p className="text-slate-400 text-xs mt-0.5">
+                Tasks with defined prerequisites enforce a mandatory order of operations. Dependent tasks remain locked
+                until their preceding milestones are marked as completed.
+              </p>
+            </div>
           </div>
-        ) : (
-          filteredTasks.map((t) => {
-            const matter = matters.find((m) => m.id === t.matterId);
-            const assignee = users.find((u) => u.id === t.assignedTo);
-            const isOverdue = t.status !== 'completed' && t.status !== 'cancelled' && new Date(t.dueAt) < new Date();
+
+          {matters.map((m) => {
+            const matterTaskList = tasks.filter((t) => t.matterId === m.id);
+            if (matterTaskList.length === 0) return null;
 
             return (
-              <div
-                key={t.id}
-                className={`p-4 rounded-2xl border transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm ${
-                  isOverdue
-                    ? 'border-rose-900/60 bg-rose-950/20'
-                    : 'border-slate-800 bg-slate-900/80 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-start gap-3 flex-1">
-                  <button
-                    onClick={() => completeTask(t.id)}
-                    className={`p-2 rounded-xl transition mt-0.5 shrink-0 ${
-                      t.status === 'completed'
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-700'
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
-                    }`}
-                  >
-                    <CheckSquare className="w-4 h-4" />
-                  </button>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-semibold text-sm ${t.status === 'completed' ? 'line-through text-slate-500' : 'text-slate-100'}`}>
-                        {t.title}
-                      </span>
-                      <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-bold ${
-                        t.priority === 'critical'
-                          ? 'bg-rose-950 text-rose-300 border border-rose-800'
-                          : t.priority === 'high'
-                          ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}>
-                        {t.priority}
-                      </span>
-                      <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                        {t.status}
-                      </span>
-                    </div>
-
-                    {t.description && <p className="text-slate-400 text-xs">{t.description}</p>}
-
-                    <div className="flex items-center gap-4 text-slate-400 text-[11px] pt-1">
-                      {matter && (
-                        <button
-                          onClick={() => {
-                            setSelectedMatterId(matter.id);
-                            setActiveWorkspace('matters');
-                          }}
-                          className="font-mono text-amber-400 hover:underline"
-                        >
-                          {matter.internalReference}: {matter.title}
-                        </button>
-                      )}
-                      <span>Assigned to: <strong className="text-slate-300">{assignee?.fullName || 'Staff'}</strong></span>
-                    </div>
+              <div key={m.id} className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-amber-400 font-bold">{m.internalReference}</span>
+                    <span className="text-slate-300 font-semibold">{m.title}</span>
                   </div>
+                  <span className="text-slate-400 text-[11px] font-mono">{matterTaskList.length} tasks</span>
                 </div>
 
-                {/* Deadlines Block */}
-                <div className="flex items-center gap-4 shrink-0 text-right self-end md:self-center">
-                  <div className="space-y-0.5">
-                    <div className={`text-xs font-mono font-medium ${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
-                      Target Due: {new Date(t.dueAt).toLocaleDateString()}
-                    </div>
-                    {t.officialDeadlineAt && (
-                      <div className="text-[10px] font-mono text-rose-300/80">
-                        Statutory Cutoff: {new Date(t.officialDeadlineAt).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {matterTaskList.map((t) => {
+                    const evalResult = evaluateTaskDependencies(t, tasks);
+                    const downstream = getTasksDependentOn(t.id, tasks);
+                    return (
+                      <div
+                        key={t.id}
+                        className={`p-3 rounded-xl border flex flex-col justify-between gap-3 ${
+                          t.status === 'completed'
+                            ? 'bg-slate-900/40 border-slate-800/80 opacity-75'
+                            : evalResult.isBlocked
+                            ? 'bg-amber-950/20 border-amber-900/60'
+                            : 'bg-slate-800/60 border-slate-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                              t.status === 'completed'
+                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                : evalResult.isBlocked
+                                ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                                : 'bg-slate-700 text-slate-300'
+                            }`}>
+                              {evalResult.isBlocked ? 'Blocked' : t.status}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              Due: {new Date(t.dueAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="font-semibold text-slate-200 text-xs">{t.title}</div>
+                        </div>
 
-                  <select
-                    value={t.status}
-                    onChange={(e) => updateTask(t.id, { status: e.target.value as TaskStatus })}
-                    className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 outline-none text-[11px]"
-                  >
-                    <option value="todo">To Do</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="review">Review</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                        {/* Prerequisites indicator */}
+                        <div className="space-y-1.5 pt-2 border-t border-slate-800/60 text-[11px]">
+                          {evalResult.pendingDependencies.length > 0 && (
+                            <div className="p-2 rounded bg-amber-950/40 border border-amber-900/40 text-amber-300 space-y-1">
+                              <div className="font-semibold flex items-center gap-1">
+                                <Lock className="w-3 h-3" /> Waiting on {evalResult.pendingDependencies.length} task(s):
+                              </div>
+                              <ul className="list-disc list-inside space-y-0.5 text-[10px] text-amber-400/90">
+                                {evalResult.pendingDependencies.map((dep) => (
+                                  <li key={dep.id} className="truncate">
+                                    {dep.title} ({dep.status})
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {downstream.length > 0 && (
+                            <div className="text-slate-400 text-[10px] flex items-center gap-1">
+                              <ArrowRight className="w-3 h-3 text-amber-500" />
+                              <span>Prerequisite for {downstream.length} downstream task(s)</span>
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => setEditingDepTask(t)}
+                            className="w-full mt-1 py-1 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-medium transition text-center"
+                          >
+                            Configure Dependencies
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
+
+      {/* Task List Standard View */}
+      {viewMode === 'list' && (
+        <div className="space-y-3">
+          {filteredTasks.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 border border-dashed border-slate-800 rounded-2xl">
+              No tasks found in this view.
+            </div>
+          ) : (
+            filteredTasks.map((t) => {
+              const matter = matters.find((m) => m.id === t.matterId);
+              const assignee = users.find((u) => u.id === t.assignedTo);
+              const isOverdue = t.status !== 'completed' && t.status !== 'cancelled' && new Date(t.dueAt) < new Date();
+              const evalResult = evaluateTaskDependencies(t, tasks);
+              const downstream = getTasksDependentOn(t.id, tasks);
+
+              return (
+                <div
+                  key={t.id}
+                  className={`p-4 rounded-2xl border transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm ${
+                    evalResult.isBlocked && t.status !== 'completed'
+                      ? 'border-amber-900/60 bg-amber-950/15'
+                      : isOverdue
+                      ? 'border-rose-900/60 bg-rose-950/20'
+                      : 'border-slate-800 bg-slate-900/80 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start gap-3 flex-1">
+                    <button
+                      onClick={() => handleToggleComplete(t)}
+                      title={evalResult.isBlocked ? 'Blocked by prerequisite tasks' : 'Mark complete'}
+                      className={`p-2 rounded-xl transition mt-0.5 shrink-0 ${
+                        t.status === 'completed'
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-700'
+                          : evalResult.isBlocked
+                          ? 'bg-amber-950 text-amber-500 border border-amber-800 hover:bg-amber-900'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {evalResult.isBlocked && t.status !== 'completed' ? (
+                        <Lock className="w-4 h-4 text-amber-400" />
+                      ) : (
+                        <CheckSquare className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`font-semibold text-sm ${
+                            t.status === 'completed' ? 'line-through text-slate-500' : 'text-slate-100'
+                          }`}
+                        >
+                          {t.title}
+                        </span>
+
+                        {/* Dependency Pill */}
+                        {evalResult.isBlocked && t.status !== 'completed' && (
+                          <span
+                            onClick={() => {
+                              setBlockedNotice({
+                                task: t,
+                                attemptedStatus: 'in_progress',
+                                reason: 'Prerequisite dependencies must be completed first.',
+                                blockingTasks: evalResult.pendingDependencies,
+                              });
+                            }}
+                            className="cursor-pointer text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1 hover:bg-amber-900 transition"
+                          >
+                            <Lock className="w-3 h-3" />
+                            <span>Blocked ({evalResult.pendingDependencies.length} unmet)</span>
+                          </span>
+                        )}
+
+                        {t.dependsOnTaskIds && t.dependsOnTaskIds.length > 0 && !evalResult.isBlocked && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
+                            <Unlock className="w-3 h-3" />
+                            <span>Dependencies Clear</span>
+                          </span>
+                        )}
+
+                        <span
+                          className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-bold ${
+                            t.priority === 'critical'
+                              ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                              : t.priority === 'high'
+                              ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {t.priority}
+                        </span>
+                        <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                          {t.status}
+                        </span>
+                      </div>
+
+                      {t.description && <p className="text-slate-400 text-xs">{t.description}</p>}
+
+                      <div className="flex items-center gap-4 text-slate-400 text-[11px] pt-0.5 flex-wrap">
+                        {matter && (
+                          <button
+                            onClick={() => {
+                              setSelectedMatterId(matter.id);
+                              setActiveWorkspace('matters');
+                            }}
+                            className="font-mono text-amber-400 hover:underline"
+                          >
+                            {matter.internalReference}: {matter.title}
+                          </button>
+                        )}
+                        <span>
+                          Assigned to: <strong className="text-slate-300">{assignee?.fullName || 'Staff'}</strong>
+                        </span>
+
+                        {downstream.length > 0 && (
+                          <span className="text-slate-400 flex items-center gap-1">
+                            <GitBranch className="w-3 h-3 text-amber-400" /> Blocks {downstream.length} other task(s)
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => setEditingDepTask(t)}
+                          className="text-amber-400 hover:underline flex items-center gap-1"
+                        >
+                          <GitBranch className="w-3 h-3" /> Edit Dependencies
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Deadlines Block & Status dropdown */}
+                  <div className="flex items-center gap-4 shrink-0 text-right self-end md:self-center">
+                    <div className="space-y-0.5">
+                      <div className={`text-xs font-mono font-medium ${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
+                        Target Due: {new Date(t.dueAt).toLocaleDateString()}
+                      </div>
+                      {t.officialDeadlineAt && (
+                        <div className="text-[10px] font-mono text-rose-300/80">
+                          Statutory Cutoff: {new Date(t.officialDeadlineAt).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+
+                    <select
+                      value={t.status}
+                      onChange={(e) => handleStatusChange(t, e.target.value as TaskStatus)}
+                      className={`border rounded-lg px-2.5 py-1 outline-none text-[11px] font-medium ${
+                        evalResult.isBlocked && t.status !== 'completed'
+                          ? 'bg-amber-950/80 border-amber-800 text-amber-200'
+                          : 'bg-slate-950 border-slate-700 text-slate-200'
+                      }`}
+                    >
+                      <option value="todo">To Do</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="review">Review</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Blocked by Dependency Notice Modal */}
+      {blockedNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 border border-amber-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
+                <ShieldAlert className="w-5 h-5 text-amber-500" />
+                <span>Task Dependency Protection Enforced</span>
+              </div>
+              <button
+                onClick={() => setBlockedNotice(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <p className="text-slate-300">
+                You cannot update <strong>"{blockedNotice.task.title}"</strong> to{' '}
+                <span className="font-mono text-amber-400 font-bold uppercase">
+                  {blockedNotice.attemptedStatus.replace('_', ' ')}
+                </span>{' '}
+                because its prerequisite milestone(s) have not been completed.
+              </p>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                  Prerequisites Required First:
+                </div>
+                <div className="space-y-1.5">
+                  {blockedNotice.blockingTasks.map((bt) => {
+                    const assignee = users.find((u) => u.id === bt.assignedTo);
+                    return (
+                      <div
+                        key={bt.id}
+                        className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]"
+                      >
+                        <div>
+                          <div className="font-medium text-slate-200">{bt.title}</div>
+                          <div className="text-slate-400 text-[10px]">
+                            Assigned to: {assignee?.fullName || 'Staff'} &bull; Due: {new Date(bt.dueAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-900 uppercase">
+                          {bt.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="text-slate-400 text-[11px]">
+                To proceed, mark the prerequisite tasks above as completed, or ask a Managing Partner to apply an
+                administrative override.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setBlockedNotice(null)}
+                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium"
+              >
+                Understood, Return
+              </button>
+              {currentUser.role === 'managing_partner' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateTask(blockedNotice.task.id, { status: blockedNotice.attemptedStatus }, true);
+                    setBlockedNotice(null);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-white font-medium text-xs flex items-center gap-1"
+                >
+                  <Unlock className="w-3.5 h-3.5" /> Partner Override
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dependencies Modal */}
+      {editingDepTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div>
+                <h3 className="font-serif font-bold text-base text-slate-100">Configure Task Dependencies</h3>
+                <p className="text-slate-400 text-[11px] truncate max-w-sm mt-0.5">{editingDepTask.title}</p>
+              </div>
+              <button onClick={() => setEditingDepTask(null)} className="p-1 text-slate-400 hover:text-slate-200">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-slate-300 text-xs">
+                Select tasks that must be completed before <strong>"{editingDepTask.title}"</strong> can be started or
+                completed:
+              </p>
+
+              <div className="max-h-60 overflow-y-auto space-y-1.5 p-1">
+                {tasks
+                  .filter((t) => t.matterId === editingDepTask.matterId && t.id !== editingDepTask.id)
+                  .map((candidate) => {
+                    const isCircular = wouldCreateCircularDependency(editingDepTask.id, candidate.id, tasks);
+                    const isChecked = editingDepTask.dependsOnTaskIds?.includes(candidate.id);
+
+                    return (
+                      <label
+                        key={candidate.id}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition ${
+                          isCircular
+                            ? 'opacity-40 cursor-not-allowed bg-slate-950 border-slate-800'
+                            : isChecked
+                            ? 'bg-amber-950/30 border-amber-800 text-amber-200'
+                            : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <input
+                            type="checkbox"
+                            disabled={isCircular}
+                            checked={!!isChecked}
+                            onChange={(e) => {
+                              const currentDeps = editingDepTask.dependsOnTaskIds || [];
+                              const newDeps = e.target.checked
+                                ? [...currentDeps, candidate.id]
+                                : currentDeps.filter((id) => id !== candidate.id);
+                              updateTask(editingDepTask.id, { dependsOnTaskIds: newDeps }, true);
+                              setEditingDepTask({ ...editingDepTask, dependsOnTaskIds: newDeps });
+                            }}
+                            className="rounded border-slate-700 text-amber-600 focus:ring-amber-500"
+                          />
+                          <div className="truncate">
+                            <div className="font-medium text-slate-200 truncate">{candidate.title}</div>
+                            <div className="text-[10px] text-slate-400">
+                              Status: {candidate.status} &bull; Due: {new Date(candidate.dueAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {isCircular && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 shrink-0">
+                            Circular Loop
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingDepTask(null)}
+                className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Task Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleCreateTask} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4">
+          <form
+            onSubmit={handleCreateTask}
+            className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl"
+          >
             <h3 className="font-serif font-bold text-base text-slate-100">Create Action Task</h3>
 
             <div>
@@ -257,7 +698,10 @@ export const TasksWorkspace: React.FC = () => {
               <label className="block text-slate-300 mb-1">Associated Matter</label>
               <select
                 value={matterId}
-                onChange={(e) => setMatterId(e.target.value)}
+                onChange={(e) => {
+                  setMatterId(e.target.value);
+                  setSelectedDependencies([]);
+                }}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
               >
                 {matters.map((m) => (
@@ -320,7 +764,40 @@ export const TasksWorkspace: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            {/* Task Dependency Selector */}
+            {matterTasksForDep.length > 0 && (
+              <div>
+                <label className="block text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Prerequisite Dependencies (Optional)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Must complete before this task starts</span>
+                </label>
+                <div className="max-h-32 overflow-y-auto space-y-1 bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                  {matterTasksForDep.map((mt) => (
+                    <label
+                      key={mt.id}
+                      className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800/80 cursor-pointer text-slate-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedDependencies.includes(mt.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedDependencies([...selectedDependencies, mt.id]);
+                          } else {
+                            setSelectedDependencies(selectedDependencies.filter((id) => id !== mt.id));
+                          }
+                        }}
+                        className="rounded border-slate-700 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="truncate text-[11px]">{mt.title}</span>
+                      <span className="text-[9px] font-mono text-slate-400 ml-auto uppercase">{mt.status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
