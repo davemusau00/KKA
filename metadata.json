@@ -1,0 +1,6 @@
+{
+  "name": "Kariuki Kagunda Lawfirm OS",
+  "description": "Integrated operating system for Kariuki Kagunda & Co. Advocates managing matters, workflows, court calendars, tasks, documents, finances, and multi-branch operations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
