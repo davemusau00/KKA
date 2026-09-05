@@ -1,4 +1,4 @@
-export type BranchId = 'branch-nairobi' | 'branch-two';
+export type BranchId = 'branch-nairobi' | 'branch-two' | (string & {});
 
 export interface Branch {
   id: BranchId;
@@ -340,6 +340,7 @@ export interface StageHandoff {
   handoffNotes: string;
   createdAt: string;
   acknowledgedAt?: string;
+  acknowledgedByUserId?: string;
 }
 
 export type TaskStatus = 

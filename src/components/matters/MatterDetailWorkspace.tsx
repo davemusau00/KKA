@@ -26,6 +26,7 @@ import {
   Sparkles,
   Award,
   BookOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DocumentPreviewModal } from '../common/DocumentPreviewModal';
@@ -83,6 +84,8 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
     uploadDocumentVersion,
     createExpenseRequest,
     isOnline,
+    stageHandoffs,
+    acknowledgeHandoff,
   } = useApp();
 
   const [previewDoc, setPreviewDoc] = useState<LegalDocument | null>(null);
@@ -128,10 +131,12 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
   const totalExpenses = matterExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalReceived = matterPayments.reduce((sum, p) => sum + p.amount, 0);
   const trustBalance = totalReceived - totalExpenses;
+  const matterHandoffs = stageHandoffs.filter((h) => h.matterId === matter.id);
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'workflow', label: `Workflow (Stage ${matter.currentStageId})` },
+    { id: 'handoffs', label: `Handoffs (${matterHandoffs.length})` },
     { id: 'tasks', label: `Tasks (${matterTasks.length})` },
     { id: 'calendar', label: `Court & Dates (${matterEvents.length})` },
     { id: 'documents', label: `Documents (${matterDocs.length})` },
@@ -1052,6 +1057,216 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: STAGE HANDOFFS & AUDIT */}
+        {selectedMatterTab === 'handoffs' && (
+          <div className="space-y-6 text-xs">
+            {/* Header / Summary Card */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-900 border border-amber-800/60 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-600/40 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-mono font-bold text-amber-500 tracking-widest">
+                      Stage Governance &amp; Custody
+                    </div>
+                    <h3 className="font-serif font-bold text-base text-slate-100">
+                      Stage Transfer &amp; Handover Audit Trail
+                    </h3>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      Immutable record of stage transitions, work briefs, delegated stage leads, and formal custody acknowledgments.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowStageModal(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold flex items-center gap-1.5 shadow transition"
+                  >
+                    <span>Advance Stage</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-800">
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                  <div className="text-[10px] font-mono uppercase text-slate-400">Current Active Stage</div>
+                  <div className="text-sm font-bold text-slate-100 mt-0.5 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-600/30 text-amber-400 flex items-center justify-center text-xs font-mono">
+                      {matter.currentStageId}
+                    </span>
+                    <span>{workflowStages.find((s) => s.id === matter.currentStageId)?.name || `Stage ${matter.currentStageId}`}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                  <div className="text-[10px] font-mono uppercase text-slate-400">Current Stage Lead</div>
+                  <div className="text-sm font-bold text-slate-100 mt-0.5">
+                    {users.find((u) => u.id === matter.currentStageOwnerId)?.fullName || matter.currentStageOwnerId || 'Unassigned'}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                  <div className="text-[10px] font-mono uppercase text-slate-400">Supervising Partner</div>
+                  <div className="text-sm font-bold text-slate-100 mt-0.5">
+                    {users.find((u) => u.id === matter.supervisingUserId)?.fullName || matter.supervisingUserId}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Handoff Records Timeline */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-200 uppercase tracking-wider text-xs flex items-center gap-2">
+                <span>Chronological Handoff Log</span>
+                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono text-[10px]">
+                  {matterHandoffs.length} Transitions
+                </span>
+              </h4>
+
+              {matterHandoffs.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-2">
+                  <Clock className="w-8 h-8 text-slate-500 mx-auto" />
+                  <div className="font-semibold text-slate-300">No Stage Transitions Recorded Yet</div>
+                  <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                    When you advance this matter through its workflow stages, each handoff brief and delegate acceptance will log here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {matterHandoffs.map((h, idx) => {
+                    const fromUser = users.find((u) => u.id === h.fromUserId);
+                    const toUser = users.find((u) => u.id === h.toUserId);
+                    const fromStage = workflowStages.find((s) => s.id === h.fromStageId);
+                    const toStage = workflowStages.find((s) => s.id === h.toStageId);
+                    const isAcknowledged = !!h.acknowledgedAt;
+                    const canAcknowledge =
+                      !isAcknowledged &&
+                      (currentUser.id === h.toUserId ||
+                        currentUser.roles.includes('managing_partner') ||
+                        currentUser.roles.includes('senior_partner'));
+
+                    return (
+                      <div
+                        key={h.id}
+                        className={`p-5 rounded-2xl border transition shadow-sm space-y-4 ${
+                          isAcknowledged
+                            ? 'bg-slate-900 border-slate-800'
+                            : 'bg-amber-950/20 border-amber-700/80 shadow-amber-950/30 ring-1 ring-amber-600/30'
+                        }`}
+                      >
+                        {/* Handoff Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-mono font-bold text-xs">
+                              #{matterHandoffs.length - idx}
+                            </span>
+                            <div className="flex items-center gap-2 font-bold text-slate-200">
+                              <span className="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono">
+                                Stage {h.fromStageId} ({fromStage?.name || `Stage ${h.fromStageId}`})
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-slate-500" />
+                              <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono">
+                                Stage {h.toStageId} ({toStage?.name || `Stage ${h.toStageId}`})
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 font-mono text-[11px]">
+                              {new Date(h.createdAt).toLocaleString()}
+                            </span>
+                            {isAcknowledged ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold text-[10px] flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Acknowledged</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700 font-semibold text-[10px] flex items-center gap-1 animate-pulse">
+                                <Clock className="w-3 h-3" />
+                                <span>Pending Receipt</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Workers From / To */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                            <img
+                              src={fromUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+                              alt=""
+                              className="w-9 h-9 rounded-xl object-cover border border-slate-700"
+                            />
+                            <div className="min-w-0">
+                              <div className="text-[10px] uppercase font-mono text-slate-500">Originating Stage Worker</div>
+                              <div className="font-semibold text-slate-200 truncate">{fromUser?.fullName || h.fromUserId}</div>
+                              <div className="text-[11px] text-slate-400 truncate">{fromUser?.jobTitle}</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                            <img
+                              src={toUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+                              alt=""
+                              className="w-9 h-9 rounded-xl object-cover border border-slate-700"
+                            />
+                            <div className="min-w-0">
+                              <div className="text-[10px] uppercase font-mono text-slate-500">Incoming Stage Lead</div>
+                              <div className="font-semibold text-slate-200 truncate">{toUser?.fullName || h.toUserId}</div>
+                              <div className="text-[11px] text-slate-400 truncate">{toUser?.jobTitle}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Handoff Brief */}
+                        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <div className="text-[10px] uppercase font-mono text-amber-500 font-bold">
+                            Handoff Brief &amp; Critical Next Actions
+                          </div>
+                          <p className="text-slate-200 leading-relaxed text-xs whitespace-pre-line">
+                            {h.handoffNotes}
+                          </p>
+                        </div>
+
+                        {/* Acknowledgement Action / Status */}
+                        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px]">
+                          {isAcknowledged ? (
+                            <div className="text-slate-400 flex items-center gap-1.5 font-mono text-[10px]">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>
+                                Formally accepted on {new Date(h.acknowledgedAt!).toLocaleString()}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-amber-400 flex items-center gap-1.5 font-mono text-[10px]">
+                              <Clock className="w-3.5 h-3.5 shrink-0" />
+                              <span>Custody transfer awaiting acceptance by {toUser?.fullName || 'Assignee'}</span>
+                            </div>
+                          )}
+
+                          {canAcknowledge && (
+                            <button
+                              onClick={() => acknowledgeHandoff(h.id)}
+                              className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center gap-1.5 shadow transition self-end sm:self-auto"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>Acknowledge Receipt &amp; Accept Responsibility</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

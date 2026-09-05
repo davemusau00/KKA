@@ -49,10 +49,13 @@ import {
   SettlementDistributionData,
   MatterClosureAuditData,
   DirectoryContact,
+  StageHandoff,
+  Branch,
 } from '../types';
 import {
   SEED_BRANCHES,
   SEED_USERS,
+  SEED_STAGE_HANDOFFS,
   WORKFLOW_STAGES_PI,
   SEED_CLIENTS,
   SEED_INTAKES,
@@ -102,6 +105,7 @@ import {
 } from '../data/workflowEngineData';
 import { DEFAULT_FIRM_SETTINGS } from '../data/settingsData';
 import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
+import { generateSequentialMatterReference } from '../utils/matterReference';
 
 export interface ActiveTimerState {
   matterId: string;
@@ -164,8 +168,9 @@ interface AppContextType {
   setIsSyncCenterOpen: (open: boolean) => void;
   
   // Data Collections
-  branches: typeof SEED_BRANCHES;
+  branches: Branch[];
   users: UserProfile[];
+  stageHandoffs: StageHandoff[];
   clients: Client[];
   intakes: IntakeLead[];
   matters: Matter[];
@@ -325,6 +330,16 @@ interface AppContextType {
   resetToDemoData: () => void;
   resetDataToDefault: () => void;
   notify: (recipientId: string, title: string, message: string, category?: SystemNotification['category'], matterId?: string, urgency?: SystemNotification['urgency']) => void;
+
+  // Stage Handoffs
+  acknowledgeHandoff: (handoffId: string) => void;
+
+  // User & Branch Management
+  inviteUser: (userData: Omit<UserProfile, 'id'>) => UserProfile;
+  toggleUserActive: (userId: string) => void;
+  updateUserBranch: (userId: string, branchId: BranchId) => void;
+  createBranch: (branchData: Omit<Branch, 'id'>) => Branch;
+  updateBranch: (branchId: BranchId, updates: Partial<Branch>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -357,7 +372,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [emailDigestEnabled, setEmailDigestEnabled] = useState(true);
 
   // Core Data Collections
-  const [branches] = useState<typeof SEED_BRANCHES>(SEED_BRANCHES);
+  const [branches, setBranches] = useState<Branch[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_branches`);
+    return saved ? JSON.parse(saved) : SEED_BRANCHES;
+  });
+  const [stageHandoffs, setStageHandoffs] = useState<StageHandoff[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_stage_handoffs`);
+    return saved ? JSON.parse(saved) : SEED_STAGE_HANDOFFS;
+  });
   const [users, setUsers] = useState<UserProfile[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
     return saved ? JSON.parse(saved) : SEED_USERS;
@@ -652,12 +674,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`, JSON.stringify(settlementDistributions));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_closure_audits`, JSON.stringify(closureAudits));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_directory_contacts`, JSON.stringify(directoryContacts));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_branches`, JSON.stringify(branches));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_stage_handoffs`, JSON.stringify(stageHandoffs));
     if (activeTimer) {
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_active_timer`, JSON.stringify(activeTimer));
     } else {
       localStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
     }
   }, [
+    branches,
+    stageHandoffs,
     users,
     rolePermissionsMap,
     practiceWorkflows,
@@ -790,9 +816,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Matter Creation
   const createMatter = useCallback((data: Partial<Matter> & { clientDisplayName: string; clientPhone: string; clientNationalId: string }) => {
     const now = new Date().toISOString();
-    const currentYear = new Date().getFullYear();
-    const nextSeq = (matters.length + 1).toString().padStart(5, '0');
-    const internalReference = `KKC/PI/${currentYear}/${nextSeq}`;
+    const practiceArea = data.practiceArea || 'Personal Injury';
+    const internalReference = generateSequentialMatterReference(practiceArea, matters);
 
     let clientId = data.clientId;
     if (!clientId) {
@@ -1261,10 +1286,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setClients((prev) => [newClient, ...prev]);
 
-    // 2. Open Matter with structured staffing roles
-    const currentYear = new Date().getFullYear();
-    const nextSeq = (matters.length + 1).toString().padStart(5, '0');
-    const internalReference = `KKC/PI/${currentYear}/${nextSeq}`;
+    const internalReference = generateSequentialMatterReference('Personal Injury', matters);
 
     const supUserId = options?.supervisingUserId || 'usr-partner';
     const stageWorkerId = options?.stageOwnerId || currentUser.id;
@@ -1505,6 +1527,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
       })
     );
+
+    // Create first-class StageHandoff record
+    const newHandoff: StageHandoff = {
+      id: `hnd-${Date.now()}`,
+      matterId,
+      fromStageId,
+      toStageId,
+      fromUserId: currentUser.id,
+      toUserId: newOwnerId,
+      handoffNotes: handoffNotes || `Stage transition from Stage ${fromStageId} to Stage ${toStageId} (${stageName})`,
+      createdAt: now,
+      ...(newOwnerId === currentUser.id
+        ? { acknowledgedAt: now, acknowledgedByUserId: currentUser.id }
+        : {}),
+    };
+    setStageHandoffs((prev) => [newHandoff, ...prev]);
 
     // Create Handoff acknowledgment task
     const handoffTask: Task = {
@@ -2519,6 +2557,65 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const effectivePermissions = getEffectivePermissions(currentUser, rolePermissionsMap);
 
+  // Stage Handoff Acknowledgment
+  const acknowledgeHandoff = useCallback((handoffId: string) => {
+    const now = new Date().toISOString();
+    setStageHandoffs((prev) =>
+      prev.map((h) =>
+        h.id === handoffId
+          ? { ...h, acknowledgedAt: now, acknowledgedByUserId: currentUser.id }
+          : h
+      )
+    );
+    logAudit('matter.stage_handoff_acknowledged', 'handoff', handoffId);
+    notify(currentUser.id, 'Handoff Acknowledged', 'Stage responsibility accepted.', 'task');
+  }, [currentUser.id, logAudit, notify]);
+
+  // User & Staff Management
+  const inviteUser = useCallback((userData: Omit<UserProfile, 'id'>): UserProfile => {
+    const newUser: UserProfile = {
+      ...userData,
+      id: `usr-${Date.now()}`,
+    };
+    setUsers((prev) => [...prev, newUser]);
+    logAudit('admin.user_invited', 'system', newUser.id, undefined, { name: newUser.fullName, role: newUser.role });
+    notify(currentUser.id, 'Staff Member Added', `${newUser.fullName} has been added to the firm directory.`, 'system');
+    return newUser;
+  }, [currentUser.id, logAudit, notify]);
+
+  const toggleUserActive = useCallback((userId: string) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isActive: !u.isActive } : u))
+    );
+    logAudit('admin.user_status_toggled', 'system', userId);
+  }, [logAudit]);
+
+  const updateUserBranch = useCallback((userId: string, branchId: BranchId) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, homeBranchId: branchId } : u))
+    );
+    logAudit('admin.user_branch_updated', 'system', userId, undefined, { branchId });
+  }, [logAudit]);
+
+  // Branch Management
+  const createBranch = useCallback((branchData: Omit<Branch, 'id'>): Branch => {
+    const newBranch: Branch = {
+      ...branchData,
+      id: `branch-${branchData.code.toLowerCase().replace(/\s+/g, '-')}`,
+    };
+    setBranches((prev) => [...prev, newBranch]);
+    logAudit('admin.branch_created', 'system', newBranch.id, undefined, { name: newBranch.name });
+    notify(currentUser.id, 'Branch Created', `New firm branch ${newBranch.name} (${newBranch.code}) added.`, 'system');
+    return newBranch;
+  }, [currentUser.id, logAudit, notify]);
+
+  const updateBranch = useCallback((branchId: BranchId, updates: Partial<Branch>) => {
+    setBranches((prev) =>
+      prev.map((b) => (b.id === branchId ? { ...b, ...updates } : b))
+    );
+    logAudit('admin.branch_updated', 'system', branchId, undefined, updates);
+  }, [logAudit]);
+
   // Platform Settings Management
   const updateFirmSettings = useCallback((updates: Partial<FirmSettingsConfig>) => {
     setFirmSettings((prev) => ({
@@ -2803,6 +2900,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       technical_admin: [...INITIAL_ROLES.technical_admin.defaultPermissions],
     };
     setRolePermissionsMap(initial);
+    setBranches(SEED_BRANCHES);
+    setUsers(SEED_USERS);
+    setStageHandoffs(SEED_STAGE_HANDOFFS);
     setClients(SEED_CLIENTS);
     setIntakes(SEED_INTAKES);
     setMatters(SEED_MATTERS);
@@ -2857,6 +2957,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsSyncCenterOpen,
         branches,
         users,
+        stageHandoffs,
         clients,
         intakes,
         matters,
@@ -2900,6 +3001,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         resetRolePermissionsToDefault,
         hasUserPermission,
         hasUserAnyPermission,
+        acknowledgeHandoff,
+        inviteUser,
+        toggleUserActive,
+        updateUserBranch,
+        createBranch,
+        updateBranch,
         createMatter,
         updateMatter,
         advanceMatterStage,
