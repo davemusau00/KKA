@@ -37,12 +37,15 @@ import { IncidentEvidenceWorkspace } from './workflows/IncidentEvidenceWorkspace
 import { MedicalManagementWorkspace } from './workflows/MedicalManagementWorkspace';
 import { LiabilityQuantumWorkspace } from './workflows/LiabilityQuantumWorkspace';
 import { ClaimNegotiationWorkspace } from './workflows/ClaimNegotiationWorkspace';
+import { AuthorityToLitigateWorkspace } from './workflows/AuthorityToLitigateWorkspace';
 import { PleadingsBundleWorkspace } from './workflows/PleadingsBundleWorkspace';
 import { CourtFilingWorkspace } from './workflows/CourtFilingWorkspace';
 import { ServiceQueueWorkspace } from './workflows/ServiceQueueWorkspace';
+import { DefencePleadingsWorkspace } from './workflows/DefencePleadingsWorkspace';
 import { PreTrialComplianceWorkspace } from './workflows/PreTrialComplianceWorkspace';
 import { HearingPreparationWorkspace } from './workflows/HearingPreparationWorkspace';
 import { CourtOutcomeWorkspace } from './workflows/CourtOutcomeWorkspace';
+import { SubmissionsWorkspace } from './workflows/SubmissionsWorkspace';
 import { JudgmentAwardWorkspace } from './workflows/JudgmentAwardWorkspace';
 import { RecoveryExecutionWorkspace } from './workflows/RecoveryExecutionWorkspace';
 import { SettlementDistributionWorkspace } from './workflows/SettlementDistributionWorkspace';
@@ -397,16 +400,19 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
                   { id: 4, name: '4. Medical & Injury' },
                   { id: 5, name: '5. Liability & Quantum' },
                   { id: 6, name: '6. Insurer Negotiation' },
-                  { id: 7, name: '7. Pleadings & Bundles' },
-                  { id: 8, name: '8. Court Filing & CTS' },
-                  { id: 9, name: '9. Summons & Service' },
-                  { id: 10, name: '10. Pre-Trial Directions' },
-                  { id: 11, name: '11. Hearing Prep' },
-                  { id: 12, name: '12. Court Outcome' },
-                  { id: 13, name: '13. Judgment & Decree' },
-                  { id: 14, name: '14. Execution & Recovery' },
-                  { id: 15, name: '15. Settlement Escrow' },
-                  { id: 16, name: '16. Closure & Archive' },
+                  { id: 7, name: '7. Authority to Litigate' },
+                  { id: 8, name: '8. Pleadings Drafting' },
+                  { id: 9, name: '9. Court Filing & CTS' },
+                  { id: 10, name: '10. Summons & Service' },
+                  { id: 11, name: '11. Defence / Pleadings Close' },
+                  { id: 12, name: '12. Pre-Trial Directions' },
+                  { id: 13, name: '13. Hearing Preparation' },
+                  { id: 14, name: '14. Hearing & Court Outcome' },
+                  { id: 15, name: '15. Submissions' },
+                  { id: 16, name: '16. Judgment & Decree' },
+                  { id: 17, name: '17. Execution & Recovery' },
+                  { id: 18, name: '18. Settlement Escrow' },
+                  { id: 19, name: '19. Closure & Archive' },
                 ].map((s) => {
                   const isCurrent = matter.currentStageId === s.id;
                   const isSelected = selectedWorkflowStageView === s.id;
@@ -509,17 +515,20 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
               {selectedWorkflowStageView === 4 && <MedicalManagementWorkspace matter={matter} />}
               {selectedWorkflowStageView === 5 && <LiabilityQuantumWorkspace matter={matter} />}
               {selectedWorkflowStageView === 6 && <ClaimNegotiationWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 7 && <PleadingsBundleWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 8 && <CourtFilingWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 9 && <ServiceQueueWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 10 && <PreTrialComplianceWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 11 && <HearingPreparationWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 12 && <CourtOutcomeWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 13 && <JudgmentAwardWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 14 && <RecoveryExecutionWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 15 && <SettlementDistributionWorkspace matter={matter} />}
-              {selectedWorkflowStageView === 16 && <MatterClosureWizard matter={matter} />}
-              {![3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(selectedWorkflowStageView) && (
+              {selectedWorkflowStageView === 7 && <AuthorityToLitigateWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 8 && <PleadingsBundleWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 9 && <CourtFilingWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 10 && <ServiceQueueWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 11 && <DefencePleadingsWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 12 && <PreTrialComplianceWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 13 && <HearingPreparationWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 14 && <CourtOutcomeWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 15 && <SubmissionsWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 16 && <JudgmentAwardWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 17 && <RecoveryExecutionWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 18 && <SettlementDistributionWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 19 && <MatterClosureWizard matter={matter} />}
+              {![3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].includes(selectedWorkflowStageView) && (
                 <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3">
                   <Shield className="w-8 h-8 text-amber-400 mx-auto" />
                   <h4 className="font-serif font-bold text-base text-slate-100">

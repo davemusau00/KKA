@@ -242,7 +242,7 @@ export const MattersWorkspace: React.FC = () => {
       {/* KANBAN STAGE BOARD VIEW (Scattered across stages) */}
       {viewMode === 'board' && (
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-          {workflowStages.slice(0, 8).map((stage) => {
+          {workflowStages.map((stage) => {
             const stageMatters = filteredMatters.filter((m) => m.currentStageId === stage.id);
             return (
               <div

@@ -26,14 +26,14 @@ export const CalendarWorkspace: React.FC = () => {
     setActiveWorkspace,
   } = useApp();
 
-  const [filterType, setFilterType] = useState<'all' | 'court' | 'meeting'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'court' | 'client_meeting' | 'internal_meeting' | 'filing' | 'deadline'>('all');
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [selectedEventForOutcome, setSelectedEventForOutcome] = useState<CalendarEvent | null>(null);
 
   // New Event Form State
   const [eventTitle, setEventTitle] = useState('');
   const [eventMatterId, setEventMatterId] = useState(matters[0]?.id || '');
-  const [eventType, setEventType] = useState<'court' | 'meeting' | 'filing_deadline'>('court');
+  const [eventType, setEventType] = useState<CalendarEvent['eventType']>('court');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
   const [eventTime, setEventTime] = useState('09:00');
   const [eventLocation, setEventLocation] = useState('Milimani Law Courts, Nairobi');
@@ -113,12 +113,28 @@ export const CalendarWorkspace: React.FC = () => {
               Court Only
             </button>
             <button
-              onClick={() => setFilterType('meeting')}
+              onClick={() => setFilterType('client_meeting')}
               className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                filterType === 'meeting' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                filterType === 'client_meeting' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Consultations
+            </button>
+            <button
+              onClick={() => setFilterType('filing')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                filterType === 'filing' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Filings
+            </button>
+            <button
+              onClick={() => setFilterType('deadline')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                filterType === 'deadline' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Deadlines
             </button>
           </div>
 
@@ -314,6 +330,23 @@ export const CalendarWorkspace: React.FC = () => {
                     {m.internalReference} - {m.title}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1">Event Type</label>
+              <select
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value as CalendarEvent['eventType'])}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+              >
+                <option value="court">Court Appearance / Hearing</option>
+                <option value="client_meeting">Client Consultation / Meeting</option>
+                <option value="internal_meeting">Internal Team Meeting</option>
+                <option value="medical">Medical Appointment</option>
+                <option value="filing">Court Filing / Submission</option>
+                <option value="deadline">Statutory Deadline</option>
+                <option value="other">Other</option>
               </select>
             </div>
 

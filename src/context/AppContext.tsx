@@ -1488,7 +1488,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const now = new Date().toISOString();
 
     const currentWf = practiceWorkflows.find((w) => w.id === targetMatter.workflowTemplateId) || practiceWorkflows[0];
-    const targetStageConfig = currentWf?.stages.find((s) => s.stageId === toStageId);
+    const targetStageConfig = currentWf?.stages.find((s) => s.id === toStageId);
     const stageName = targetStageConfig?.name || `Stage ${toStageId}`;
 
     // Update matter stage while keeping supervising partner intact

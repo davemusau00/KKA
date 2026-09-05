@@ -83,16 +83,16 @@ export const AppShell: React.FC<Props> = ({ children }) => {
 
   const allNavigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
-    { id: 'matters', label: 'Matters', icon: Briefcase, badge: activeMatterCount, permission: 'matters.view' as const },
-    { id: 'clients', label: 'Clients & Intake', icon: Users, badge: newIntakeCount > 0 ? `${newIntakeCount} leads` : undefined, permission: 'clients.view' as const },
-    { id: 'tasks', label: 'Tasks & Deadlines', icon: CheckSquare, badge: overdueTaskCount > 0 ? overdueTaskCount : undefined, badgeColor: 'bg-rose-600', permission: 'tasks.view' as const },
-    { id: 'calendar', label: 'Court & Calendar', icon: Calendar, permission: 'court.view' as const },
-    { id: 'documents', label: 'Documents', icon: FileText, permission: 'documents.view' as const },
-    { id: 'comms', label: 'Communications', icon: MessageSquare, permission: 'comms.view' as const },
+    { id: 'matters', label: 'Matters', icon: Briefcase, badge: activeMatterCount, permission: 'module.matters' as const },
+    { id: 'clients', label: 'Clients & Intake', icon: Users, badge: newIntakeCount > 0 ? `${newIntakeCount} leads` : undefined, permission: 'module.clients' as const },
+    { id: 'tasks', label: 'Tasks & Deadlines', icon: CheckSquare, badge: overdueTaskCount > 0 ? overdueTaskCount : undefined, badgeColor: 'bg-rose-600', permission: 'module.tasks' as const },
+    { id: 'calendar', label: 'Court & Calendar', icon: Calendar, permission: 'module.calendar' as const },
+    { id: 'documents', label: 'Documents', icon: FileText, permission: 'module.documents' as const },
+    { id: 'comms', label: 'Communications', icon: MessageSquare, permission: 'module.comms' as const },
     { id: 'finance', label: 'Finance & Accounts', icon: DollarSign, badge: pendingExpenseCount > 0 ? pendingExpenseCount : undefined, badgeColor: 'bg-amber-600', permission: 'finance.view' as const },
-    { id: 'reports', label: 'Reports & Stalled', icon: BarChart3, permission: 'reports.view' as const },
-    { id: 'admin', label: 'Admin & Staff', icon: Shield, permission: 'admin.settings' as const },
-    { id: 'integrations', label: 'Integrations', icon: Settings2, permission: 'admin.settings' as const },
+    { id: 'reports', label: 'Reports & Stalled', icon: BarChart3, permission: 'module.reports' as const },
+    { id: 'admin', label: 'Admin & Staff', icon: Shield, permission: 'module.admin' as const },
+    { id: 'integrations', label: 'Integrations', icon: Settings2, permission: 'module.admin' as const },
   ];
 
   // Filter navigation items based on current user's effective permissions

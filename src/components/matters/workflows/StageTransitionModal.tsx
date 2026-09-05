@@ -9,9 +9,11 @@ import {
   Users,
   Clock,
   Layers,
+  ShieldAlert,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { Matter, PracticeAreaWorkflow, WorkflowStageConfig } from '../../../types';
+import { validateStageTransition } from '../../../utils/stageGate';
 
 interface StageTransitionModalProps {
   matter: Matter;
@@ -40,21 +42,33 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
   const [newOwnerId, setNewOwnerId] = useState<string>(matter.currentStageOwnerId || currentUser.id);
   const [handoffNotes, setHandoffNotes] = useState<string>('');
   const [generateTasks, setGenerateTasks] = useState<boolean>(true);
+  const [partnerOverride, setPartnerOverride] = useState<boolean>(false);
 
   const targetStageConfig: WorkflowStageConfig | undefined = currentWf?.stages.find(
     (s) => s.id === targetStageId
   );
 
-  // Validation Checks
-  const stageTasks = tasks.filter((t) => t.matterId === matter.id && t.stageId === currentStageNum);
-  const pendingStageTasks = stageTasks.filter((t) => t.status !== 'completed' && t.status !== 'cancelled');
+  // Gate evaluation — runs on every render (pure function, no side effects)
+  const matterTasks = tasks.filter((t) => t.matterId === matter.id);
   const matterDocs = documents.filter((d) => d.matterId === matter.id);
+
+  const gate = validateStageTransition(
+    matter,
+    currentStageConfig,
+    matterTasks,
+    matterDocs
+  );
+
+  const canSubmit = gate.canAdvance || partnerOverride;
+  const isPartner =
+    currentUser.roles.includes('managing_partner') ||
+    currentUser.roles.includes('senior_partner');
 
   const handleAdvance = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSubmit) return;
     const result = advanceMatterStageExpanded(matter.id, targetStageId, newOwnerId, handoffNotes, {
       generateStandardTasks: generateTasks,
-      handoffChecklistCompleted: true,
     });
     if (result.success) {
       onClose();
@@ -116,32 +130,96 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
             </div>
           </div>
 
-          {/* Prerequisite Check Matrix */}
-          <div className="space-y-2">
+          {/* ═══ STAGE GATE SECTION ═══ */}
+          <div className="space-y-3">
             <h3 className="font-mono uppercase font-bold text-slate-300 text-[11px] flex items-center gap-1.5">
-              <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Prerequisite Check &amp; Quality Audit</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Stage Gate &amp; Prerequisite Enforcement</span>
             </h3>
 
+            {/* Hard blockers — blocking tasks */}
+            {gate.blockingTasks.length > 0 && (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/70 space-y-2">
+                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
+                  <XCircle className="w-3.5 h-3.5 shrink-0" />
+                  {gate.blockingTasks.length} Incomplete Task{gate.blockingTasks.length > 1 ? 's' : ''} — Stage Blocked
+                </div>
+                {gate.blockingTasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2 text-rose-300/80 ml-5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    <span>{t.title}</span>
+                    <span className="ml-auto font-mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-rose-950 text-rose-400">
+                      {t.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Hard blockers — missing documents */}
+            {gate.missingDocuments.length > 0 && (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/70 space-y-2">
+                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
+                  <XCircle className="w-3.5 h-3.5 shrink-0" />
+                  {gate.missingDocuments.length} Required Document{gate.missingDocuments.length > 1 ? 's' : ''} Missing
+                </div>
+                {gate.missingDocuments.map((docType) => (
+                  <div key={docType} className="flex items-center gap-2 text-rose-300/80 ml-5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    <span className="font-mono">{docType}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Hard blockers — missing approvals */}
+            {gate.missingApprovals.length > 0 && (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/70 space-y-1">
+                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
+                  <XCircle className="w-3.5 h-3.5 shrink-0" />
+                  Approval Required
+                </div>
+                {gate.missingApprovals.map((msg, i) => (
+                  <div key={i} className="text-rose-300/80 ml-5">{msg}</div>
+                ))}
+              </div>
+            )}
+
+            {/* Warnings (amber, non-blocking) */}
+            {gate.warnings.length > 0 && (
+              <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/50 space-y-1">
+                <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[11px]">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  {gate.warnings.length} Warning{gate.warnings.length > 1 ? 's' : ''} (transition permitted)
+                </div>
+                {gate.warnings.map((w, i) => (
+                  <div key={i} className="text-amber-300/80 ml-5 text-[11px]">{w}</div>
+                ))}
+              </div>
+            )}
+
+            {/* All clear */}
+            {gate.canAdvance && gate.warnings.length === 0 && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-[11px] font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                All prerequisites met — stage transition is cleared to proceed.
+              </div>
+            )}
+
+            {/* Summary stats */}
             <div className="space-y-2 p-3 bg-slate-950 border border-slate-800 rounded-xl">
-              {/* Task check */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-300">Stage Tasks Completed:</span>
-                <span className={`font-mono font-semibold ${pendingStageTasks.length === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {stageTasks.length - pendingStageTasks.length} / {stageTasks.length} Completed
-                  {pendingStageTasks.length > 0 && ` (${pendingStageTasks.length} pending)`}
+                <span className={`font-mono font-semibold ${gate.blockingTasks.length === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {matterTasks.filter((t) => t.stageId === currentStageNum && (t.status === 'completed' || t.status === 'cancelled')).length}
+                  {' / '}
+                  {matterTasks.filter((t) => t.stageId === currentStageNum).length} Completed
                 </span>
               </div>
-
-              {/* Document check */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-300">Stage Documents Attached:</span>
-                <span className="font-mono text-slate-200">
-                  {matterDocs.length} Total Registered
-                </span>
+                <span className="font-mono text-slate-200">{matterDocs.length} Total</span>
               </div>
-
-              {/* Target stage duration */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-300">Target Stage SLA:</span>
                 <span className="font-mono text-blue-400">
@@ -149,6 +227,28 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
                 </span>
               </div>
             </div>
+
+            {/* Partner override — only visible to managing/senior partner when blocked */}
+            {!gate.canAdvance && isPartner && (
+              <label className="flex items-start gap-2 cursor-pointer p-3 rounded-xl bg-slate-950 border border-amber-700/50">
+                <input
+                  type="checkbox"
+                  checked={partnerOverride}
+                  onChange={(e) => setPartnerOverride(e.target.checked)}
+                  className="w-4 h-4 rounded accent-amber-500 mt-0.5"
+                />
+                <span className="text-amber-300/90 text-[11px]">
+                  <strong className="text-amber-300">Partner Override:</strong> I confirm I have reviewed the incomplete prerequisites and authorise this stage advance on supervisory authority. This action will be logged.
+                </span>
+              </label>
+            )}
+
+            {!gate.canAdvance && !isPartner && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-950 border border-rose-800/60 text-rose-300 text-[11px]">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                Stage advance is blocked. Complete all required tasks and documents, or request a partner override.
+              </div>
+            )}
           </div>
 
           {/* New Stage Assignee & Handoff Notes */}
@@ -216,7 +316,12 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow transition flex items-center gap-1.5"
+              disabled={!canSubmit}
+              className={`px-5 py-2 font-semibold rounded-lg shadow transition flex items-center gap-1.5 ${
+                canSubmit
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              }`}
             >
               <span>Execute Stage Advance</span>
               <ArrowRight className="w-4 h-4" />
@@ -227,3 +332,5 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
     </div>
   );
 };
+
+
