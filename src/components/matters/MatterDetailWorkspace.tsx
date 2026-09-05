@@ -22,10 +22,31 @@ import {
   Car,
   ChevronRight,
   Upload,
+  Layers,
+  Sparkles,
+  Award,
+  BookOpen,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DocumentPreviewModal } from '../common/DocumentPreviewModal';
 import { LegalDocument, Matter, Task, CalendarEvent, ExpenseRecord } from '../../types';
+
+// Workflows & Stage-specific Components
+import { StageTransitionModal } from './workflows/StageTransitionModal';
+import { IncidentEvidenceWorkspace } from './workflows/IncidentEvidenceWorkspace';
+import { MedicalManagementWorkspace } from './workflows/MedicalManagementWorkspace';
+import { LiabilityQuantumWorkspace } from './workflows/LiabilityQuantumWorkspace';
+import { ClaimNegotiationWorkspace } from './workflows/ClaimNegotiationWorkspace';
+import { PleadingsBundleWorkspace } from './workflows/PleadingsBundleWorkspace';
+import { CourtFilingWorkspace } from './workflows/CourtFilingWorkspace';
+import { ServiceQueueWorkspace } from './workflows/ServiceQueueWorkspace';
+import { PreTrialComplianceWorkspace } from './workflows/PreTrialComplianceWorkspace';
+import { HearingPreparationWorkspace } from './workflows/HearingPreparationWorkspace';
+import { CourtOutcomeWorkspace } from './workflows/CourtOutcomeWorkspace';
+import { JudgmentAwardWorkspace } from './workflows/JudgmentAwardWorkspace';
+import { RecoveryExecutionWorkspace } from './workflows/RecoveryExecutionWorkspace';
+import { SettlementDistributionWorkspace } from './workflows/SettlementDistributionWorkspace';
+import { MatterClosureWizard } from './workflows/MatterClosureWizard';
 
 interface Props {
   matter: Matter;
@@ -71,9 +92,8 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
 
   // Stage advance modal
   const [showStageModal, setShowStageModal] = useState(false);
-  const [targetStageId, setTargetStageId] = useState(Math.min(matter.currentStageId + 1, 19));
-  const [nextOwnerId, setNextOwnerId] = useState(currentUser.id);
-  const [handoffNotes, setHandoffNotes] = useState('');
+  const [selectedWorkflowStageView, setSelectedWorkflowStageView] = useState<number>(matter.currentStageId);
+  const [showFullPipelineView, setShowFullPipelineView] = useState(false);
 
   // Court Outcome Modal
   const [selectedCourtEvent, setSelectedCourtEvent] = useState<CalendarEvent | null>(null);
@@ -119,13 +139,6 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
     { id: 'finance', label: 'Finance & Ledger' },
     { id: 'timeline', label: 'Timeline & Audit' },
   ];
-
-  const handleAdvanceStageSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    advanceMatterStage(matter.id, targetStageId, nextOwnerId, handoffNotes);
-    setShowStageModal(false);
-    setHandoffNotes('');
-  };
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,95 +352,190 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
         {/* TAB 2: WORKFLOW & HANDOFFS */}
         {selectedMatterTab === 'workflow' && (
           <div className="space-y-6 text-xs">
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-100 text-sm">
-                  Personal Injury / RTA Standard 19-Stage Workflow
-                </h3>
-                <p className="text-slate-400">
-                  Every stage tracks completion checklists, required documents, and role ownership handoffs.
-                </p>
+            {/* Stage Selector Bar */}
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-amber-500 font-bold uppercase text-[10px]">
+                      Operational Legal Workspaces
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-mono text-[10px] font-bold border border-amber-800/80">
+                      Active Stage: {matter.currentStageId} - {currentStageDef?.name}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-slate-100 mt-1">
+                    Stage-Specific Practice Workspaces &amp; Kenyan Litigation Compliance
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFullPipelineView(!showFullPipelineView)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition flex items-center gap-1.5"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{showFullPipelineView ? 'Hide Pipeline Grid' : '19-Stage Pipeline'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowStageModal(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold shadow transition flex items-center gap-1.5"
+                  >
+                    <span>Advance Stage</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setShowStageModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold transition"
-              >
-                Handoff / Advance Stage
-              </button>
+
+              {/* Stage Quick Switcher Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                {[
+                  { id: 3, name: '3. Incident & Evidence' },
+                  { id: 4, name: '4. Medical & Injury' },
+                  { id: 5, name: '5. Liability & Quantum' },
+                  { id: 6, name: '6. Insurer Negotiation' },
+                  { id: 7, name: '7. Pleadings & Bundles' },
+                  { id: 8, name: '8. Court Filing & CTS' },
+                  { id: 9, name: '9. Summons & Service' },
+                  { id: 10, name: '10. Pre-Trial Directions' },
+                  { id: 11, name: '11. Hearing Prep' },
+                  { id: 12, name: '12. Court Outcome' },
+                  { id: 13, name: '13. Judgment & Decree' },
+                  { id: 14, name: '14. Execution & Recovery' },
+                  { id: 15, name: '15. Settlement Escrow' },
+                  { id: 16, name: '16. Closure & Archive' },
+                ].map((s) => {
+                  const isCurrent = matter.currentStageId === s.id;
+                  const isSelected = selectedWorkflowStageView === s.id;
+                  const isPassed = matter.currentStageId > s.id;
+
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setSelectedWorkflowStageView(s.id)}
+                      className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-amber-600 text-white shadow-md'
+                          : isCurrent
+                          ? 'bg-amber-950/60 border border-amber-500 text-amber-300'
+                          : isPassed
+                          ? 'bg-slate-800 text-emerald-400 hover:bg-slate-700'
+                          : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                    >
+                      {isPassed && <span className="text-[10px]">✓</span>}
+                      {isCurrent && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
+                      <span>{s.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* 19 Stages Visual Pipeline */}
-            <div className="space-y-2">
-              {workflowStages.map((stage) => {
-                const isCurrent = stage.id === matter.currentStageId;
-                const isPassed = stage.id < matter.currentStageId;
+            {/* Optional 19 Stages Full Pipeline Visualizer */}
+            {showFullPipelineView && (
+              <div className="p-5 rounded-2xl bg-slate-900/95 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <h4 className="font-bold text-slate-100 text-sm">
+                    Personal Injury 19-Stage Master Route Map &amp; Statutory SLA
+                  </h4>
+                  <span className="text-slate-400 text-xs font-mono">Kenyan Civil Procedure &amp; RTA Rules</span>
+                </div>
 
-                return (
-                  <div
-                    key={stage.id}
-                    className={`p-4 rounded-xl border transition ${
-                      isCurrent
-                        ? 'bg-amber-950/30 border-amber-500 shadow-md'
-                        : isPassed
-                        ? 'bg-slate-900/60 border-emerald-900/40 text-slate-400'
-                        : 'bg-slate-900/30 border-slate-800/60 text-slate-500'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center font-mono font-bold text-xs ${
-                            isCurrent
-                              ? 'bg-amber-500 text-slate-950 font-black'
-                              : isPassed
-                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-700'
-                              : 'bg-slate-800 text-slate-400'
-                          }`}
-                        >
-                          {isPassed ? '✓' : stage.id}
-                        </div>
-                        <div>
-                          <div className={`font-semibold text-sm ${isCurrent ? 'text-amber-300 font-bold' : 'text-slate-200'}`}>
-                            Stage {stage.id}: {stage.name}
+                <div className="space-y-2">
+                  {workflowStages.map((stage) => {
+                    const isCurrent = stage.id === matter.currentStageId;
+                    const isPassed = stage.id < matter.currentStageId;
+
+                    return (
+                      <div
+                        key={stage.id}
+                        onClick={() => {
+                          setSelectedWorkflowStageView(stage.id);
+                          setShowFullPipelineView(false);
+                        }}
+                        className={`p-3 rounded-xl border transition cursor-pointer ${
+                          isCurrent
+                            ? 'bg-amber-950/30 border-amber-500 shadow-md'
+                            : isPassed
+                            ? 'bg-slate-900/60 border-emerald-900/40 text-slate-400 hover:border-slate-700'
+                            : 'bg-slate-900/30 border-slate-800/60 text-slate-500 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-6 h-6 rounded-full flex items-center justify-center font-mono font-bold text-xs ${
+                                isCurrent
+                                  ? 'bg-amber-500 text-slate-950 font-black'
+                                  : isPassed
+                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-700'
+                                  : 'bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              {isPassed ? '✓' : stage.id}
+                            </div>
+                            <div>
+                              <div className={`font-semibold text-xs ${isCurrent ? 'text-amber-300 font-bold' : 'text-slate-200'}`}>
+                                Stage {stage.id}: {stage.name}
+                              </div>
+                              <div className="text-slate-400 text-[11px] mt-0.5">{stage.description}</div>
+                            </div>
                           </div>
-                          <div className="text-slate-400 text-xs mt-0.5">{stage.description}</div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                          Target: {stage.targetDurationDays} days
-                        </span>
-                        <span className="text-[11px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-400">
-                          {stage.defaultRole}
-                        </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                              Target: {stage.targetDurationDays}d
+                            </span>
+                            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-400">
+                              {stage.defaultRole}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                    {/* If current, show required checklist & docs */}
-                    {isCurrent && (
-                      <div className="mt-4 pt-3 border-t border-amber-800/40 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <div className="font-semibold text-amber-400 mb-1">Required Documents:</div>
-                          <ul className="list-disc pl-4 space-y-0.5 text-slate-300">
-                            {stage.requiredDocumentTypes.map((doc, i) => (
-                              <li key={i}>{doc}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-amber-400 mb-1">Stage Checklist:</div>
-                          <ul className="list-disc pl-4 space-y-0.5 text-slate-300">
-                            {stage.checklistItems.map((chk, i) => (
-                              <li key={i}>{chk}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* DYNAMIC STAGE WORKSPACE RENDERING */}
+            <div className="pt-2">
+              {selectedWorkflowStageView === 3 && <IncidentEvidenceWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 4 && <MedicalManagementWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 5 && <LiabilityQuantumWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 6 && <ClaimNegotiationWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 7 && <PleadingsBundleWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 8 && <CourtFilingWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 9 && <ServiceQueueWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 10 && <PreTrialComplianceWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 11 && <HearingPreparationWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 12 && <CourtOutcomeWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 13 && <JudgmentAwardWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 14 && <RecoveryExecutionWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 15 && <SettlementDistributionWorkspace matter={matter} />}
+              {selectedWorkflowStageView === 16 && <MatterClosureWizard matter={matter} />}
+              {![3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(selectedWorkflowStageView) && (
+                <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3">
+                  <Shield className="w-8 h-8 text-amber-400 mx-auto" />
+                  <h4 className="font-serif font-bold text-base text-slate-100">
+                    Stage {selectedWorkflowStageView}: Standard Procedures
+                  </h4>
+                  <p className="text-slate-400 max-w-md mx-auto">
+                    Refer to the matter checklist, tasks, and communications for Stage {selectedWorkflowStageView} procedures.
+                  </p>
+                  <button
+                    onClick={() => setSelectedWorkflowStageView(matter.currentStageId)}
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold"
+                  >
+                    Return to Active Stage ({matter.currentStageId})
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -942,67 +1050,10 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
 
       {/* Advance Stage Modal */}
       {showStageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleAdvanceStageSubmit} className="bg-slate-900 border border-slate-700 p-5 rounded-2xl w-full max-w-lg space-y-4 text-xs">
-            <h3 className="font-bold text-sm text-slate-100">
-              Advance Matter Stage: {matter.internalReference}
-            </h3>
-            <div>
-              <label className="block text-slate-300 mb-1">Target Workflow Stage</label>
-              <select
-                value={targetStageId}
-                onChange={(e) => setTargetStageId(parseInt(e.target.value, 10))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none"
-              >
-                {workflowStages.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    Stage {s.id}: {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-slate-300 mb-1">Assign New Stage Owner</label>
-              <select
-                value={nextOwnerId}
-                onChange={(e) => setNextOwnerId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none"
-              >
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName} ({u.jobTitle})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-slate-300 mb-1">Handoff Instructions &amp; Brief</label>
-              <textarea
-                rows={3}
-                required
-                placeholder="State completed stage outputs and handover tasks for new assignee..."
-                value={handoffNotes}
-                onChange={(e) => setHandoffNotes(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none resize-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowStageModal(false)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium"
-              >
-                Confirm Handoff
-              </button>
-            </div>
-          </form>
-        </div>
+        <StageTransitionModal
+          matter={matter}
+          onClose={() => setShowStageModal(false)}
+        />
       )}
     </div>
   );

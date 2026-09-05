@@ -131,13 +131,73 @@ export interface Client {
 
 export type IntakeStatus = 
   | 'new'
+  | 'inquiry'
   | 'contacting'
   | 'awaiting_information'
   | 'under_review'
+  | 'conflict_cleared'
+  | 'conflict_blocked'
+  | 'kyc_pending'
+  | 'retained'
   | 'accepted'
   | 'declined'
   | 'duplicate'
   | 'converted';
+
+export interface IntakePartyInput {
+  id: string;
+  name: string;
+  role: 'plaintiff' | 'defendant' | 'insurer' | 'witness' | 'opposing_counsel' | 'employer' | 'other';
+  idOrRegNumber?: string;
+  phone?: string;
+  email?: string;
+  insuranceCompany?: string;
+  policyOrClaimNumber?: string;
+  notes?: string;
+}
+
+export interface ConflictMatch {
+  id: string;
+  partyName: string;
+  matchedEntity: string;
+  matchedMatterId?: string;
+  matchedMatterRef?: string;
+  matchedMatterTitle?: string;
+  matchedRole: string;
+  matchType: 'exact_name' | 'id_number' | 'phone' | 'vehicle_reg' | 'adverse_party';
+  severity: 'low' | 'high' | 'critical';
+  details: string;
+}
+
+export interface ConflictCheckRecord {
+  id: string;
+  intakeId?: string;
+  matterId?: string;
+  checkedByUserId: string;
+  checkedAt: string;
+  status: 'clear' | 'possible_match' | 'conflict_detected' | 'overridden_approved';
+  partiesSearched: string[];
+  matchesFound: ConflictMatch[];
+  clearanceNotes?: string;
+  clearedByPartnerId?: string;
+  clearedAt?: string;
+}
+
+export interface IntakeKycRetainer {
+  idDocumentType: 'National ID' | 'Passport' | 'Alien Card' | 'Certificate of Incorporation';
+  idNumber: string;
+  idVerified: boolean;
+  kycDocuments: string[];
+  warrantToActSigned: boolean;
+  retainerAgreementSigned: boolean;
+  retainerAgreedAmount: number;
+  retainerDepositPaid: boolean;
+  depositReceiptRef?: string;
+  termsAccepted: boolean;
+  partnerApproval: 'pending' | 'approved' | 'declined';
+  approvedByUserId?: string;
+  approvedAt?: string;
+}
 
 export interface IntakeLead {
   id: string;
@@ -146,6 +206,7 @@ export interface IntakeLead {
   clientName: string;
   phone: string;
   email?: string;
+  nationalId?: string;
   incidentDate: string;
   incidentLocation?: string;
   briefDescription: string;
@@ -155,6 +216,9 @@ export interface IntakeLead {
   notes?: string;
   convertedMatterId?: string;
   convertedClientId?: string;
+  potentialParties?: IntakePartyInput[];
+  conflictCheck?: ConflictCheckRecord;
+  kycRetainer?: IntakeKycRetainer;
   createdAt: string;
 }
 
@@ -175,7 +239,10 @@ export interface Matter {
   workflowTemplateId: string;
   originatingBranchId: BranchId;
   responsibleBranchId: BranchId;
-  supervisingUserId: string; // Advocate or Senior Partner
+  supervisingUserId: string; // Advocate or Senior Partner (retains supervisory governance)
+  currentStageOwnerId?: string; // Current active stage worker/owner
+  courtClerkId?: string; // Assigned Court Clerk
+  financeContactId?: string; // Assigned Finance Officer
   currentStageId: number; // 1 to 19 for PI
   openedAt: string;
   status: MatterStatus;
@@ -658,4 +725,399 @@ export interface FirmSettingsConfig {
     strictAuditLogging: boolean;
   };
 }
+
+// ==========================================
+// 3. EVIDENCE & INVESTIGATION TYPES
+// ==========================================
+export interface VehicleRecord {
+  id: string;
+  registrationNumber: string;
+  makeModel: string;
+  ownerName: string;
+  driverName: string;
+  driverLicenseNo?: string;
+  insuranceCompany: string;
+  policyNumber: string;
+  ntsaSearchObtained: boolean;
+  ntsaSearchRef?: string;
+  notes?: string;
+}
+
+export interface WitnessRecord {
+  id: string;
+  name: string;
+  contact: string;
+  statementRequested: boolean;
+  statementReceived: boolean;
+  statementDate?: string;
+  keyObservations: string;
+  documentId?: string;
+}
+
+export interface IncidentExhibit {
+  id: string;
+  title: string;
+  category: 'Police Abstract' | 'Scene Photos' | 'Vehicle Photos' | 'CCTV' | 'Receipts' | 'Other Exhibit';
+  documentId?: string;
+  dateObtained: string;
+  obtainedBy: string;
+  notes?: string;
+}
+
+export interface IncidentEvidenceData {
+  incident: {
+    date: string;
+    time: string;
+    location: string;
+    description: string;
+    obNumber: string;
+    policeStation: string;
+    investigatingOfficer: string;
+    officerPhone?: string;
+    roadConditions?: string;
+  };
+  vehicles: VehicleRecord[];
+  witnesses: WitnessRecord[];
+  exhibits: IncidentExhibit[];
+}
+
+// ==========================================
+// 4. MEDICAL CASE MANAGEMENT TYPES
+// ==========================================
+export interface InjuryRecord {
+  id: string;
+  description: string;
+  severity: 'minor' | 'moderate' | 'severe' | 'catastrophic';
+  bodyPart: string;
+  permanentEffects?: string;
+}
+
+export interface MedicalProvider {
+  id: string;
+  facilityName: string;
+  doctorName: string;
+  specialty: string;
+  contact: string;
+}
+
+export interface TreatmentEpisode {
+  id: string;
+  facilityName: string;
+  admissionDate?: string;
+  dischargeDate?: string;
+  treatmentSummary: string;
+  costAmount: number;
+  receiptNumber?: string;
+}
+
+export type MedicalReportStatus =
+  | 'requested'
+  | 'paid'
+  | 'appointment_scheduled'
+  | 'examined'
+  | 'awaiting_report'
+  | 'received'
+  | 'reviewed'
+  | 'supplementary_required'
+  | 'complete';
+
+export interface MedicalReportRequest {
+  id: string;
+  doctorName: string;
+  specialty: string;
+  facility: string;
+  requestedAt: string;
+  feeAmount: number;
+  status: MedicalReportStatus;
+  appointmentDate?: string;
+  permanentDisabilityPercent?: number;
+  futureTreatmentEstimate?: number;
+  futureTreatmentNotes?: string;
+  reportDocumentId?: string;
+  notes?: string;
+}
+
+export interface MedicalCaseData {
+  injuries: InjuryRecord[];
+  medicalProviders: MedicalProvider[];
+  treatmentEpisodes: TreatmentEpisode[];
+  p3Form: {
+    issuedByDoctor: string;
+    policeStationRef: string;
+    dateExamined: string;
+    degreeOfHarm: 'Harm' | 'Grievous Harm' | 'Maim' | 'Dangerous Harm';
+    status: 'requested' | 'received' | 'certified';
+    documentId?: string;
+  };
+  imagingAndRecords: { id: string; title: string; facility: string; reportDate: string; findings: string }[];
+  medicalReportRequests: MedicalReportRequest[];
+  permanentDisabilityOverallPercent?: number;
+  futureTreatmentEstimateTotal?: number;
+  totalMedicalExpensesIncurred?: number;
+}
+
+// ==========================================
+// 5. LIABILITY & QUANTUM TYPES
+// ==========================================
+export interface SpecialDamageItem {
+  id: string;
+  head: string;
+  amount: number;
+  receiptRef?: string;
+  isEvidenced: boolean;
+  evidenceDocId?: string;
+}
+
+export interface LiabilityQuantumData {
+  liability: {
+    claimantPercent: number;
+    defendantPercent: number;
+    contributoryNegligenceAlleged: boolean;
+    contributoryNotes?: string;
+    supportingEvidence: string[];
+    weaknesses: string[];
+    advocateOpinion: string;
+  };
+  damages: {
+    generalDamages: number;
+    generalDamagesJustification?: string;
+    specialDamages: SpecialDamageItem[];
+    futureMedicalExpenses: number;
+    futureMedicalJustification?: string;
+    lossOfEarnings: number;
+    lossOfEarningsMonths?: number;
+    monthlyEarningsBasis?: number;
+    lossOfEarningCapacity: number;
+    otherHeads: { id: string; title: string; amount: number; notes: string }[];
+    totalEstimatedClaimValue: number;
+  };
+}
+
+// ==========================================
+// 6. CLAIM & NEGOTIATION TYPES
+// ==========================================
+export interface NegotiationLedgerItem {
+  id: string;
+  date: string;
+  party: 'insurer' | 'firm';
+  offerAmount?: number;
+  counterOfferAmount?: number;
+  status: 'sent' | 'received' | 'rejected' | 'considering' | 'countered' | 'accepted';
+  notes: string;
+}
+
+export interface ClaimNegotiationData {
+  insurer: {
+    name: string;
+    policyNumber: string;
+    claimReference: string;
+    contactPerson?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    demandSentDate?: string;
+    noticeSentDate?: string;
+    deliveryProofRef?: string;
+    responseDeadline?: string;
+    responseReceivedDate?: string;
+    status: 'notice_sent' | 'demand_sent' | 'negotiating' | 'settlement_proposed' | 'settled' | 'repudiated';
+  };
+  negotiationLedger: NegotiationLedgerItem[];
+  settlementApproval: {
+    recommendedAmount: number;
+    clientAuthorized: boolean;
+    clientAuthorityDate?: string;
+    partnerApproved: boolean;
+    partnerApprovedByUserId?: string;
+    partnerApprovedDate?: string;
+    acceptedAt?: string;
+    dischargeVoucherSigned: boolean;
+  };
+}
+
+// ==========================================
+// 7. PLEADINGS BUNDLE & REVIEW TYPES
+// ==========================================
+export interface PleadingsBundleData {
+  id: string;
+  matterId: string;
+  plaintStatus: 'draft' | 'under_review' | 'approved' | 'signed';
+  verifyingAffidavitStatus: 'draft' | 'sworn' | 'signed';
+  witnessStatements: { id: string; witnessName: string; status: 'draft' | 'reviewed' | 'approved' }[];
+  listOfWitnesses: boolean;
+  listOfDocuments: boolean;
+  supportingDocumentsAttached: boolean;
+  bundleReviewStatus: 'draft' | 'submitted_for_review' | 'advocate_approved' | 'partner_approved' | 'client_signed' | 'ready_for_filing';
+  reviewedByAdvocateId?: string;
+  approvedByPartnerId?: string;
+  clientSignedAt?: string;
+  readyForFilingPackage: boolean;
+}
+
+// ==========================================
+// 8. COURT FILING OPERATIONS TYPES
+// ==========================================
+export interface CourtFilingPackage {
+  id: string;
+  matterId: string;
+  matterRef: string;
+  courtStation: string;
+  division: string;
+  caseType: string;
+  plaintiff: string;
+  defendants: string[];
+  documents: { title: string; type: string; isReady: boolean; isStamped?: boolean }[];
+  courtAssessmentKes: number;
+  feeRequisitionApproved: boolean;
+  receiptUploaded: boolean;
+  receiptNumber?: string;
+  ctsReference?: string;
+  courtCaseNumber?: string;
+  stampedDocsUploaded: boolean;
+  assignedClerkId: string;
+  status: 'ready_to_file' | 'requisition_pending' | 'submitted_cts' | 'stamped_filed' | 'rejected_by_registry';
+  submittedAt?: string;
+  filedAt?: string;
+}
+
+// ==========================================
+// 9. SUMMONS & SERVICE QUEUE TYPES
+// ==========================================
+export interface ServiceQueueItem {
+  id: string;
+  matterId: string;
+  matterRef: string;
+  documentTitle: string;
+  partyToServe: string;
+  partyAddress: string;
+  processServerName: string;
+  assignedDate: string;
+  dueDate: string;
+  attempts: { attemptNo: number; date: string; outcome: string; notes: string }[];
+  serviceDate?: string;
+  serviceMethod: 'Personal Service' | 'Substituted Service' | 'Advocate on Record' | 'Registered Mail';
+  affidavitOfServiceStatus: 'awaited' | 'received' | 'filed';
+  status: 'requested' | 'assigned' | 'attempted' | 'served' | 'failed' | 'affidavit_received' | 'filed';
+}
+
+// ==========================================
+// 10. PRE-TRIAL COMPLIANCE TYPES
+// ==========================================
+export interface PreTrialComplianceData {
+  matterId: string;
+  listOfWitnesses: boolean;
+  witnessStatements: boolean;
+  listOfDocuments: boolean;
+  documentBundle: boolean;
+  agreedIssues: boolean;
+  preTrialQuestionnaire: boolean;
+  expertDocuments: boolean;
+  courtDirections: string;
+  complianceDeadline: string;
+  isCompliant: boolean;
+}
+
+// ==========================================
+// 11. HEARING BRIEF TYPES
+// ==========================================
+export interface HearingBriefData {
+  matterId: string;
+  courtName: string;
+  hearingDate: string;
+  assignedAdvocateId: string;
+  witnesses: { name: string; role: string; status: 'confirmed' | 'unconfirmed' | 'subpoenaed' }[];
+  documents: { name: string; isReady: boolean }[];
+  issues: { liability: string; quantum: string };
+  opposingCounsel: string;
+  currentSettlementOffer?: string;
+  advocateNotes: string;
+  isReadyForHearing: boolean;
+}
+
+// ==========================================
+// 12. JUDGMENT & AWARD TYPES
+// ==========================================
+export interface JudgmentAwardData {
+  matterId: string;
+  judgmentDate: string;
+  liabilityClaimantPercent: number;
+  liabilityDefendantPercent: number;
+  generalDamages: number;
+  specialDamages: number;
+  futureMedical: number;
+  costsAwarded: number;
+  interestRatePercent: number;
+  interestFromDate: string;
+  totalAward: number;
+  paymentDeadline: string;
+  appealDeadline: string;
+  appealRecommended: boolean;
+  appealJustification?: string;
+  recoveryTriggered: boolean;
+}
+
+// ==========================================
+// 13. RECOVERY & EXECUTION TYPES
+// ==========================================
+export interface RecoveryExecutionData {
+  matterId: string;
+  decreeExtracted: boolean;
+  certificateOfCosts: boolean;
+  billOfCosts: boolean;
+  billAmount: number;
+  taxationComplete: boolean;
+  taxedAmount: number;
+  insurerDemandSent: boolean;
+  demandSentDate?: string;
+  paymentPromiseReceived: boolean;
+  paymentPromiseNotes?: string;
+  executionWarrantsIssued: boolean;
+  garnisheeProceedings: boolean;
+  auctioneerInstructed: boolean;
+  auctioneerName?: string;
+  paymentReceived: boolean;
+  paymentReceivedAmount: number;
+  status: 'pending_decree' | 'bill_of_costs' | 'insurer_demand' | 'execution_active' | 'garnishee' | 'fully_recovered';
+}
+
+// ==========================================
+// 14. SETTLEMENT & DISTRIBUTION STATEMENT
+// ==========================================
+export interface SettlementDistributionData {
+  matterId: string;
+  grossSettlementAmount: number;
+  fundsReceivedDate: string;
+  account: string;
+  outstandingDisbursements: { id: string; head: string; amount: number; voucherRef: string }[];
+  totalDisbursements: number;
+  professionalFees: number;
+  vatOnFees: number;
+  otherDeductions: { id: string; title: string; amount: number }[];
+  netClientAmount: number;
+  settlementStatementProduced: boolean;
+  clientApprovalStatus: 'pending' | 'approved' | 'disbursed';
+  clientApprovedAt?: string;
+  paymentMethod: 'M-Pesa B2C' | 'Bank Wire' | 'Cheque';
+  paymentReference?: string;
+  disbursedAt?: string;
+}
+
+// ==========================================
+// 15. CLOSURE WIZARD AUDIT
+// ==========================================
+export interface MatterClosureAuditData {
+  matterId: string;
+  isJudgmentSettlementComplete: boolean;
+  isClientFundsReconciled: boolean;
+  isOutstandingExpensesResolved: boolean;
+  isFinalPaymentMade: boolean;
+  isClientInformedAndDischarged: boolean;
+  areAllDocumentsFiled: boolean;
+  physicalFileLocation: string;
+  closingNote: string;
+  supervisorApproved: boolean;
+  approvedByUserId?: string;
+  approvedAt?: string;
+  archivedAt?: string;
+}
+
 

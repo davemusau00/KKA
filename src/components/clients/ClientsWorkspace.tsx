@@ -15,6 +15,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { Client, IntakeLead } from '../../types';
 import { ClientPortalView } from './ClientPortalView';
+import { IntakeWorkflowManager } from '../intake/IntakeWorkflowManager';
 
 export const ClientsWorkspace: React.FC = () => {
   const {
@@ -22,13 +23,12 @@ export const ClientsWorkspace: React.FC = () => {
     intakes,
     matters,
     createClient,
-    convertIntakeToMatter,
     setSelectedMatterId,
     setActiveWorkspace,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'clients' | 'intake' | 'client_portal'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'intake' | 'client_portal'>('intake');
   const [selectedPortalClientId, setSelectedPortalClientId] = useState<string>('');
   const [showNewClientModal, setShowNewClientModal] = useState(false);
 
@@ -38,9 +38,6 @@ export const ClientsWorkspace: React.FC = () => {
   const [newClientPhone, setNewClientPhone] = useState('+254 7');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientIdNumber, setNewClientIdNumber] = useState('');
-
-  // Intake Conversion Modal
-  const [selectedIntake, setSelectedIntake] = useState<IntakeLead | null>(null);
 
   const filteredClients = clients.filter((c) => {
     if (!searchQuery.trim()) return true;
@@ -82,15 +79,6 @@ export const ClientsWorkspace: React.FC = () => {
     setNewClientPhone('+254 7');
     setNewClientEmail('');
     setNewClientIdNumber('');
-  };
-
-  const handleConvertIntake = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedIntake) return;
-
-    convertIntakeToMatter(selectedIntake.id);
-    setSelectedIntake(null);
-    setActiveWorkspace('matters');
   };
 
   return (
@@ -263,68 +251,7 @@ export const ClientsWorkspace: React.FC = () => {
 
       {/* TAB 2: INTAKE & PROSPECTIVE LEADS */}
       {activeTab === 'intake' && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-800/50 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              <div>
-                <div className="font-bold text-slate-100">Intake Triage &amp; Conflict Clearance</div>
-                <div className="text-slate-400 text-[11px]">
-                  Prospective inquiries undergo conflict checking against past matters and opposing parties.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {filteredIntakes.map((intake) => (
-              <div
-                key={intake.id}
-                className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
-              >
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm text-slate-100">{intake.clientName}</h3>
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-amber-400 uppercase">
-                      {intake.disposition.replace('_', ' ')}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-                      Received: {new Date(intake.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  <div className="text-slate-400 text-xs">
-                    📞 {intake.phone} &bull; ✉️ {intake.email || 'N/A'} &bull; Source: {intake.source}
-                  </div>
-
-                  <p className="text-slate-300 text-xs bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
-                    &ldquo;{intake.briefDescription}&rdquo;
-                  </p>
-
-                  <div className="flex items-center gap-3 text-[11px]">
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      ✓ Conflict Cleared (No Adverse Parties Found)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                  {intake.disposition === 'converted' ? (
-                    <span className="text-slate-400 text-xs font-mono">Converted to Matter</span>
-                  ) : (
-                    <button
-                      onClick={() => setSelectedIntake(intake)}
-                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition flex items-center gap-1.5 shadow"
-                    >
-                      <FolderOpen className="w-4 h-4" />
-                      <span>Convert to Matter</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <IntakeWorkflowManager />
       )}
 
       {/* TAB 3: CLIENT SELF-SERVICE PORTAL */}
@@ -418,49 +345,6 @@ export const ClientsWorkspace: React.FC = () => {
                 className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow"
               >
                 Create Client File
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL: CONVERT INTAKE LEAD TO MATTER */}
-      {selectedIntake && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleConvertIntake} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-serif font-bold text-base text-slate-100">
-                Promote Lead to Active Litigation Matter
-              </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold">
-                Conflict Cleared
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-              <div className="font-semibold text-slate-200">{selectedIntake.clientName}</div>
-              <div className="text-slate-400 text-xs">{selectedIntake.phone}</div>
-              <p className="text-slate-400 text-xs italic pt-1">&ldquo;{selectedIntake.briefDescription}&rdquo;</p>
-            </div>
-
-            <p className="text-xs text-slate-300">
-              Converting will auto-generate an internal reference number (e.g. <code>KKC/PI/2026/00428</code>), create a primary client file, and initiate Stage 1 (Client Onboarding &amp; Retainer).
-            </p>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setSelectedIntake(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow flex items-center gap-1.5"
-              >
-                <FolderOpen className="w-4 h-4" />
-                <span>Confirm &amp; Open Matter</span>
               </button>
             </div>
           </form>

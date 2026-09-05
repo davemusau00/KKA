@@ -4,6 +4,10 @@ import {
   UserProfile,
   Client,
   IntakeLead,
+  IntakePartyInput,
+  ConflictCheckRecord,
+  ConflictMatch,
+  IntakeKycRetainer,
   Matter,
   MatterParty,
   CourtProceeding,
@@ -29,6 +33,21 @@ import {
   FirmSettingsConfig,
   RoleId,
   PermissionKey,
+  IncidentEvidenceData,
+  MedicalCaseData,
+  MedicalReportRequest,
+  LiabilityQuantumData,
+  ClaimNegotiationData,
+  NegotiationLedgerItem,
+  PleadingsBundleData,
+  CourtFilingPackage,
+  ServiceQueueItem,
+  PreTrialComplianceData,
+  HearingBriefData,
+  JudgmentAwardData,
+  RecoveryExecutionData,
+  SettlementDistributionData,
+  MatterClosureAuditData,
 } from '../types';
 import {
   SEED_BRANCHES,
@@ -53,6 +72,21 @@ import {
   SEED_TIME_ENTRIES,
   DEFAULT_API_SETTINGS,
 } from '../data/seedData';
+import {
+  SEED_INCIDENT_EVIDENCE,
+  SEED_MEDICAL_CASES,
+  SEED_LIABILITY_QUANTUM,
+  SEED_CLAIM_NEGOTIATION,
+  SEED_PLEADINGS_BUNDLES,
+  SEED_COURT_FILING_PACKAGES,
+  SEED_SERVICE_QUEUE,
+  SEED_PRE_TRIAL_COMPLIANCE,
+  SEED_HEARING_BRIEFS,
+  SEED_JUDGMENT_AWARDS,
+  SEED_RECOVERY_EXECUTION,
+  SEED_SETTLEMENT_DISTRIBUTIONS,
+  SEED_CLOSURE_AUDITS,
+} from '../data/legalWorkflowsSeedData';
 import {
   INITIAL_ROLES,
   ALL_PERMISSIONS,
@@ -149,6 +183,38 @@ interface AppContextType {
   firmSettings: FirmSettingsConfig;
   activeTimer: ActiveTimerState | null;
 
+  // Domain Legal Workflows State Collections
+  incidentEvidence: Record<string, IncidentEvidenceData>;
+  medicalCases: Record<string, MedicalCaseData>;
+  liabilityQuantums: Record<string, LiabilityQuantumData>;
+  claimNegotiations: Record<string, ClaimNegotiationData>;
+  pleadingsBundles: Record<string, PleadingsBundleData>;
+  courtFilingPackages: CourtFilingPackage[];
+  serviceQueue: ServiceQueueItem[];
+  preTrialCompliances: Record<string, PreTrialComplianceData>;
+  hearingBriefs: Record<string, HearingBriefData>;
+  judgmentAwards: Record<string, JudgmentAwardData>;
+  recoveryExecutions: Record<string, RecoveryExecutionData>;
+  settlementDistributions: Record<string, SettlementDistributionData>;
+  closureAudits: Record<string, MatterClosureAuditData>;
+
+  // Intake & Conflict Workflow Functions
+  createIntakeLead: (lead: Omit<IntakeLead, 'id' | 'createdAt' | 'disposition'>) => IntakeLead;
+  updateIntakeLead: (id: string, updates: Partial<IntakeLead>) => void;
+  runConflictSearch: (intakeId?: string, query?: string, candidateParties?: IntakePartyInput[]) => ConflictCheckRecord;
+  recordConflictClearance: (intakeId: string, status: 'clear' | 'overridden_approved', notes?: string, partnerId?: string) => void;
+  updateIntakeKycRetainer: (intakeId: string, kyc: Partial<IntakeKycRetainer>) => void;
+  convertIntakeWithWorkflow: (
+    intakeId: string,
+    options?: {
+      supervisingUserId?: string;
+      stageOwnerId?: string;
+      courtClerkId?: string;
+      financeContactId?: string;
+      initialAction?: string;
+    }
+  ) => Matter;
+
   // Workflow Engine functions
   createPracticeWorkflow: (workflow: Omit<PracticeAreaWorkflow, 'id' | 'createdAt' | 'updatedAt'>) => PracticeAreaWorkflow;
   updatePracticeWorkflow: (id: string, updates: Partial<PracticeAreaWorkflow>) => void;
@@ -161,9 +227,61 @@ interface AppContextType {
   createMatter: (data: Partial<Matter> & { clientDisplayName: string; clientPhone: string; clientNationalId: string }) => Matter;
   updateMatter: (id: string, updates: Partial<Matter>) => void;
   advanceMatterStage: (matterId: string, toStageId: number, newOwnerId: string, handoffNotes: string) => void;
+  advanceMatterStageExpanded: (
+    matterId: string,
+    toStageId: number,
+    newOwnerId: string,
+    handoffNotes: string,
+    options?: { generateStandardTasks?: boolean; handoffChecklistCompleted?: boolean }
+  ) => { success: boolean; error?: string };
   createClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client;
   updateClient: (id: string, updates: Partial<Client>) => void;
   convertIntakeToMatter: (intakeId: string) => void;
+
+  // Domain Sub-Workflows Mutators
+  updateIncidentEvidence: (matterId: string, updates: Partial<IncidentEvidenceData>) => void;
+  updateMedicalCase: (matterId: string, updates: Partial<MedicalCaseData>) => void;
+  updateMedicalReportRequest: (matterId: string, requestId: string, updates: Partial<MedicalReportRequest>) => void;
+  updateLiabilityQuantum: (matterId: string, updates: Partial<LiabilityQuantumData>) => void;
+  updateClaimNegotiation: (matterId: string, updates: Partial<ClaimNegotiationData>) => void;
+  addNegotiationEntry: (matterId: string, entry: Omit<NegotiationLedgerItem, 'id'>) => void;
+  approveSettlementOffer: (matterId: string, recommendedAmount: number, clientAuthorized: boolean, partnerApproved: boolean) => void;
+  updatePleadingsBundle: (matterId: string, updates: Partial<PleadingsBundleData>) => void;
+  
+  // Court Filing & Service Queue
+  createCourtFilingPackage: (pkg: Omit<CourtFilingPackage, 'id'>) => CourtFilingPackage;
+  updateCourtFilingPackage: (id: string, updates: Partial<CourtFilingPackage>) => void;
+  createServiceQueueItem: (item: Omit<ServiceQueueItem, 'id'>) => ServiceQueueItem;
+  updateServiceQueueItem: (id: string, updates: Partial<ServiceQueueItem>) => void;
+  addServiceAttempt: (id: string, attempt: { attemptNo: number; date: string; outcome: string; notes: string }) => void;
+
+  // Pre-Trial & Hearing
+  updatePreTrialCompliance: (matterId: string, updates: Partial<PreTrialComplianceData>) => void;
+  updateHearingBrief: (matterId: string, updates: Partial<HearingBriefData>) => void;
+  propagateCourtOutcomeDetailed: (
+    matterId: string,
+    outcomeData: {
+      outcomeType: 'ruling_delivered' | 'judgment_delivered' | 'hearing_conducted' | 'adjourned' | 'directions_given' | 'mention_held';
+      ordersSummary: string;
+      nextDate?: string;
+      nextEventType?: string;
+      directions?: string;
+      costsAwardedKes?: number;
+      tasksToCreate?: { title: string; assignedTo: string; dueDays: number }[];
+      sendSms?: boolean;
+      smsText?: string;
+    }
+  ) => void;
+
+  // Judgment, Recovery, Settlement, Closure
+  updateJudgmentAward: (matterId: string, updates: Partial<JudgmentAwardData>) => void;
+  triggerRecoveryFromJudgment: (matterId: string) => void;
+  updateRecoveryExecution: (matterId: string, updates: Partial<RecoveryExecutionData>) => void;
+  updateSettlementDistribution: (matterId: string, updates: Partial<SettlementDistributionData>) => void;
+  disburseClientSettlement: (matterId: string, paymentMethod: 'M-Pesa B2C' | 'Bank Wire' | 'Cheque', ref: string) => void;
+  updateClosureAudit: (matterId: string, updates: Partial<MatterClosureAuditData>) => void;
+  finalizeMatterClosureWizard: (matterId: string, audit: MatterClosureAuditData) => void;
+
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task;
   updateTask: (id: string, updates: Partial<Task>, force?: boolean) => { success: boolean; error?: string };
   completeTask: (id: string, force?: boolean) => { success: boolean; error?: string };
@@ -392,6 +510,72 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Domain legal workflow states
+  const [incidentEvidence, setIncidentEvidence] = useState<Record<string, IncidentEvidenceData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_incident_evidence`);
+    return saved ? JSON.parse(saved) : SEED_INCIDENT_EVIDENCE;
+  });
+
+  const [medicalCases, setMedicalCases] = useState<Record<string, MedicalCaseData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_medical_cases`);
+    return saved ? JSON.parse(saved) : SEED_MEDICAL_CASES;
+  });
+
+  const [liabilityQuantums, setLiabilityQuantums] = useState<Record<string, LiabilityQuantumData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_liability_quantum`);
+    return saved ? JSON.parse(saved) : SEED_LIABILITY_QUANTUM;
+  });
+
+  const [claimNegotiations, setClaimNegotiations] = useState<Record<string, ClaimNegotiationData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`);
+    return saved ? JSON.parse(saved) : SEED_CLAIM_NEGOTIATION;
+  });
+
+  const [pleadingsBundles, setPleadingsBundles] = useState<Record<string, PleadingsBundleData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`);
+    return saved ? JSON.parse(saved) : SEED_PLEADINGS_BUNDLES;
+  });
+
+  const [courtFilingPackages, setCourtFilingPackages] = useState<CourtFilingPackage[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_court_filings`);
+    return saved ? JSON.parse(saved) : SEED_COURT_FILING_PACKAGES;
+  });
+
+  const [serviceQueue, setServiceQueue] = useState<ServiceQueueItem[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_service_queue`);
+    return saved ? JSON.parse(saved) : SEED_SERVICE_QUEUE;
+  });
+
+  const [preTrialCompliances, setPreTrialCompliances] = useState<Record<string, PreTrialComplianceData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`);
+    return saved ? JSON.parse(saved) : SEED_PRE_TRIAL_COMPLIANCE;
+  });
+
+  const [hearingBriefs, setHearingBriefs] = useState<Record<string, HearingBriefData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`);
+    return saved ? JSON.parse(saved) : SEED_HEARING_BRIEFS;
+  });
+
+  const [judgmentAwards, setJudgmentAwards] = useState<Record<string, JudgmentAwardData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_judgment_awards`);
+    return saved ? JSON.parse(saved) : SEED_JUDGMENT_AWARDS;
+  });
+
+  const [recoveryExecutions, setRecoveryExecutions] = useState<Record<string, RecoveryExecutionData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_recovery_executions`);
+    return saved ? JSON.parse(saved) : SEED_RECOVERY_EXECUTION;
+  });
+
+  const [settlementDistributions, setSettlementDistributions] = useState<Record<string, SettlementDistributionData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`);
+    return saved ? JSON.parse(saved) : SEED_SETTLEMENT_DISTRIBUTIONS;
+  });
+
+  const [closureAudits, setClosureAudits] = useState<Record<string, MatterClosureAuditData>>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_closure_audits`);
+    return saved ? JSON.parse(saved) : SEED_CLOSURE_AUDITS;
+  });
+
   // Local storage auto-sync
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
@@ -416,12 +600,62 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit`, JSON.stringify(auditLogs));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_time_entries`, JSON.stringify(timeEntries));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_api_settings`, JSON.stringify(apiSettings));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_incident_evidence`, JSON.stringify(incidentEvidence));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_medical_cases`, JSON.stringify(medicalCases));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_liability_quantum`, JSON.stringify(liabilityQuantums));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`, JSON.stringify(claimNegotiations));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`, JSON.stringify(pleadingsBundles));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_court_filings`, JSON.stringify(courtFilingPackages));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_service_queue`, JSON.stringify(serviceQueue));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`, JSON.stringify(preTrialCompliances));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`, JSON.stringify(hearingBriefs));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_judgment_awards`, JSON.stringify(judgmentAwards));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_recovery_executions`, JSON.stringify(recoveryExecutions));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`, JSON.stringify(settlementDistributions));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_closure_audits`, JSON.stringify(closureAudits));
     if (activeTimer) {
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_active_timer`, JSON.stringify(activeTimer));
     } else {
       localStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
     }
-  }, [users, rolePermissionsMap, practiceWorkflows, firmSettings, clients, intakes, matters, parties, proceedings, tasks, deadlines, calendarEvents, documents, channels, messages, expenses, accounts, payments, notifications, auditLogs, timeEntries, apiSettings, activeTimer]);
+  }, [
+    users,
+    rolePermissionsMap,
+    practiceWorkflows,
+    firmSettings,
+    clients,
+    intakes,
+    matters,
+    parties,
+    proceedings,
+    tasks,
+    deadlines,
+    calendarEvents,
+    documents,
+    channels,
+    messages,
+    expenses,
+    accounts,
+    payments,
+    notifications,
+    auditLogs,
+    timeEntries,
+    apiSettings,
+    incidentEvidence,
+    medicalCases,
+    liabilityQuantums,
+    claimNegotiations,
+    pleadingsBundles,
+    courtFilingPackages,
+    serviceQueue,
+    preTrialCompliances,
+    hearingBriefs,
+    judgmentAwards,
+    recoveryExecutions,
+    settlementDistributions,
+    closureAudits,
+    activeTimer,
+  ]);
 
   // Global keyboard shortcuts (Cmd+K for search)
   useEffect(() => {
@@ -678,6 +912,983 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       'urgent'
     );
   }, [matters, practiceWorkflows, currentUser, logAudit, notify]);
+
+  // Intake & Conflict Workflow Functions
+  const createIntakeLead = useCallback((leadData: Omit<IntakeLead, 'id' | 'createdAt' | 'disposition'>): IntakeLead => {
+    const now = new Date().toISOString();
+    const newIntake: IntakeLead = {
+      ...leadData,
+      id: `intake-${Date.now()}`,
+      disposition: 'inquiry',
+      potentialParties: leadData.potentialParties || [],
+      createdAt: now,
+    };
+
+    // Perform initial automatic conflict search
+    const candidateParties: IntakePartyInput[] = [
+      {
+        id: `pt-${Date.now()}-1`,
+        name: newIntake.clientName,
+        role: 'plaintiff',
+        idOrRegNumber: newIntake.nationalId,
+        phone: newIntake.phone,
+        email: newIntake.email,
+      },
+      ...(newIntake.potentialParties || []),
+    ];
+
+    const matches: ConflictMatch[] = [];
+    candidateParties.forEach((cand) => {
+      const q = cand.name.trim().toLowerCase();
+      if (!q || q.length < 3) return;
+
+      // 1. Check against clients
+      clients.forEach((c) => {
+        if (c.displayName.toLowerCase().includes(q)) {
+          matches.push({
+            id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            partyName: cand.name,
+            matchedEntity: c.displayName,
+            matchedRole: 'Existing Client',
+            matchType: 'exact_name',
+            severity: 'high',
+            details: `Name closely matches active client record: ${c.displayName} (${c.idNumber || 'No ID'}).`,
+          });
+        }
+      });
+
+      // 2. Check against matter parties (especially adverse parties)
+      parties.forEach((p) => {
+        if (p.name.toLowerCase().includes(q) || (p.organizationName && p.organizationName.toLowerCase().includes(q))) {
+          const matchedMatter = matters.find((m) => m.id === p.matterId);
+          const isAdverse = p.partyType === 'defendant' || p.partyType === 'insurer' || p.partyType === 'advocate_opposing';
+          matches.push({
+            id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            partyName: cand.name,
+            matchedEntity: p.name,
+            matchedMatterId: p.matterId,
+            matchedMatterRef: matchedMatter?.internalReference,
+            matchedMatterTitle: matchedMatter?.title,
+            matchedRole: p.partyType,
+            matchType: isAdverse ? 'adverse_party' : 'exact_name',
+            severity: isAdverse ? 'critical' : 'high',
+            details: `Matched ${p.partyType} in Matter ${matchedMatter?.internalReference || p.matterId} (${matchedMatter?.title || ''}).`,
+          });
+        }
+      });
+    });
+
+    const conflictRecord: ConflictCheckRecord = {
+      id: `conf-${Date.now()}`,
+      intakeId: newIntake.id,
+      checkedByUserId: currentUser.id,
+      checkedAt: now,
+      status: matches.length > 0 ? (matches.some((m) => m.severity === 'critical') ? 'conflict_detected' : 'possible_match') : 'clear',
+      partiesSearched: candidateParties.map((p) => p.name),
+      matchesFound: matches,
+    };
+
+    newIntake.conflictCheck = conflictRecord;
+    setIntakes((prev) => [newIntake, ...prev]);
+    logAudit('intake.created', 'client', newIntake.id, undefined, {
+      clientName: newIntake.clientName,
+      conflictStatus: conflictRecord.status,
+    });
+
+    if (conflictRecord.status !== 'clear') {
+      notify(
+        'usr-partner',
+        'Potential Conflict Detected on Intake',
+        `Intake "${newIntake.clientName}" triggered ${matches.length} conflict match(es). Partner review required.`,
+        'system',
+        undefined,
+        'urgent'
+      );
+    }
+
+    return newIntake;
+  }, [clients, parties, matters, currentUser.id, logAudit, notify]);
+
+  const updateIntakeLead = useCallback((id: string, updates: Partial<IntakeLead>) => {
+    setIntakes((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }, []);
+
+  const runConflictSearch = useCallback((intakeId?: string, query?: string, candidateParties?: IntakePartyInput[]): ConflictCheckRecord => {
+    const now = new Date().toISOString();
+    const searchParties: { name: string; idOrReg?: string; phone?: string; role?: string }[] = [];
+
+    if (candidateParties && candidateParties.length > 0) {
+      candidateParties.forEach((p) => searchParties.push({ name: p.name, idOrReg: p.idOrRegNumber, phone: p.phone, role: p.role }));
+    }
+    if (query && query.trim()) {
+      searchParties.push({ name: query.trim() });
+    }
+
+    const matches: ConflictMatch[] = [];
+
+    searchParties.forEach((item) => {
+      const qName = item.name.toLowerCase().trim();
+      if (!qName || qName.length < 2) return;
+
+      // Scan clients
+      clients.forEach((c) => {
+        if (c.displayName.toLowerCase().includes(qName)) {
+          matches.push({
+            id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            partyName: item.name,
+            matchedEntity: c.displayName,
+            matchedRole: 'Active Client',
+            matchType: 'exact_name',
+            severity: 'high',
+            details: `Matches client record (${c.phone}, ID: ${c.idNumber}). Retained on ${c.createdAt.slice(0, 10)}.`,
+          });
+        }
+      });
+
+      // Scan matter parties
+      parties.forEach((p) => {
+        const matchName = p.name.toLowerCase().includes(qName) || (p.organizationName && p.organizationName.toLowerCase().includes(qName));
+        if (matchName) {
+          const mat = matters.find((m) => m.id === p.matterId);
+          const isAdverse = ['defendant', 'insurer', 'advocate_opposing'].includes(p.partyType);
+          matches.push({
+            id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            partyName: item.name,
+            matchedEntity: p.name,
+            matchedMatterId: p.matterId,
+            matchedMatterRef: mat?.internalReference,
+            matchedMatterTitle: mat?.title,
+            matchedRole: p.partyType,
+            matchType: isAdverse ? 'adverse_party' : 'exact_name',
+            severity: isAdverse ? 'critical' : 'high',
+            details: `Entity is recorded as ${p.partyType.toUpperCase()} in active matter ${mat?.internalReference || ''} (${mat?.title || ''}).`,
+          });
+        }
+      });
+
+      // Scan vehicles in incident evidence
+      Object.entries(incidentEvidence).forEach(([matId, evData]) => {
+        const typedEv = evData as IncidentEvidenceData;
+        typedEv?.vehicles?.forEach((v) => {
+          if (
+            v.registrationNumber.toLowerCase().replace(/\s+/g, '').includes(qName.replace(/\s+/g, '')) ||
+            v.ownerName.toLowerCase().includes(qName) ||
+            v.insuranceCompany.toLowerCase().includes(qName)
+          ) {
+            const mat = matters.find((m) => m.id === matId);
+            matches.push({
+              id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              partyName: item.name,
+              matchedEntity: `${v.registrationNumber} - ${v.ownerName} (${v.insuranceCompany})`,
+              matchedMatterId: matId,
+              matchedMatterRef: mat?.internalReference,
+              matchedMatterTitle: mat?.title,
+              matchedRole: 'Vehicle / Insured in PI Matter',
+              matchType: 'vehicle_reg',
+              severity: 'high',
+              details: `Matched vehicle ${v.registrationNumber} registered to ${v.ownerName} under policy ${v.policyNumber}.`,
+            });
+          }
+        });
+      });
+    });
+
+    const record: ConflictCheckRecord = {
+      id: `conf-${Date.now()}`,
+      intakeId,
+      checkedByUserId: currentUser.id,
+      checkedAt: now,
+      status: matches.length === 0 ? 'clear' : matches.some((m) => m.severity === 'critical') ? 'conflict_detected' : 'possible_match',
+      partiesSearched: searchParties.map((p) => p.name),
+      matchesFound: matches,
+    };
+
+    if (intakeId) {
+      setIntakes((prev) =>
+        prev.map((i) => (i.id === intakeId ? { ...i, conflictCheck: record } : i))
+      );
+    }
+
+    return record;
+  }, [clients, parties, matters, incidentEvidence, currentUser.id]);
+
+  const recordConflictClearance = useCallback((intakeId: string, status: 'clear' | 'overridden_approved', notes?: string, partnerId?: string) => {
+    const now = new Date().toISOString();
+    setIntakes((prev) =>
+      prev.map((i) => {
+        if (i.id !== intakeId) return i;
+        const updatedCheck: ConflictCheckRecord = {
+          ...(i.conflictCheck || {
+            id: `conf-${Date.now()}`,
+            checkedByUserId: currentUser.id,
+            checkedAt: now,
+            partiesSearched: [i.clientName],
+            matchesFound: [],
+          }),
+          status,
+          clearanceNotes: notes,
+          clearedByPartnerId: partnerId || currentUser.id,
+          clearedAt: now,
+        };
+        return {
+          ...i,
+          conflictCheck: updatedCheck,
+        };
+      })
+    );
+    logAudit('intake.conflict_cleared', 'client', intakeId, undefined, { status, notes });
+  }, [currentUser.id, logAudit]);
+
+  const updateIntakeKycRetainer = useCallback((intakeId: string, kycUpdates: Partial<IntakeKycRetainer>) => {
+    setIntakes((prev) =>
+      prev.map((i) => {
+        if (i.id !== intakeId) return i;
+        const currentKyc: IntakeKycRetainer = i.kycRetainer || {
+          idDocumentType: 'National ID',
+          idNumber: i.nationalId || '',
+          idVerified: false,
+          kycDocuments: [],
+          warrantToActSigned: false,
+          retainerAgreementSigned: false,
+          retainerAgreedAmount: 50000,
+          retainerDepositPaid: false,
+          termsAccepted: false,
+          partnerApproval: 'pending',
+        };
+        return {
+          ...i,
+          kycRetainer: {
+            ...currentKyc,
+            ...kycUpdates,
+          },
+        };
+      })
+    );
+  }, []);
+
+  const convertIntakeWithWorkflow = useCallback((
+    intakeId: string,
+    options?: {
+      supervisingUserId?: string;
+      stageOwnerId?: string;
+      courtClerkId?: string;
+      financeContactId?: string;
+      initialAction?: string;
+    }
+  ): Matter => {
+    const lead = intakes.find((i) => i.id === intakeId);
+    if (!lead) throw new Error('Intake lead not found');
+
+    const now = new Date().toISOString();
+
+    // 1. Create client
+    const newClient: Client = {
+      id: `cli-${Date.now()}`,
+      clientType: 'person',
+      displayName: lead.clientName,
+      idNumber: lead.nationalId || lead.kycRetainer?.idNumber || 'Pending ID Capture',
+      phone: lead.phone,
+      email: lead.email || `${lead.clientName.toLowerCase().replace(/\s+/g, '.')}@client.ke`,
+      preferredContactMethod: 'phone',
+      status: 'active',
+      notes: `Converted from prospective lead (${lead.source}). Incident: ${lead.briefDescription}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setClients((prev) => [newClient, ...prev]);
+
+    // 2. Open Matter with structured staffing roles
+    const currentYear = new Date().getFullYear();
+    const nextSeq = (matters.length + 1).toString().padStart(5, '0');
+    const internalReference = `KKC/PI/${currentYear}/${nextSeq}`;
+
+    const supUserId = options?.supervisingUserId || 'usr-partner';
+    const stageWorkerId = options?.stageOwnerId || currentUser.id;
+    const courtClerkId = options?.courtClerkId || 'usr-clerk';
+    const financeContactId = options?.financeContactId || 'usr-finance';
+
+    const newMatter: Matter = {
+      id: `mat-${Date.now()}`,
+      internalReference,
+      title: `${lead.clientName} v. Registered Owner & Insurer`,
+      clientId: newClient.id,
+      practiceArea: 'Personal Injury',
+      matterType: 'Road Traffic Accident (RTA) Personal Injury',
+      workflowTemplateId: 'wf-pi-rta',
+      originatingBranchId: currentUser.homeBranchId,
+      responsibleBranchId: currentUser.homeBranchId,
+      supervisingUserId: supUserId,
+      currentStageOwnerId: stageWorkerId,
+      courtClerkId,
+      financeContactId,
+      currentStageId: 2, // Intake & Acceptance
+      openedAt: now,
+      status: 'active',
+      priority: 'high',
+      summary: lead.briefDescription,
+      nextAction: options?.initialAction || 'Execute Retainer Agreement and Warrant to Act.',
+      courtProceedingIds: [],
+      assignedUserIds: Array.from(new Set([supUserId, stageWorkerId, courtClerkId, financeContactId])),
+      lastActivityAt: now,
+    };
+    setMatters((prev) => [newMatter, ...prev]);
+
+    // 3. Populate initial Matter Parties
+    const initialParties: MatterParty[] = [
+      {
+        id: `mpt-${Date.now()}-1`,
+        matterId: newMatter.id,
+        partyType: 'plaintiff',
+        name: lead.clientName,
+        phone: lead.phone,
+        email: lead.email,
+        roleDescription: 'Claimant / Injured Pedestrian',
+      },
+    ];
+
+    if (lead.potentialParties && lead.potentialParties.length > 0) {
+      lead.potentialParties.forEach((pp, idx) => {
+        initialParties.push({
+          id: `mpt-${Date.now()}-${idx + 2}`,
+          matterId: newMatter.id,
+          partyType: pp.role === 'defendant' ? 'defendant' : pp.role === 'insurer' ? 'insurer' : 'third_party',
+          name: pp.name,
+          phone: pp.phone,
+          email: pp.email,
+          roleDescription: pp.notes || `${pp.role.toUpperCase()} captured during initial intake`,
+        });
+      });
+    }
+    setParties((prev) => [...initialParties, ...prev]);
+
+    // 4. Initialize Sub-Workflow seed files for this matter
+    setIncidentEvidence((prev) => ({
+      ...prev,
+      [newMatter.id]: {
+        incident: {
+          date: lead.incidentDate,
+          time: '10:00 AM',
+          location: lead.incidentLocation || 'Nairobi Area',
+          description: lead.briefDescription,
+          obNumber: 'OB Pending',
+          policeStation: 'Pending Police Abstract',
+          investigatingOfficer: 'Pending Assignment',
+        },
+        vehicles: [],
+        witnesses: [],
+        exhibits: [],
+      },
+    }));
+
+    setMedicalCases((prev) => ({
+      ...prev,
+      [newMatter.id]: {
+        injuries: [],
+        medicalProviders: [],
+        treatmentEpisodes: [],
+        p3Form: {
+          issuedByDoctor: 'Pending Police Surgeon',
+          policeStationRef: 'Pending',
+          dateExamined: now.slice(0, 10),
+          degreeOfHarm: 'Harm',
+          status: 'requested',
+        },
+        imagingAndRecords: [],
+        medicalReportRequests: [],
+      },
+    }));
+
+    setLiabilityQuantums((prev) => ({
+      ...prev,
+      [newMatter.id]: {
+        liability: {
+          claimantPercent: 100,
+          defendantPercent: 0,
+          contributoryNegligenceAlleged: false,
+          supportingEvidence: [],
+          weaknesses: [],
+          advocateOpinion: 'Initial intake assessment pending investigation.',
+        },
+        damages: {
+          generalDamages: 0,
+          specialDamages: [],
+          futureMedicalExpenses: 0,
+          lossOfEarnings: 0,
+          lossOfEarningCapacity: 0,
+          otherHeads: [],
+          totalEstimatedClaimValue: 0,
+        },
+      },
+    }));
+
+    // 5. Create Matter Collaboration Channel
+    const newChannel: CommunicationChannel = {
+      id: `chn-${Date.now()}`,
+      matterId: newMatter.id,
+      name: `#${internalReference.replace(/\//g, '-')}-general`,
+      description: `Operational Channel for ${lead.clientName} PI Claim`,
+      type: 'matter',
+      memberUserIds: [supUserId, stageWorkerId, courtClerkId, financeContactId],
+    };
+    setChannels((prev) => [newChannel, ...prev]);
+
+    const welcomeMsg: ChannelMessage = {
+      id: `msg-${Date.now()}`,
+      channelId: newChannel.id,
+      senderId: 'usr-admin',
+      text: `✨ Matter ${internalReference} officially opened by ${currentUser.fullName}. Supervisor: ${supUserId}, Current Stage Lead: ${stageWorkerId}. All stage transitions and operational briefs will post here.`,
+      createdAt: now,
+    };
+    setMessages((prev) => [welcomeMsg, ...prev]);
+
+    // 6. Create initial Stage 2 tasks
+    const initTasks: Task[] = [
+      {
+        id: `tsk-init-${Date.now()}-1`,
+        title: 'Sign Warrant to Act & Client Retainer Agreement',
+        description: 'Ensure client signs formal Warrant to Act and executes advocate-client fee agreement.',
+        matterId: newMatter.id,
+        stageId: 2,
+        assignedTo: stageWorkerId,
+        createdBy: currentUser.id,
+        priority: 'high',
+        status: 'todo',
+        dueAt: new Date(Date.now() + 3 * 86400000).toISOString(),
+        dependsOnTaskIds: [],
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: `tsk-init-${Date.now()}-2`,
+        title: 'Apply for Certified Police Abstract & P3 Form',
+        description: 'Dispatch clerk to traffic police station to obtain certified abstract with sketch map.',
+        matterId: newMatter.id,
+        stageId: 3,
+        assignedTo: courtClerkId,
+        createdBy: currentUser.id,
+        priority: 'high',
+        status: 'todo',
+        dueAt: new Date(Date.now() + 5 * 86400000).toISOString(),
+        dependsOnTaskIds: [],
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+    setTasks((prev) => [...initTasks, ...prev]);
+
+    // 7. Update intake disposition
+    setIntakes((prev) =>
+      prev.map((i) =>
+        i.id === intakeId
+          ? {
+              ...i,
+              disposition: 'converted',
+              convertedMatterId: newMatter.id,
+              convertedClientId: newClient.id,
+            }
+          : i
+      )
+    );
+
+    logAudit('intake.converted_with_workflow', 'matter', newMatter.id, newMatter.id, {
+      internalReference,
+      clientName: lead.clientName,
+      supervisingUserId: supUserId,
+      currentStageOwnerId: stageWorkerId,
+    });
+
+    notify(
+      supUserId,
+      'New Matter Opened & Assigned',
+      `${currentUser.fullName} opened ${internalReference} (${lead.clientName}). You are the Supervising Partner.`,
+      'assignment',
+      newMatter.id,
+      'urgent'
+    );
+
+    return newMatter;
+  }, [intakes, matters.length, currentUser, logAudit, notify]);
+
+  // Stage Transition Expanded Workflow
+  const advanceMatterStageExpanded = useCallback((
+    matterId: string,
+    toStageId: number,
+    newOwnerId: string,
+    handoffNotes: string,
+    options?: { generateStandardTasks?: boolean; handoffChecklistCompleted?: boolean }
+  ): { success: boolean; error?: string } => {
+    const targetMatter = matters.find((m) => m.id === matterId);
+    if (!targetMatter) return { success: false, error: 'Matter not found' };
+
+    const fromStageId = targetMatter.currentStageId;
+    const now = new Date().toISOString();
+
+    const currentWf = practiceWorkflows.find((w) => w.id === targetMatter.workflowTemplateId) || practiceWorkflows[0];
+    const targetStageConfig = currentWf?.stages.find((s) => s.stageId === toStageId);
+    const stageName = targetStageConfig?.name || `Stage ${toStageId}`;
+
+    // Update matter stage while keeping supervising partner intact
+    setMatters((prev) =>
+      prev.map((m) => {
+        if (m.id !== matterId) return m;
+        return {
+          ...m,
+          currentStageId: toStageId,
+          currentStageOwnerId: newOwnerId,
+          nextAction: `[Stage ${toStageId}: ${stageName}] ${handoffNotes || 'Stage active'}`,
+          lastActivityAt: now,
+          assignedUserIds: Array.from(new Set([...m.assignedUserIds, newOwnerId, m.supervisingUserId])),
+        };
+      })
+    );
+
+    // Create Handoff acknowledgment task
+    const handoffTask: Task = {
+      id: `tsk-handoff-${Date.now()}`,
+      title: `Handoff Review: Stage ${fromStageId} → ${toStageId} (${stageName})`,
+      description: `Stage transfer handoff notes from ${currentUser.fullName}: "${handoffNotes}"`,
+      matterId,
+      stageId: toStageId,
+      assignedTo: newOwnerId,
+      createdBy: currentUser.id,
+      priority: 'high',
+      status: 'todo',
+      dueAt: new Date(Date.now() + 2 * 86400000).toISOString(),
+      createdAt: now,
+      updatedAt: now,
+      dependsOnTaskIds: [],
+    };
+
+    const newTasksToAdd: Task[] = [handoffTask];
+
+    if (options?.generateStandardTasks !== false && targetStageConfig?.autoCreateTasks && targetStageConfig.autoCreateTasks.length > 0) {
+      targetStageConfig.autoCreateTasks.forEach((tpl, idx) => {
+        const autoTask: Task = {
+          id: `tsk-auto-${Date.now()}-${idx + 1}`,
+          title: tpl.title,
+          description: `Auto-generated checklist task for Stage ${toStageId} (${stageName}).`,
+          matterId,
+          stageId: toStageId,
+          assignedTo: newOwnerId,
+          createdBy: currentUser.id,
+          priority: tpl.priority,
+          status: 'todo',
+          dueAt: new Date(Date.now() + tpl.dueInDays * 86400000).toISOString(),
+          createdAt: now,
+          updatedAt: now,
+          dependsOnTaskIds: idx > 0 ? [handoffTask.id] : [],
+        };
+        newTasksToAdd.push(autoTask);
+      });
+    }
+
+    setTasks((prev) => [...newTasksToAdd, ...prev]);
+
+    logAudit('matter.stage_advanced', 'handoff', matterId, matterId, {
+      fromStage: fromStageId,
+      toStage: toStageId,
+      newOwner: newOwnerId,
+      handoffNotes,
+      autoTasksCreated: newTasksToAdd.length,
+    });
+
+    notify(
+      newOwnerId,
+      `Matter Stage Advanced (${stageName})`,
+      `${currentUser.fullName} transferred ${targetMatter.internalReference} to you for Stage ${toStageId}. Notes: ${handoffNotes}`,
+      'assignment',
+      matterId,
+      'urgent'
+    );
+
+    return { success: true };
+  }, [matters, practiceWorkflows, currentUser, logAudit, notify]);
+
+  // Sub-Workflow State Mutators
+  const updateIncidentEvidence = useCallback((matterId: string, updates: Partial<IncidentEvidenceData>) => {
+    setIncidentEvidence((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { incident: { date: '', time: '', location: '', description: '', obNumber: '', policeStation: '', investigatingOfficer: '' }, vehicles: [], witnesses: [], exhibits: [] }),
+        ...updates,
+      },
+    }));
+    logAudit('evidence.updated', 'matter', matterId, matterId);
+  }, [logAudit]);
+
+  const updateMedicalCase = useCallback((matterId: string, updates: Partial<MedicalCaseData>) => {
+    setMedicalCases((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { injuries: [], medicalProviders: [], treatmentEpisodes: [], p3Form: { issuedByDoctor: '', policeStationRef: '', dateExamined: '', degreeOfHarm: 'Harm', status: 'requested' }, imagingAndRecords: [], medicalReportRequests: [] }),
+        ...updates,
+      },
+    }));
+    logAudit('medical.updated', 'matter', matterId, matterId);
+  }, [logAudit]);
+
+  const updateMedicalReportRequest = useCallback((matterId: string, requestId: string, updates: Partial<MedicalReportRequest>) => {
+    setMedicalCases((prev) => {
+      const current = prev[matterId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [matterId]: {
+          ...current,
+          medicalReportRequests: current.medicalReportRequests.map((r) =>
+            r.id === requestId ? { ...r, ...updates } : r
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const updateLiabilityQuantum = useCallback((matterId: string, updates: Partial<LiabilityQuantumData>) => {
+    setLiabilityQuantums((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { liability: { claimantPercent: 100, defendantPercent: 0, contributoryNegligenceAlleged: false, supportingEvidence: [], weaknesses: [], advocateOpinion: '' }, damages: { generalDamages: 0, specialDamages: [], futureMedicalExpenses: 0, lossOfEarnings: 0, lossOfEarningCapacity: 0, otherHeads: [], totalEstimatedClaimValue: 0 } }),
+        ...updates,
+      },
+    }));
+    logAudit('liability.updated', 'matter', matterId, matterId);
+  }, [logAudit]);
+
+  const updateClaimNegotiation = useCallback((matterId: string, updates: Partial<ClaimNegotiationData>) => {
+    setClaimNegotiations((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { insurer: { name: '', policyNumber: '', claimReference: '', status: 'notice_sent' }, negotiationLedger: [], settlementApproval: { recommendedAmount: 0, clientAuthorized: false, partnerApproved: false, dischargeVoucherSigned: false } }),
+        ...updates,
+      },
+    }));
+    logAudit('claim.updated', 'matter', matterId, matterId);
+  }, [logAudit]);
+
+  const addNegotiationEntry = useCallback((matterId: string, entry: Omit<NegotiationLedgerItem, 'id'>) => {
+    const newEntry: NegotiationLedgerItem = {
+      ...entry,
+      id: `neg-${Date.now()}`,
+    };
+    setClaimNegotiations((prev) => {
+      const cur = prev[matterId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [matterId]: {
+          ...cur,
+          negotiationLedger: [newEntry, ...(cur.negotiationLedger || [])],
+        },
+      };
+    });
+    logAudit('claim.negotiation_logged', 'matter', matterId, matterId, { party: entry.party, offer: entry.offerAmount || entry.counterOfferAmount });
+  }, [logAudit]);
+
+  const approveSettlementOffer = useCallback((matterId: string, recommendedAmount: number, clientAuthorized: boolean, partnerApproved: boolean) => {
+    const now = new Date().toISOString();
+    setClaimNegotiations((prev) => {
+      const cur = prev[matterId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [matterId]: {
+          ...cur,
+          settlementApproval: {
+            ...cur.settlementApproval,
+            recommendedAmount,
+            clientAuthorized,
+            clientAuthorityDate: clientAuthorized ? now : undefined,
+            partnerApproved,
+            partnerApprovedByUserId: partnerApproved ? currentUser.id : undefined,
+            partnerApprovedDate: partnerApproved ? now : undefined,
+            acceptedAt: clientAuthorized && partnerApproved ? now : undefined,
+          },
+        },
+      };
+    });
+    notify('usr-partner', 'Settlement Offer Authorized', `Settlement amount KES ${recommendedAmount.toLocaleString()} authorized for matter ${matterId}`, 'system', matterId);
+  }, [currentUser.id, notify]);
+
+  const updatePleadingsBundle = useCallback((matterId: string, updates: Partial<PleadingsBundleData>) => {
+    setPleadingsBundles((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { id: `pb-${Date.now()}`, matterId, plaintStatus: 'draft', verifyingAffidavitStatus: 'draft', witnessStatements: [], listOfWitnesses: false, listOfDocuments: false, supportingDocumentsAttached: false, bundleReviewStatus: 'draft', readyForFilingPackage: false }),
+        ...updates,
+      },
+    }));
+  }, []);
+
+  // Court Filing & Service Queue
+  const createCourtFilingPackage = useCallback((pkgData: Omit<CourtFilingPackage, 'id'>): CourtFilingPackage => {
+    const newPkg: CourtFilingPackage = {
+      ...pkgData,
+      id: `cfp-${Date.now()}`,
+    };
+    setCourtFilingPackages((prev) => [newPkg, ...prev]);
+    logAudit('court.filing_created', 'matter', newPkg.matterId, newPkg.matterId, { courtStation: newPkg.courtStation });
+    return newPkg;
+  }, [logAudit]);
+
+  const updateCourtFilingPackage = useCallback((id: string, updates: Partial<CourtFilingPackage>) => {
+    setCourtFilingPackages((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }, []);
+
+  const createServiceQueueItem = useCallback((itemData: Omit<ServiceQueueItem, 'id'>): ServiceQueueItem => {
+    const newItem: ServiceQueueItem = {
+      ...itemData,
+      id: `sq-${Date.now()}`,
+    };
+    setServiceQueue((prev) => [newItem, ...prev]);
+    logAudit('service.item_created', 'matter', newItem.matterId, newItem.matterId, { partyToServe: newItem.partyToServe });
+    return newItem;
+  }, [logAudit]);
+
+  const updateServiceQueueItem = useCallback((id: string, updates: Partial<ServiceQueueItem>) => {
+    setServiceQueue((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }, []);
+
+  const addServiceAttempt = useCallback((id: string, attempt: { attemptNo: number; date: string; outcome: string; notes: string }) => {
+    setServiceQueue((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, attempts: [...item.attempts, attempt], status: 'attempted' } : item))
+    );
+  }, []);
+
+  // Pre-Trial & Hearing
+  const updatePreTrialCompliance = useCallback((matterId: string, updates: Partial<PreTrialComplianceData>) => {
+    setPreTrialCompliances((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { matterId, listOfWitnesses: false, witnessStatements: false, listOfDocuments: false, documentBundle: false, agreedIssues: false, preTrialQuestionnaire: false, expertDocuments: false, courtDirections: '', complianceDeadline: '', isCompliant: false }),
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const updateHearingBrief = useCallback((matterId: string, updates: Partial<HearingBriefData>) => {
+    setHearingBriefs((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { matterId, courtName: '', hearingDate: '', assignedAdvocateId: currentUser.id, witnesses: [], documents: [], issues: { liability: '', quantum: '' }, opposingCounsel: '', advocateNotes: '', isReadyForHearing: false }),
+        ...updates,
+      },
+    }));
+  }, [currentUser.id]);
+
+  // Propagate Comprehensive Court Outcome
+  const propagateCourtOutcomeDetailed = useCallback((
+    matterId: string,
+    outcomeData: {
+      outcomeType: 'ruling_delivered' | 'judgment_delivered' | 'hearing_conducted' | 'adjourned' | 'directions_given' | 'mention_held';
+      ordersSummary: string;
+      nextDate?: string;
+      nextEventType?: string;
+      directions?: string;
+      costsAwardedKes?: number;
+      tasksToCreate?: { title: string; assignedTo: string; dueDays: number }[];
+      sendSms?: boolean;
+      smsText?: string;
+    }
+  ) => {
+    const now = new Date().toISOString();
+    const matter = matters.find((m) => m.id === matterId);
+
+    // 1. If next date provided, create calendar event
+    if (outcomeData.nextDate) {
+      const newEv: CalendarEvent = {
+        id: `evt-${Date.now()}`,
+        title: `${matter?.internalReference || 'Court Event'}: ${outcomeData.nextEventType || 'Mention / Directions'}`,
+        eventType: 'court',
+        matterId,
+        startAt: `${outcomeData.nextDate}T09:00:00Z`,
+        endAt: `${outcomeData.nextDate}T10:30:00Z`,
+        location: 'Milimani Law Courts, Court 4',
+        courtStatus: 'scheduled',
+        assignedUserId: matter?.currentStageOwnerId || currentUser.id,
+        organizerId: currentUser.id,
+        attendanceNotes: `Scheduled following court order: ${outcomeData.ordersSummary}`,
+      };
+      setCalendarEvents((prev) => [newEv, ...prev]);
+    }
+
+    // 2. Create automated tasks
+    if (outcomeData.tasksToCreate && outcomeData.tasksToCreate.length > 0) {
+      const generatedTasks: Task[] = outcomeData.tasksToCreate.map((t, idx) => ({
+        id: `tsk-outcome-${Date.now()}-${idx + 1}`,
+        title: t.title,
+        description: `Generated from Court Order on ${now.slice(0, 10)}: "${outcomeData.ordersSummary}"`,
+        matterId,
+        stageId: matter?.currentStageId || 10,
+        assignedTo: t.assignedTo || currentUser.id,
+        createdBy: currentUser.id,
+        priority: 'high',
+        status: 'todo',
+        dueAt: new Date(Date.now() + t.dueDays * 86400000).toISOString(),
+        dependsOnTaskIds: [],
+        createdAt: now,
+        updatedAt: now,
+      }));
+      setTasks((prev) => [...generatedTasks, ...prev]);
+    }
+
+    // 3. If SMS is enabled, log notification
+    if (outcomeData.sendSms && matter) {
+      notify(
+        matter.clientId,
+        'Client SMS Sent via Africa\'s Talking',
+        outcomeData.smsText || `Court update on ${matter.internalReference}: ${outcomeData.ordersSummary}`,
+        'system',
+        matterId
+      );
+    }
+
+    logAudit('court.outcome_propagated', 'matter', matterId, matterId, {
+      outcomeType: outcomeData.outcomeType,
+      ordersSummary: outcomeData.ordersSummary,
+      nextDate: outcomeData.nextDate,
+    });
+
+    notify(
+      currentUser.id,
+      'Court Outcome Propagated',
+      `Court orders recorded. Calendar, tasks, and audit logs synchronized for ${matter?.internalReference}.`,
+      'system',
+      matterId
+    );
+  }, [matters, currentUser, logAudit, notify]);
+
+  // Judgment, Recovery, Settlement, Closure
+  const updateJudgmentAward = useCallback((matterId: string, updates: Partial<JudgmentAwardData>) => {
+    setJudgmentAwards((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { matterId, judgmentDate: '', liabilityClaimantPercent: 100, liabilityDefendantPercent: 0, generalDamages: 0, specialDamages: 0, futureMedical: 0, costsAwarded: 0, interestRatePercent: 12, interestFromDate: '', totalAward: 0, paymentDeadline: '', appealDeadline: '', appealRecommended: false, recoveryTriggered: false }),
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const triggerRecoveryFromJudgment = useCallback((matterId: string) => {
+    setJudgmentAwards((prev) => {
+      const cur = prev[matterId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [matterId]: { ...cur, recoveryTriggered: true },
+      };
+    });
+
+    setRecoveryExecutions((prev) => ({
+      ...prev,
+      [matterId]: {
+        matterId,
+        decreeExtracted: true,
+        certificateOfCosts: false,
+        billOfCosts: true,
+        billAmount: 250000,
+        taxationComplete: false,
+        taxedAmount: 0,
+        insurerDemandSent: true,
+        demandSentDate: new Date().toISOString().slice(0, 10),
+        paymentPromiseReceived: false,
+        executionWarrantsIssued: false,
+        garnisheeProceedings: false,
+        auctioneerInstructed: false,
+        paymentReceived: false,
+        paymentReceivedAmount: 0,
+        status: 'insurer_demand',
+      },
+    }));
+
+    notify('usr-clerk', 'Recovery Workflow Initiated', `Statutory 30-day demand served under Sec 10 for matter ${matterId}. Extract decree and file Party & Party Bill of Costs.`, 'assignment', matterId, 'urgent');
+  }, [notify]);
+
+  const updateRecoveryExecution = useCallback((matterId: string, updates: Partial<RecoveryExecutionData>) => {
+    setRecoveryExecutions((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { matterId, decreeExtracted: false, certificateOfCosts: false, billOfCosts: false, billAmount: 0, taxationComplete: false, taxedAmount: 0, insurerDemandSent: false, paymentPromiseReceived: false, executionWarrantsIssued: false, garnisheeProceedings: false, auctioneerInstructed: false, paymentReceived: false, paymentReceivedAmount: 0, status: 'pending_decree' }),
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const updateSettlementDistribution = useCallback((matterId: string, updates: Partial<SettlementDistributionData>) => {
+    setSettlementDistributions((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { matterId, grossSettlementAmount: 0, fundsReceivedDate: '', account: 'Client Trust Account', outstandingDisbursements: [], totalDisbursements: 0, professionalFees: 0, vatOnFees: 0, otherDeductions: [], netClientAmount: 0, settlementStatementProduced: false, clientApprovalStatus: 'pending', paymentMethod: 'M-Pesa B2C' }),
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const disburseClientSettlement = useCallback((matterId: string, paymentMethod: 'M-Pesa B2C' | 'Bank Wire' | 'Cheque', ref: string) => {
+    const now = new Date().toISOString();
+    setSettlementDistributions((prev) => {
+      const cur = prev[matterId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [matterId]: {
+          ...cur,
+          clientApprovalStatus: 'disbursed',
+          paymentMethod,
+          paymentReference: ref,
+          disbursedAt: now,
+        },
+      };
+    });
+    logAudit('finance.settlement_disbursed', 'matter', matterId, matterId, { paymentMethod, ref });
+    notify('usr-partner', 'Client Settlement Disbursed', `Settlement funds successfully disbursed to client for matter ${matterId} via ${paymentMethod} (Ref: ${ref}).`, 'system', matterId);
+  }, [logAudit, notify]);
+
+  const updateClosureAudit = useCallback((matterId: string, updates: Partial<MatterClosureAuditData>) => {
+    setClosureAudits((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...(prev[matterId] || { matterId, isJudgmentSettlementComplete: false, isClientFundsReconciled: false, isOutstandingExpensesResolved: false, isFinalPaymentMade: false, isClientInformedAndDischarged: false, areAllDocumentsFiled: false, physicalFileLocation: '', closingNote: '', supervisorApproved: false }),
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const finalizeMatterClosureWizard = useCallback((matterId: string, audit: MatterClosureAuditData) => {
+    const now = new Date().toISOString();
+    setClosureAudits((prev) => ({
+      ...prev,
+      [matterId]: {
+        ...audit,
+        supervisorApproved: true,
+        approvedByUserId: currentUser.id,
+        approvedAt: now,
+        archivedAt: now,
+      },
+    }));
+
+    setMatters((prev) =>
+      prev.map((m) => (m.id === matterId ? { ...m, status: 'closed', closedAt: now, closureReason: audit.closingNote } : m))
+    );
+
+    logAudit('matter.closed_and_archived', 'matter', matterId, matterId, {
+      location: audit.physicalFileLocation,
+      closingNote: audit.closingNote,
+    });
+
+    notify(
+      'usr-partner',
+      'Matter Successfully Closed & Archived',
+      `Matter ${matterId} has satisfied all 6 closing criteria and is archived in ${audit.physicalFileLocation}.`,
+      'system',
+      matterId
+    );
+  }, [currentUser.id, logAudit, notify]);
 
   // Client operations
   const createClient = useCallback((clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -1630,6 +2841,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createMatter,
         updateMatter,
         advanceMatterStage,
+        // Domain legal workflows state
+        incidentEvidence,
+        medicalCases,
+        liabilityQuantums,
+        claimNegotiations,
+        pleadingsBundles,
+        courtFilingPackages,
+        serviceQueue,
+        preTrialCompliances,
+        hearingBriefs,
+        judgmentAwards,
+        recoveryExecutions,
+        settlementDistributions,
+        closureAudits,
+        // Domain workflow methods
+        createIntakeLead,
+        updateIntakeLead,
+        runConflictSearch,
+        recordConflictClearance,
+        updateIntakeKycRetainer,
+        convertIntakeWithWorkflow,
+        advanceMatterStageExpanded,
+        updateIncidentEvidence,
+        updateMedicalCase,
+        updateMedicalReportRequest,
+        updateLiabilityQuantum,
+        updateClaimNegotiation,
+        addNegotiationEntry,
+        approveSettlementOffer,
+        updatePleadingsBundle,
+        createCourtFilingPackage,
+        updateCourtFilingPackage,
+        createServiceQueueItem,
+        updateServiceQueueItem,
+        addServiceAttempt,
+        updatePreTrialCompliance,
+        updateHearingBrief,
+        propagateCourtOutcomeDetailed,
+        updateJudgmentAward,
+        triggerRecoveryFromJudgment,
+        updateRecoveryExecution,
+        updateSettlementDistribution,
+        disburseClientSettlement,
+        updateClosureAudit,
+        finalizeMatterClosureWizard,
         createClient,
         updateClient,
         convertIntakeToMatter,
