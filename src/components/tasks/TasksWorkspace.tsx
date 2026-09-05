@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CheckSquare,
   AlertTriangle,
@@ -144,37 +145,48 @@ export const TasksWorkspace: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full text-xs">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-amber-500 uppercase tracking-widest">
-              Action Central
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
-              {tasks.length} Active Work Items
-            </span>
-            {blockedCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-bold flex items-center gap-1">
-                <Lock className="w-3 h-3" /> {blockedCount} Blocked by Dependencies
+      <div className="flex flex-col gap-4 border-b border-slate-800 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-mono font-bold text-amber-500 uppercase tracking-widest">
+                Action Central
               </span>
-            )}
-            {overdueCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 font-bold">
-                {overdueCount} Overdue
+              <span className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+                {tasks.length} Active Work Items
               </span>
-            )}
+              {blockedCount > 0 && (
+                <span className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-bold flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> {blockedCount} Blocked
+                </span>
+              )}
+              {overdueCount > 0 && (
+                <span className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 font-bold">
+                  {overdueCount} Overdue
+                </span>
+              )}
+            </div>
+            <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-100 mt-1">
+              Tasks, Filings &amp; Dependency Orders
+            </h1>
           </div>
-          <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-100 mt-1">
-            Tasks, Filings &amp; Dependency Orders
-          </h1>
+
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold flex items-center justify-center gap-1.5 shadow-md transition shrink-0 w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Task</span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Toolbar: View Mode & Filters */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 max-w-full overflow-hidden">
           {/* View Mode Toggle */}
-          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1">
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 shrink-0 self-start">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition text-xs ${
                 viewMode === 'list' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -183,7 +195,7 @@ export const TasksWorkspace: React.FC = () => {
             </button>
             <button
               onClick={() => setViewMode('dependencies')}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition text-xs ${
                 viewMode === 'dependencies' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -192,10 +204,11 @@ export const TasksWorkspace: React.FC = () => {
             </button>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex">
+          {/* Filter Scope Tabs */}
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 overflow-x-auto max-w-full text-xs shrink-0">
             <button
               onClick={() => setFilterScope('my')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
                 filterScope === 'my' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -203,7 +216,7 @@ export const TasksWorkspace: React.FC = () => {
             </button>
             <button
               onClick={() => setFilterScope('all')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
                 filterScope === 'all' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -211,7 +224,7 @@ export const TasksWorkspace: React.FC = () => {
             </button>
             <button
               onClick={() => setFilterScope('blocked')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap flex items-center gap-1 ${
                 filterScope === 'blocked' ? 'bg-amber-700 text-white shadow' : 'text-amber-400 hover:text-amber-200'
               }`}
             >
@@ -219,21 +232,13 @@ export const TasksWorkspace: React.FC = () => {
             </button>
             <button
               onClick={() => setFilterScope('overdue')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
                 filterScope === 'overdue' ? 'bg-rose-900 text-rose-200 shadow' : 'text-rose-400 hover:text-rose-200'
               }`}
             >
               Overdue ({overdueCount})
             </button>
           </div>
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold flex items-center gap-1.5 shadow-md transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Task</span>
-          </button>
         </div>
       </div>
 
@@ -357,7 +362,7 @@ export const TasksWorkspace: React.FC = () => {
               return (
                 <div
                   key={t.id}
-                  className={`p-4 rounded-2xl border transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm ${
+                  className={`p-3.5 sm:p-4 rounded-2xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 shadow-sm min-w-0 max-w-full ${
                     evalResult.isBlocked && t.status !== 'completed'
                       ? 'border-amber-900/60 bg-amber-950/15'
                       : isOverdue
@@ -365,7 +370,7 @@ export const TasksWorkspace: React.FC = () => {
                       : 'border-slate-800 bg-slate-900/80 hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex items-start gap-3 flex-1">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0 w-full">
                     <button
                       onClick={() => handleToggleComplete(t)}
                       title={evalResult.isBlocked ? 'Blocked by prerequisite tasks' : 'Mark complete'}
@@ -384,10 +389,10 @@ export const TasksWorkspace: React.FC = () => {
                       )}
                     </button>
 
-                    <div className="space-y-1.5 flex-1">
+                    <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`font-semibold text-sm ${
+                          className={`font-semibold text-sm break-words max-w-full ${
                             t.status === 'completed' ? 'line-through text-slate-500' : 'text-slate-100'
                           }`}
                         >
@@ -415,7 +420,7 @@ export const TasksWorkspace: React.FC = () => {
                         {t.dependsOnTaskIds && t.dependsOnTaskIds.length > 0 && !evalResult.isBlocked && (
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
                             <Unlock className="w-3 h-3" />
-                            <span>Dependencies Clear</span>
+                            <span>Clear</span>
                           </span>
                         )}
 
@@ -435,27 +440,27 @@ export const TasksWorkspace: React.FC = () => {
                         </span>
                       </div>
 
-                      {t.description && <p className="text-slate-400 text-xs">{t.description}</p>}
+                      {t.description && <p className="text-slate-400 text-xs break-words">{t.description}</p>}
 
-                      <div className="flex items-center gap-4 text-slate-400 text-[11px] pt-0.5 flex-wrap">
+                      <div className="flex items-center gap-x-4 gap-y-1 text-slate-400 text-[11px] pt-0.5 flex-wrap min-w-0">
                         {matter && (
                           <button
                             onClick={() => {
                               setSelectedMatterId(matter.id);
                               setActiveWorkspace('matters');
                             }}
-                            className="font-mono text-amber-400 hover:underline"
+                            className="font-mono text-amber-400 hover:underline truncate max-w-full text-left"
                           >
                             {matter.internalReference}: {matter.title}
                           </button>
                         )}
                         <span>
-                          Assigned to: <strong className="text-slate-300">{assignee?.fullName || 'Staff'}</strong>
+                          Assigned: <strong className="text-slate-300">{assignee?.fullName || 'Staff'}</strong>
                         </span>
 
                         {downstream.length > 0 && (
                           <span className="text-slate-400 flex items-center gap-1">
-                            <GitBranch className="w-3 h-3 text-amber-400" /> Blocks {downstream.length} other task(s)
+                            <GitBranch className="w-3 h-3 text-amber-400" /> Blocks {downstream.length} task(s)
                           </span>
                         )}
 
@@ -470,14 +475,14 @@ export const TasksWorkspace: React.FC = () => {
                   </div>
 
                   {/* Deadlines Block & Status dropdown */}
-                  <div className="flex items-center gap-4 shrink-0 text-right self-end md:self-center">
-                    <div className="space-y-0.5">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80 text-left sm:text-right">
+                    <div className="space-y-0.5 min-w-0">
                       <div className={`text-xs font-mono font-medium ${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
-                        Target Due: {new Date(t.dueAt).toLocaleDateString()}
+                        Due: {new Date(t.dueAt).toLocaleDateString()}
                       </div>
                       {t.officialDeadlineAt && (
                         <div className="text-[10px] font-mono text-rose-300/80">
-                          Statutory Cutoff: {new Date(t.officialDeadlineAt).toLocaleDateString()}
+                          Cutoff: {new Date(t.officialDeadlineAt).toLocaleDateString()}
                         </div>
                       )}
                     </div>
@@ -485,7 +490,7 @@ export const TasksWorkspace: React.FC = () => {
                     <select
                       value={t.status}
                       onChange={(e) => handleStatusChange(t, e.target.value as TaskStatus)}
-                      className={`border rounded-lg px-2.5 py-1 outline-none text-[11px] font-medium ${
+                      className={`border rounded-lg px-2.5 py-1 outline-none text-[11px] font-medium shrink-0 ${
                         evalResult.isBlocked && t.status !== 'completed'
                           ? 'bg-amber-950/80 border-amber-800 text-amber-200'
                           : 'bg-slate-950 border-slate-700 text-slate-200'
@@ -505,12 +510,12 @@ export const TasksWorkspace: React.FC = () => {
       )}
 
       {/* Blocked by Dependency Notice Modal */}
-      {blockedNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-amber-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+      {blockedNotice && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-slate-900 border border-amber-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
-                <ShieldAlert className="w-5 h-5 text-amber-500" />
+                <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
                 <span>Task Dependency Protection Enforced</span>
               </div>
               <button
@@ -540,15 +545,15 @@ export const TasksWorkspace: React.FC = () => {
                     return (
                       <div
                         key={bt.id}
-                        className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]"
+                        className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px] gap-2"
                       >
-                        <div>
-                          <div className="font-medium text-slate-200">{bt.title}</div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-slate-200 truncate">{bt.title}</div>
                           <div className="text-slate-400 text-[10px]">
                             Assigned to: {assignee?.fullName || 'Staff'} &bull; Due: {new Date(bt.dueAt).toLocaleDateString()}
                           </div>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-900 uppercase">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-900 uppercase shrink-0">
                           {bt.status}
                         </span>
                       </div>
@@ -585,19 +590,20 @@ export const TasksWorkspace: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Dependencies Modal */}
-      {editingDepTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+      {editingDepTask && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div>
+              <div className="min-w-0">
                 <h3 className="font-serif font-bold text-base text-slate-100">Configure Task Dependencies</h3>
-                <p className="text-slate-400 text-[11px] truncate max-w-sm mt-0.5">{editingDepTask.title}</p>
+                <p className="text-slate-400 text-[11px] truncate max-w-xs sm:max-w-sm mt-0.5">{editingDepTask.title}</p>
               </div>
-              <button onClick={() => setEditingDepTask(null)} className="p-1 text-slate-400 hover:text-slate-200">
+              <button onClick={() => setEditingDepTask(null)} className="p-1 text-slate-400 hover:text-slate-200 shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -626,7 +632,7 @@ export const TasksWorkspace: React.FC = () => {
                             : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5 truncate">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <input
                             type="checkbox"
                             disabled={isCircular}
@@ -639,9 +645,9 @@ export const TasksWorkspace: React.FC = () => {
                               updateTask(editingDepTask.id, { dependsOnTaskIds: newDeps }, true);
                               setEditingDepTask({ ...editingDepTask, dependsOnTaskIds: newDeps });
                             }}
-                            className="rounded border-slate-700 text-amber-600 focus:ring-amber-500"
+                            className="rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0"
                           />
-                          <div className="truncate">
+                          <div className="min-w-0 flex-1">
                             <div className="font-medium text-slate-200 truncate">{candidate.title}</div>
                             <div className="text-[10px] text-slate-400">
                               Status: {candidate.status} &bull; Due: {new Date(candidate.dueAt).toLocaleDateString()}
@@ -670,15 +676,16 @@ export const TasksWorkspace: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* New Task Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+      {showCreateModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <form
             onSubmit={handleCreateTask}
-            className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl"
+            className="bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
           >
             <h3 className="font-serif font-bold text-base text-slate-100">Create Action Task</h3>
 
@@ -702,7 +709,7 @@ export const TasksWorkspace: React.FC = () => {
                   setMatterId(e.target.value);
                   setSelectedDependencies([]);
                 }}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono text-xs"
               >
                 {matters.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -712,7 +719,7 @@ export const TasksWorkspace: React.FC = () => {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-300 mb-1">Assignee</label>
                 <select
@@ -742,7 +749,7 @@ export const TasksWorkspace: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-300 mb-1">Internal Target Due Date</label>
                 <input
@@ -769,7 +776,7 @@ export const TasksWorkspace: React.FC = () => {
               <div>
                 <label className="block text-slate-300 mb-1 flex items-center justify-between">
                   <span>Prerequisite Dependencies (Optional)</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Must complete before this task starts</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Must complete before start</span>
                 </label>
                 <div className="max-h-32 overflow-y-auto space-y-1 bg-slate-950/60 p-2 rounded-lg border border-slate-800">
                   {matterTasksForDep.map((mt) => (
@@ -787,10 +794,10 @@ export const TasksWorkspace: React.FC = () => {
                             setSelectedDependencies(selectedDependencies.filter((id) => id !== mt.id));
                           }
                         }}
-                        className="rounded border-slate-700 text-amber-600 focus:ring-amber-500"
+                        className="rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0"
                       />
-                      <span className="truncate text-[11px]">{mt.title}</span>
-                      <span className="text-[9px] font-mono text-slate-400 ml-auto uppercase">{mt.status}</span>
+                      <span className="truncate text-[11px] min-w-0 flex-1">{mt.title}</span>
+                      <span className="text-[9px] font-mono text-slate-400 ml-auto uppercase shrink-0">{mt.status}</span>
                     </label>
                   ))}
                 </div>
@@ -813,7 +820,8 @@ export const TasksWorkspace: React.FC = () => {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

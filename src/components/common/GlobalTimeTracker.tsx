@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Clock,
   Play,
@@ -143,15 +144,15 @@ export const GlobalTimeTracker: React.FC = () => {
           className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-slate-100 text-xs px-2.5 py-1.5 rounded-lg transition"
           title="Start billable time tracker"
         >
-          <Clock className="w-3.5 h-3.5 text-amber-400" />
-          <span className="hidden xl:inline">Track Time</span>
+          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span className="hidden sm:inline">Track Time</span>
         </button>
       )}
 
       {/* Timer Details / Start Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-lg shadow-2xl space-y-4">
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 w-full max-w-lg shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -338,7 +339,8 @@ export const GlobalTimeTracker: React.FC = () => {
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

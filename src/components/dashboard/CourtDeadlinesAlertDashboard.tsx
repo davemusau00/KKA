@@ -161,7 +161,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
                 Litigation Operations
               </span>
@@ -169,7 +169,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                 Real-time Calendar Sync
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-serif font-bold text-slate-100 flex items-center gap-2 mt-0.5">
+            <h2 className="text-base sm:text-lg font-serif font-bold text-slate-100 flex flex-wrap items-center gap-2 mt-0.5">
               <span>Upcoming Court Deadlines &amp; Filing Requirements</span>
               <span
                 className={`text-xs px-2.5 py-0.5 rounded-full font-sans font-semibold ${

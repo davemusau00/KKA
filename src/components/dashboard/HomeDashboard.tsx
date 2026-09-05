@@ -78,7 +78,7 @@ export const HomeDashboard: React.FC = () => {
       {/* Welcome & Scope Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-mono font-bold text-amber-500 uppercase tracking-widest">
               Daily Operational Cockpit
             </span>
@@ -96,8 +96,8 @@ export const HomeDashboard: React.FC = () => {
         </div>
 
         {/* View Scope Tabs: Personal vs Branch vs Firm */}
-        <div className="flex items-center gap-2">
-          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex text-xs overflow-x-auto max-w-full">
             <button
               onClick={() => setViewScope('personal')}
               className={`px-3 py-1.5 rounded-lg font-medium transition ${

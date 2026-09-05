@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Download, CheckCircle, ShieldCheck, FileText, Clock, ExternalLink } from 'lucide-react';
 import { LegalDocument, DocumentVersion } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -29,8 +30,8 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
     setShowFilingPrompt(false);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[88vh]">
         {/* Top Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900">
@@ -232,6 +233,7 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

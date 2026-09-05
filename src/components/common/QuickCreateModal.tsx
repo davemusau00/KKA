@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Briefcase, User, CheckSquare, Calendar, DollarSign, UserPlus, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -187,8 +188,8 @@ export const QuickCreateModal: React.FC = () => {
     }, 600);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/90">
@@ -743,6 +744,7 @@ export const QuickCreateModal: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

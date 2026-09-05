@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, Briefcase, User, Calendar, CheckSquare, FileText, ArrowRight, CornerDownLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -73,8 +74,8 @@ export const GlobalSearchModal: React.FC = () => {
 
   if (!isSearchOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-12 sm:pt-20 px-3 sm:px-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Search Input Bar */}
         <div className="flex items-center px-4 py-3.5 border-b border-slate-800 bg-slate-900/90 gap-3">
@@ -307,6 +308,7 @@ export const GlobalSearchModal: React.FC = () => {
           <span>Search scope: All Matters, Clients, Courts & Documents</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
