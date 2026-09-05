@@ -16,6 +16,7 @@ import { useApp } from '../../context/AppContext';
 import { Client, IntakeLead } from '../../types';
 import { ClientPortalView } from './ClientPortalView';
 import { IntakeWorkflowManager } from '../intake/IntakeWorkflowManager';
+import { DirectoryWorkspace } from '../directory/DirectoryWorkspace';
 
 export const ClientsWorkspace: React.FC = () => {
   const {
@@ -28,7 +29,7 @@ export const ClientsWorkspace: React.FC = () => {
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'clients' | 'intake' | 'client_portal'>('intake');
+  const [activeTab, setActiveTab] = useState<'clients' | 'intake' | 'directory' | 'client_portal'>('intake');
   const [selectedPortalClientId, setSelectedPortalClientId] = useState<string>('');
   const [showNewClientModal, setShowNewClientModal] = useState(false);
 
@@ -132,6 +133,17 @@ export const ClientsWorkspace: React.FC = () => {
             }`}
           >
             Prospective Leads &amp; Inquiries ({intakes.filter((i) => i.disposition !== 'converted').length})
+          </button>
+          <button
+            onClick={() => setActiveTab('directory')}
+            className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-1.5 ${
+              activeTab === 'directory'
+                ? 'bg-amber-600 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Third-Party Directory</span>
           </button>
           <button
             onClick={() => setActiveTab('client_portal')}
@@ -254,7 +266,12 @@ export const ClientsWorkspace: React.FC = () => {
         <IntakeWorkflowManager />
       )}
 
-      {/* TAB 3: CLIENT SELF-SERVICE PORTAL */}
+      {/* TAB 3: THIRD-PARTY REUSABLE DIRECTORY */}
+      {activeTab === 'directory' && (
+        <DirectoryWorkspace />
+      )}
+
+      {/* TAB 4: CLIENT SELF-SERVICE PORTAL */}
       {activeTab === 'client_portal' && (
         <ClientPortalView initialClientId={selectedPortalClientId || clients[0]?.id} />
       )}

@@ -20,6 +20,7 @@ import {
   AuditEvent,
   TimeEntry,
   ApiSettingsConfig,
+  DirectoryContact,
 } from '../types';
 
 export const SEED_BRANCHES: Branch[] = [
