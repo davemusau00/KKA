@@ -48,6 +48,7 @@ import {
   RecoveryExecutionData,
   SettlementDistributionData,
   MatterClosureAuditData,
+  DirectoryContact,
 } from '../types';
 import {
   SEED_BRANCHES,
@@ -71,6 +72,7 @@ import {
   SEED_AUDIT_LOGS,
   SEED_TIME_ENTRIES,
   DEFAULT_API_SETTINGS,
+  SEED_DIRECTORY_CONTACTS,
 } from '../data/seedData';
 import {
   SEED_INCIDENT_EVIDENCE,
@@ -118,6 +120,10 @@ interface AppContextType {
   setSelectedMatterId: (id: string | null) => void;
   selectedMatterTab: string;
   setSelectedMatterTab: (tab: string) => void;
+
+  // Theme support
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
   
   // Personas & Branch Context
   currentUser: UserProfile;
@@ -197,6 +203,12 @@ interface AppContextType {
   recoveryExecutions: Record<string, RecoveryExecutionData>;
   settlementDistributions: Record<string, SettlementDistributionData>;
   closureAudits: Record<string, MatterClosureAuditData>;
+  directoryContacts: DirectoryContact[];
+
+  // Third-Party Directory Functions
+  addDirectoryContact: (contact: Omit<DirectoryContact, 'id' | 'createdAt' | 'updatedAt'>) => DirectoryContact;
+  updateDirectoryContact: (id: string, updates: Partial<DirectoryContact>) => void;
+  deleteDirectoryContact: (id: string) => void;
 
   // Intake & Conflict Workflow Functions
   createIntakeLead: (lead: Omit<IntakeLead, 'id' | 'createdAt' | 'disposition'>) => IntakeLead;
@@ -576,6 +588,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : SEED_CLOSURE_AUDITS;
   });
 
+  const [directoryContacts, setDirectoryContacts] = useState<DirectoryContact[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_directory_contacts`);
+    return saved ? JSON.parse(saved) : SEED_DIRECTORY_CONTACTS;
+  });
+
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_theme`);
+    if (saved === 'light' || saved === 'dark') return saved;
+    return 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_theme`, theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   // Local storage auto-sync
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
@@ -613,6 +651,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_recovery_executions`, JSON.stringify(recoveryExecutions));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`, JSON.stringify(settlementDistributions));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_closure_audits`, JSON.stringify(closureAudits));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_directory_contacts`, JSON.stringify(directoryContacts));
     if (activeTimer) {
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_active_timer`, JSON.stringify(activeTimer));
     } else {
@@ -654,8 +693,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     recoveryExecutions,
     settlementDistributions,
     closureAudits,
+    directoryContacts,
     activeTimer,
   ]);
+
+  // Directory Contact Handlers
+  const addDirectoryContact = useCallback((contactData: Omit<DirectoryContact, 'id' | 'createdAt' | 'updatedAt'>): DirectoryContact => {
+    const newContact: DirectoryContact = {
+      ...contactData,
+      id: `dir-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setDirectoryContacts((prev) => [newContact, ...prev]);
+    return newContact;
+  }, []);
+
+  const updateDirectoryContact = useCallback((id: string, updates: Partial<DirectoryContact>) => {
+    setDirectoryContacts((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c))
+    );
+  }, []);
+
+  const deleteDirectoryContact = useCallback((id: string) => {
+    setDirectoryContacts((prev) => prev.filter((c) => c.id !== id));
+  }, []);
 
   // Global keyboard shortcuts (Cmd+K for search)
   useEffect(() => {
@@ -2886,6 +2948,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         disburseClientSettlement,
         updateClosureAudit,
         finalizeMatterClosureWizard,
+        directoryContacts,
+        addDirectoryContact,
+        updateDirectoryContact,
+        deleteDirectoryContact,
+        theme,
+        toggleTheme,
         createClient,
         updateClient,
         convertIntakeToMatter,

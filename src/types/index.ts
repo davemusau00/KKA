@@ -1120,4 +1120,52 @@ export interface MatterClosureAuditData {
   archivedAt?: string;
 }
 
+// ==========================================
+// 16. THIRD-PARTY REUSABLE DIRECTORY TYPES
+// ==========================================
+export type DirectoryCategory =
+  | 'insurer'
+  | 'hospital'
+  | 'doctor'
+  | 'police_station'
+  | 'process_server'
+  | 'opposing_firm'
+  | 'advocate'
+  | 'expert'
+  | 'court'
+  | 'vendor'
+  | 'employer';
+
+export interface DirectoryContact {
+  id: string;
+  name: string;
+  category: DirectoryCategory;
+  subcategory?: string;
+  organizationName?: string;
+  registrationNumber?: string;
+  primaryPhone: string;
+  secondaryPhone?: string;
+  email: string;
+  secondaryEmail?: string;
+  physicalAddress: string;
+  postalAddress?: string;
+  city: string;
+  contactPersonName?: string;
+  contactPersonRole?: string;
+  contactPersonPhone?: string;
+  bankDetails?: {
+    bankName: string;
+    branchName?: string;
+    accountNumber: string;
+    paybillNumber?: string;
+  };
+  notes?: string;
+  isActive: boolean;
+  mattersCount?: number;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 
