@@ -1,5 +1,4 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { X, Download, CheckCircle, ShieldCheck, FileText, Clock, ExternalLink } from 'lucide-react';
 import { LegalDocument, DocumentVersion } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -10,6 +9,11 @@ interface Props {
 }
 
 export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { approveDocumentVersion, markDocumentFiled, currentUser } = useApp();
   const [selectedVersionId, setSelectedVersionId] = React.useState(document.currentVersionId);
   const [showFilingPrompt, setShowFilingPrompt] = React.useState(false);
@@ -30,7 +34,7 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
     setShowFilingPrompt(false);
   };
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[88vh]">
         {/* Top Header */}
@@ -233,7 +237,6 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };

@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect } from 'react';
 import {
   CheckSquare,
   AlertTriangle,
@@ -29,6 +28,11 @@ import {
 } from '../../utils/taskDependencies';
 
 export const TasksWorkspace: React.FC = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const {
     tasks,
     matters,
@@ -510,7 +514,7 @@ export const TasksWorkspace: React.FC = () => {
       )}
 
       {/* Blocked by Dependency Notice Modal */}
-      {blockedNotice && createPortal(
+      {blockedNotice && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <div className="bg-slate-900 border border-amber-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -590,12 +594,11 @@ export const TasksWorkspace: React.FC = () => {
               )}
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* Edit Dependencies Modal */}
-      {editingDepTask && createPortal(
+      {editingDepTask && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <div className="bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -676,12 +679,11 @@ export const TasksWorkspace: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* New Task Modal */}
-      {showCreateModal && createPortal(
+      {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <form
             onSubmit={handleCreateTask}
@@ -820,8 +822,7 @@ export const TasksWorkspace: React.FC = () => {
               </button>
             </div>
           </form>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

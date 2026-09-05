@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect } from 'react';
 import { X, Briefcase, User, CheckSquare, Calendar, DollarSign, UserPlus, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const QuickCreateModal: React.FC = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const {
     isQuickCreateOpen,
     setIsQuickCreateOpen,
@@ -188,7 +192,9 @@ export const QuickCreateModal: React.FC = () => {
     }, 600);
   };
 
-  return createPortal(
+  if (!isQuickCreateOpen) return null;
+
+  return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
@@ -744,7 +750,6 @@ export const QuickCreateModal: React.FC = () => {
           )}
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };

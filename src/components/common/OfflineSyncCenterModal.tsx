@@ -1,9 +1,13 @@
-import React from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect } from 'react';
 import { X, Wifi, WifiOff, RefreshCw, CheckCircle, Clock, AlertTriangle, Database } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const OfflineSyncCenterModal: React.FC = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const {
     isSyncCenterOpen,
     setIsSyncCenterOpen,
@@ -16,7 +20,7 @@ export const OfflineSyncCenterModal: React.FC = () => {
 
   if (!isSyncCenterOpen) return null;
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
@@ -154,7 +158,6 @@ export const OfflineSyncCenterModal: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };

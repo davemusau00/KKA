@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import {
   Clock,
   Play,
@@ -16,6 +15,11 @@ import { useApp } from '../../context/AppContext';
 import { TimeEntry } from '../../types';
 
 export const GlobalTimeTracker: React.FC = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const {
     activeTimer,
     startTimer,
@@ -150,7 +154,7 @@ export const GlobalTimeTracker: React.FC = () => {
       )}
 
       {/* Timer Details / Start Modal */}
-      {isModalOpen && createPortal(
+      {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 w-full max-w-lg shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -339,8 +343,7 @@ export const GlobalTimeTracker: React.FC = () => {
               </form>
             )}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </>
   );

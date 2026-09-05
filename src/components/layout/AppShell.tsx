@@ -24,12 +24,15 @@ import {
   Sparkles,
   ExternalLink,
   Shield,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { GlobalSearchModal } from '../common/GlobalSearchModal';
 import { QuickCreateModal } from '../common/QuickCreateModal';
 import { OfflineSyncCenterModal } from '../common/OfflineSyncCenterModal';
 import { GlobalTimeTracker } from '../common/GlobalTimeTracker';
+import { MobileQuickActionsMenu } from '../common/MobileQuickActionsMenu';
 import { BranchId } from '../../types';
 
 interface Props {
@@ -61,6 +64,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     intakes,
     hasUserPermission,
     effectivePermissions,
+    theme,
+    toggleTheme,
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -215,6 +220,20 @@ export const AppShell: React.FC<Props> = ({ children }) => {
               <span className="text-[10px] font-bold bg-amber-500 text-slate-950 px-1 rounded-full">
                 {mutationQueue.length}
               </span>
+            )}
+          </button>
+
+          {/* Theme Switcher Toggle (Light / Dark) */}
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-slate-100 transition shrink-0"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle Theme Mode"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-600" />
             )}
           </button>
 
@@ -548,10 +567,11 @@ export const AppShell: React.FC<Props> = ({ children }) => {
         </button>
       </nav>
 
-      {/* Global Modals */}
+      {/* Global Modals & Mobile Quick Actions */}
       <GlobalSearchModal />
       <QuickCreateModal />
       <OfflineSyncCenterModal />
+      <MobileQuickActionsMenu />
     </div>
   );
 };
