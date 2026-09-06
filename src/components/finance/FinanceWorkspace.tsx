@@ -1252,7 +1252,7 @@ export const FinanceWorkspace: React.FC = () => {
                                 }}
                                 className="accent-amber-600 rounded"
                               />
-                              <span className="truncate">{entry.description}</span>
+                              <span className="truncate">{entry.activityType}: {entry.notes}</span>
                             </div>
                             <span className="font-mono font-bold shrink-0 ml-2">KES {entry.totalAmount.toLocaleString()}</span>
                           </label>
@@ -1551,33 +1551,33 @@ export const FinanceWorkspace: React.FC = () => {
       )}
 
       {/* MODAL 3: RECORD CLIENT TRUST DEPOSIT */}
-      {showDepositModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleRecordDeposit} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      {showDepositModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <form onSubmit={handleRecordDeposit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl text-xs">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="font-serif font-bold text-base text-slate-100">
+                <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">
                   Record Client Trust Deposit
                 </h3>
-                <p className="text-slate-400 text-xs">
+                <p className="text-slate-500 dark:text-slate-400 text-xs">
                   Statutory Holding in NCBA Bank Client Account No. 7041
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowDepositModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-200"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Matter Reference</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Matter Reference</label>
               <select
                 value={depMatterId}
                 onChange={(e) => setDepMatterId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono text-xs"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono text-xs"
               >
                 {matters.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -1589,21 +1589,21 @@ export const FinanceWorkspace: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Amount Received (KES)</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Amount Received (KES)</label>
                 <input
                   type="number"
                   required
                   value={depAmount}
                   onChange={(e) => setDepAmount(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 font-mono font-bold outline-none text-xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 font-mono font-bold outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Payment Method</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Payment Method</label>
                 <select
                   value={depMethod}
                   onChange={(e) => setDepMethod(e.target.value as any)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
                 >
                   <option value="M-Pesa">M-Pesa Paybill</option>
                   <option value="Bank Transfer">NCBA Bank Transfer / RTGS</option>
@@ -1615,80 +1615,81 @@ export const FinanceWorkspace: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Payer / Remitter Name</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Payer / Remitter Name</label>
                 <input
                   type="text"
                   value={depPayer}
                   onChange={(e) => setDepPayer(e.target.value)}
                   placeholder="Client or Insurance Payee"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Transaction / Slip Ref</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Transaction / Slip Ref</label>
                 <input
                   type="text"
                   value={depRef}
                   onChange={(e) => setDepRef(e.target.value)}
                   placeholder="e.g. QHB882910X"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 font-mono outline-none text-xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 font-mono outline-none text-xs"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Portion Earmarked for Disbursements (KES)</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Portion Earmarked for Disbursements (KES)</label>
               <input
                 type="number"
                 value={depDisbAlloc}
                 onChange={(e) => setDepDisbAlloc(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 font-mono outline-none text-xs"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 font-mono outline-none text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Receipt Description</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Receipt Description</label>
               <textarea
                 rows={2}
                 value={depDesc}
                 onChange={(e) => setDepDesc(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs resize-none"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs resize-none"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowDepositModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow transition"
               >
                 Record Trust Deposit
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 4: NEW REQUISITION MODAL */}
-      {showNewRequisitionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleCreateRequisition} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
-            <h3 className="font-serif font-bold text-base text-slate-100">
+      {showNewRequisitionModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <form onSubmit={handleCreateRequisition} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl text-xs">
+            <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-3">
               Submit Payment / Expense Requisition
             </h3>
 
             <div>
-              <label className="block text-slate-300 mb-1">Matter File Reference</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Matter File Reference</label>
               <select
                 value={reqMatterId}
                 onChange={(e) => setReqMatterId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono text-xs"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono text-xs"
               >
                 {matters.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -1700,21 +1701,21 @@ export const FinanceWorkspace: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 mb-1">Amount (KES)</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Amount (KES)</label>
                 <input
                   type="number"
                   required
                   value={reqAmount}
                   onChange={(e) => setReqAmount(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono font-bold text-xs"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono font-bold text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1">Disbursement Category</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Disbursement Category</label>
                 <select
                   value={reqCategory}
                   onChange={(e) => setReqCategory(e.target.value as any)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
                 >
                   <option value="court_fees">Judiciary Court Filing Fee</option>
                   <option value="medical_report_fees">Medical Examination / P3 Fee</option>
@@ -1726,11 +1727,11 @@ export const FinanceWorkspace: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1">Payment Method / Source</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Payment Method / Source</label>
               <select
                 value={reqPaymentSource}
                 onChange={(e) => setReqPaymentSource(e.target.value as any)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
               >
                 <option value="Petty Cash">Branch Petty Cash Float</option>
                 <option value="Office Bank Account">Office Operating Bank Account</option>
@@ -1740,34 +1741,35 @@ export const FinanceWorkspace: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1">Detailed Description &amp; Justification</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Detailed Description &amp; Justification</label>
               <textarea
                 rows={3}
                 required
                 value={reqDescription}
                 onChange={(e) => setReqDescription(e.target.value)}
                 placeholder="State the payee, recipient, and necessity for litigation proceedings..."
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none resize-none text-xs"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none resize-none text-xs"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowNewRequisitionModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium shadow transition"
               >
                 Submit for Approval
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
