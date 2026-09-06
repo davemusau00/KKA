@@ -1,0 +1,28 @@
+lawos.example.com {
+    encode zstd gzip
+
+    @api path /api/*
+    handle @api {
+        reverse_proxy api:3000
+    }
+
+    @socket path /socket.io/*
+    handle @socket {
+        reverse_proxy api:3000
+    }
+
+    root * /srv/web
+    try_files {path} /index.html
+    file_server
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

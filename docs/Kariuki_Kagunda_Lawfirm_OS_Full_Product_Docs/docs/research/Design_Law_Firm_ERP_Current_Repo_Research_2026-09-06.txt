@@ -1,0 +1,1341 @@
+I checked the current `main` branch of `davemusau00/KKA`, including the application shell, domain types, seed data, matter workflow, dashboard, tasks, calendar, finance, documents, communications, admin, client portal and integrations.
+
+## Overall verdict
+
+The repository is already a **strong interactive product prototype**, particularly in terms of visual language and understanding the law-firm domain. But architecturally it is still essentially a **single-browser demo application**, not yet the VPS-ready law-firm OS we specified.
+
+The biggest thing I would avoid now is continuing to add more giant UI components on top of the present structure. The prototype has done its job. We should preserve its visual work, then start converting it into the real application architecture.
+
+At present, `App.tsx` simply chooses a workspace using an `activeWorkspace` value rather than real routes. fileciteturn6file0L2-L2 Almost all application data and operations are concentrated into a roughly 43 KB `AppContext.tsx`, populated from seed data and persisted into browser `localStorage`. Even the offline synchronization is currently a simulated delay that marks everything as synced. fileciteturn8file0L2-L2 fileciteturn9file0L2-L2
+
+So I would characterize the current status approximately as:
+
+| Area | Current state |
+|---|---|
+| UI concept | **Strong** |
+| Visual consistency | **Strong** |
+| Legal-domain thinking | **Good** |
+| Personal injury workflow concept | **Good foundation** |
+| Matter-centric architecture concept | **Good** |
+| Responsive prototype | **Moderate-good** |
+| Real persistence | **Not implemented** |
+| Backend | **Not implemented** |
+| Authentication | **Not implemented** |
+| Real RBAC | **Not implemented** |
+| Realtime | **Not implemented** |
+| Actual file storage | **Not implemented** |
+| Actual offline sync | **Not implemented** |
+| Google integration | **Simulation** |
+| WhatsApp integration | **Simulation** |
+| M-Pesa integration | **Simulation** |
+| Court/Judiciary integration | **Simulation** |
+| Automated testing | **Missing** |
+| CI/CD | **Missing** |
+| VPS infrastructure | **Missing from repo** |
+
+That is not a criticism of where it is. For a first pass, it has actually captured a lot. It just needs to cross the bridge from **convincing prototype → operational system**.
+
+---
+
+# What the repository already gets right
+
+The current navigation already covers a broad internal OS:
+
+**Dashboard → Matters → Clients & Intake → Tasks → Calendar → Documents → Communications → Finance → Reports → Admin → Integrations.**
+
+That structure is visible in the application shell. fileciteturn28file0L2-L2
+
+The Matter workspace is particularly promising. It already conceptualizes:
+
+**Overview · Workflow · Tasks · Court & Dates · Documents · Channel · Parties · Proceedings · Medical & Evidence · Finance · Timeline**
+
+which is extremely close to the Matter-centric architecture we wanted. fileciteturn11file0L2-L2
+
+The domain types are also reasonably rich. They already represent clients, intakes, matters, parties, proceedings, tasks, deadlines, calendar events, document versions, communication channels and finance. fileciteturn14file0L2-L2
+
+There is also a genuine 19-stage personal-injury workflow definition covering intake through closure. fileciteturn16file0L2-L2
+
+So we absolutely should **not throw the frontend away**.
+
+---
+
+# The biggest architectural problem
+
+Right now nearly everything lives inside:
+
+```text id="0q0bte"
+React
+   ↓
+AppContext
+   ↓
+localStorage
+```
+
+It needs to become:
+
+```text id="qd1sc4"
+React / Vite PWA
+        │
+        ▼
+NestJS API
+        │
+ ┌──────┼─────────────┐
+ ▼      ▼             ▼
+Postgres Redis     File Storage
+        │
+        ▼
+     BullMQ
+      Worker
+```
+
+The current `package.json` confirms the repo is still basically the AI Studio/Vite frontend scaffold. It contains React/Vite/Tailwind but not NestJS, Prisma, Redis/BullMQ, TanStack Query/Router, Dexie or Socket.IO. fileciteturn5file0L2-L2
+
+The `.env.example` is also still an AI Studio/Gemini template rather than our VPS environment. fileciteturn35file0L2-L2
+
+Even `vite.config.ts` still contains AI Studio-specific comments. fileciteturn36file0L2-L2
+
+So **Phase Zero now should be architectural conversion**, not more feature decoration.
+
+---
+
+# Some important code/domain bugs I found
+
+These are worth correcting before additional UI grows around them.
+
+| Issue | Current behavior | Required behavior |
+|---|---|---|
+| Matter Kanban | Only renders `workflowStages.slice(0, 8)` | All 19 stages, preferably horizontally virtualized/grouped |
+| Stage owner | `advanceMatterStage()` changes `supervisingUserId` to the new stage owner | Supervisor and current stage owner must be separate |
+| Stage handoff | `StageHandoff` type exists but handoff is only written to audit | Persist actual handoff record |
+| Checklist | Checklist items simply display as completed-looking icons | Per-matter completion state required |
+| Required documents | Listed but not validated | Actual document records should satisfy requirements |
+| Matter numbering | `matters.length + 1` generates reference | Backend atomic reference sequence |
+| Matter creation | Always defaults to PI/RTA | Select practice area + matter type + workflow |
+| Client intake | Every lead visually says conflict cleared | Real conflict workflow |
+| Client cards | Every client displays “Verified Client” | Actual KYC state |
+| Branch | Second branch is hard-coded as Mombasa | Branch Two location/name still needs firm confirmation |
+| Branch filtering | Often uses originating branch | Need originating vs responsible branch intentionally |
+| Task review status | UI writes `review`; model defines `waiting_review` | One canonical status |
+| Calendar types | UI uses `meeting` / `filing_deadline`; type uses different event enums | Normalize calendar taxonomy |
+| Document filter | UI values don't match document category type values | Canonical document category IDs |
+| Trust balance | Broadly subtracts approved expenses from client receipts | Proper account/matter-specific ledger |
+| Offline sync | `setTimeout()` simulation | Dexie queue + API idempotency + conflict detection |
+| Document preview | Displays generated hard-coded pleading content | Real PDF/image/document preview |
+| Download | Browser alert simulation | Authorized backend file stream |
+| Integration testing | Always returns simulated success | Real provider connection test |
+
+The Kanban limitation is visible directly in `MattersWorkspace`, where only the first eight stages are rendered despite the workflow containing 19. fileciteturn19file0L2-L2
+
+---
+
+# A particularly important issue: simulated features are presented as real
+
+This should be fixed before anyone at the firm sees the system as operational.
+
+For example, `IntegrationsWorkspace` deliberately uses `setTimeout()` and then reports messages such as:
+
+> Google Workspace OAuth handshake successful
+
+or
+
+> Kenya Judiciary CTS API connected
+
+without actually talking to those systems. fileciteturn27file0L2-L2
+
+Likewise the client portal displays:
+
+> End-to-End Encrypted Portal  
+> Access Token Active
+
+even though it is currently an internal simulator using client-side state. fileciteturn33file0L2-L2
+
+And document preview renders a hard-coded demo plaint and the Download button just triggers a simulated alert. fileciteturn32file0L2-L2
+
+For development this is fine.
+
+But I would now enforce:
+
+> **If an integration or security feature is simulated, display DEMO/SIMULATED clearly or remove it from operational navigation.**
+
+We don't want beautiful lies in a legal system.
+
+---
+
+# Biggest missing legal workflows
+
+The 19-stage skeleton is good, but the code currently represents most stages primarily as names, checklists and target durations. What we need next are **stage-specific operational workflows**.
+
+## 1. Proper intake and conflict workflow
+
+Current:
+
+```text id="7t7uqy"
+Lead
+→ click Convert
+→ Client + Matter
+```
+
+Needed:
+
+```text id="dmqcmr"
+New Inquiry
+↓
+Intake interview
+↓
+Potential parties captured
+↓
+Conflict Search
+├─ Clear
+├─ Possible Match → Review
+└─ Conflict Found → Decline
+↓
+Eligibility / Matter Review
+↓
+KYC + ID
+↓
+Retainer / Warrant to Act
+↓
+Approval
+↓
+Open Matter
+↓
+Generate Matter Reference
+↓
+Create Initial Tasks
+↓
+Create Matter Channel
+↓
+Start Workflow
+```
+
+The present intake page visually labels every lead as conflict-cleared regardless of actual checking. fileciteturn18file0L2-L2
+
+### Missing screens
+
+**New Intake**  
+**Intake Detail**  
+**Conflict Search Results**  
+**Conflict Review / Clearance**  
+**Accept / Decline Matter**  
+**Retainer Checklist**
+
+---
+
+# 2. Stage-transition workflow
+
+This needs major expansion.
+
+Current:
+
+```text id="g9ctuz"
+Advance Stage
+→ select stage
+→ select new owner
+→ notes
+```
+
+Needed:
+
+```text id="bqcxon"
+Stage Completion
+↓
+Required Tasks checked
+↓
+Required Documents checked
+↓
+Mandatory fields checked
+↓
+Approval required?
+├── Yes → Approval Queue
+└── No
+↓
+Handoff
+↓
+Recipient acknowledges
+↓
+Previous stage locked/completed
+↓
+Next stage instantiated
+↓
+Tasks generated
+↓
+Notifications generated
+```
+
+The **supervising advocate must remain supervisory** while stage ownership moves around the firm.
+
+We should have:
+
+```text id="46w00f"
+Matter Supervisor
+Grace Mutua
+
+Current Stage Owner
+Brian Ochieng
+
+Court Clerk
+John Mwangi
+
+Finance Contact
+Mercy Wambui
+```
+
+rather than replacing the supervisor every time a stage moves.
+
+---
+
+# 3. Evidence / accident investigation
+
+This deserves its own UI, not a placeholder tab.
+
+### Screen: Incident & Evidence
+
+```text id="v8uph9"
+Incident
+├─ Date
+├─ Time
+├─ Location
+├─ Accident description
+├─ OB number
+├─ Police station
+└─ Investigating officer
+
+Vehicles
+├─ Registration
+├─ Owner
+├─ Driver
+├─ Insurance
+└─ Search documents
+
+Witnesses
+├─ Name
+├─ Contact
+├─ Statement requested
+└─ Statement received
+
+Evidence
+├─ Police Abstract
+├─ Scene Photos
+├─ Vehicle Photos
+├─ CCTV
+├─ Receipts
+└─ Other exhibits
+```
+
+---
+
+# 4. Medical management
+
+Currently the Matter has a Medical & Evidence tab, but it needs a real domain workflow.
+
+### Screen: Medical Case Management
+
+```text id="k7alyx"
+Injuries
+Medical Providers
+Treatment Episodes
+Hospital Records
+P3
+X-rays / Imaging
+Medical Report Requests
+Doctor Appointments
+Medical Report Fees
+Permanent Disability Assessment
+Future Treatment
+Medical Receipts
+```
+
+Each medical report should have:
+
+```text id="i0de2k"
+Requested
+Paid
+Appointment Scheduled
+Examined
+Awaiting Report
+Received
+Reviewed
+Supplementary Report Required
+Complete
+```
+
+For personal injury, this will become one of the most-used subsystems.
+
+---
+
+# 5. Liability + quantum
+
+Missing almost entirely as structured data.
+
+### Screen: Liability & Quantum
+
+**Liability**
+
+```text id="co5r8h"
+Claimant %
+Defendant %
+Contributory negligence issues
+Evidence supporting liability
+Weaknesses
+Advocate opinion
+```
+
+**Damages**
+
+```text id="ozb1wl"
+General damages
+Special damages
+Future medical expenses
+Loss of earnings
+Loss of earning capacity
+Other heads
+```
+
+Special damages should be itemized against evidence.
+
+---
+
+# 6. Insurer / claim / negotiation workflow
+
+Need a proper insurer section.
+
+### Screen: Claim & Negotiation
+
+```text id="n1jy3x"
+Insurer
+Policy / Claim Ref
+Insurance contact
+Demand sent
+Notice sent
+Delivery proof
+Response deadline
+Response received
+```
+
+Negotiation ledger:
+
+| Date | Party | Offer | Counteroffer | Status | Notes |
+|---|---|---:|---:|---|---|
+| 12 Sep | Insurer | 250,000 | | Rejected | |
+| 15 Sep | Firm | | 650,000 | Sent | |
+| 22 Sep | Insurer | 420,000 | | Client considering | |
+
+Then:
+
+```text id="ecqriw"
+Recommend Settlement
+↓
+Client Authority
+↓
+Partner Approval
+↓
+Accept
+```
+
+---
+
+# 7. Pleadings production and review
+
+Documents currently support version status, which is good.
+
+But the workflow needs a **Pleadings Bundle screen**:
+
+```text id="0n4r2d"
+Plaint                    ✓ Approved
+Verifying Affidavit       ✓ Signed
+Witness Statement         ⚠ Review
+List of Witnesses         ✓
+List of Documents         ✓
+Supporting Documents      ✓
+```
+
+Then:
+
+```text id="zxd883"
+Submit Bundle for Review
+↓
+Advocate Review
+↓
+Partner Approval if required
+↓
+Client Signature
+↓
+Ready for Filing
+```
+
+---
+
+# 8. Court filing operations
+
+This is one of the largest missing top-level workflows.
+
+The court clerk should not need to open individual Matters one by one.
+
+## Add top-level workspace: **Court Operations**
+
+Views:
+
+**Filing Queue**
+
+**Service Queue**
+
+**Upcoming Court**
+
+**Court Outcomes Pending**
+
+**Court Directions**
+
+**Filed Documents**
+
+### Filing Queue card
+
+```text id="hg3l2t"
+KKC/PI/2026/00427
+
+Ready for Filing
+Milimani
+
+5 documents ready
+Court fee requisition approved
+
+Assigned:
+John Mwangi
+
+[Open Filing Package]
+```
+
+### Filing Detail screen
+
+```text id="35z61s"
+Court
+Case Type
+Plaintiff
+Defendants
+
+Documents
+✓ Plaint
+✓ Verifying Affidavit
+✓ Witness Statement
+✓ List of Documents
+
+Financial
+Court assessment:
+KES _____
+
+Receipt:
+Upload
+
+Submission
+CTS Reference:
+________
+
+Court Case Number:
+________
+
+Stamped Documents:
+Upload
+```
+
+This is much better than a generic “Mark Filed” button.
+
+---
+
+# 9. Summons + service
+
+Also missing as an operational workspace.
+
+### Service Queue
+
+```text id="5tmtbk"
+Document
+Party
+Process Server
+Assigned Date
+Due Date
+Attempts
+Service Date
+Method
+Affidavit of Service
+Status
+```
+
+Status flow:
+
+```text id="auzega"
+Requested
+↓
+Assigned
+↓
+Attempted
+↓
+Served / Failed
+↓
+Affidavit Awaited
+↓
+Affidavit Received
+↓
+Filed
+```
+
+---
+
+# 10. Pre-trial compliance
+
+Need:
+
+**Compliance Checklist screen**
+
+```text id="q7fphs"
+List of witnesses
+Witness statements
+List of documents
+Document bundle
+Issues
+Pre-trial questionnaire
+Expert documents
+Court directions
+Compliance deadline
+```
+
+---
+
+# 11. Hearing preparation
+
+A dedicated **Hearing Brief** screen would be extremely useful.
+
+```text id="nxngs9"
+Matter
+Court
+Date
+Advocate
+
+Witnesses
+✓ Client confirmed
+✓ Doctor confirmed
+⚠ Police officer unconfirmed
+
+Documents
+✓ Trial bundle
+✓ Originals
+✓ Medical reports
+
+Issues
+Liability
+Quantum
+
+Opposing Counsel
+Current settlement offer
+
+Advocate Notes
+
+[Mark Ready for Hearing]
+```
+
+---
+
+# 12. Court outcome workflow
+
+This part already exists conceptually and is one of the better implemented flows. Calendar events can capture the court result and next date. fileciteturn21file0L2-L2
+
+But expand it to:
+
+```text id="effcle"
+Attendance
+Outcome
+Orders
+Costs
+Next Date
+Next Event Type
+Directions
+Deadlines Created
+Tasks Created
+Documents Required
+Expense
+Client Update Required
+```
+
+One save should propagate everything.
+
+---
+
+# 13. Judgment / award workspace
+
+Need structured judgment data:
+
+```text id="aldf7t"
+Liability %
+General Damages
+Special Damages
+Future Medical
+Costs
+Interest
+Total Award
+Judgment Date
+Payment Deadline
+Appeal Deadline
+Appeal Recommended?
+```
+
+Then automatically trigger recovery.
+
+---
+
+# 14. Recovery and execution
+
+This deserves its own stage-specific screen.
+
+```text id="5m5e7y"
+Decree
+Certificate of Costs
+Bill of Costs
+Taxation
+Insurer Demand
+Payment Promise
+Execution
+Garnishee
+Auctioneer
+Payment Received
+```
+
+---
+
+# 15. Settlement and client distribution
+
+Major missing workflow.
+
+```text id="hn6mro"
+Settlement Amount
+↓
+Funds Received
+↓
+Bank / Client Account
+↓
+Outstanding Disbursements
+↓
+Professional Fees
+↓
+Other Deductions
+↓
+Net Client Amount
+↓
+Settlement Statement
+↓
+Client Approval
+↓
+Payment
+↓
+Discharge
+```
+
+The system should produce a **Client Settlement Statement**.
+
+---
+
+# 16. Closure
+
+Closure should not simply mean changing `Matter.status`.
+
+### Closure Wizard
+
+```text id="gqxt6t"
+✓ Judgment / settlement complete
+✓ Client funds reconciled
+✓ Outstanding expenses resolved
+✓ Final payment made
+✓ Client informed
+✓ All documents filed
+✓ Physical file location captured
+✓ Closing note completed
+✓ Supervisor approval
+```
+
+Then archive.
+
+---
+
+# The Calendar needs a major UI upgrade
+
+The current `CalendarWorkspace` is actually an **event list**, not really a calendar. fileciteturn21file0L2-L2
+
+We need:
+
+```text id="kj05ze"
+MONTH | WEEK | DAY | AGENDA
+```
+
+With:
+
+- drag-and-drop
+- court event coloring
+- deadline coloring
+- staff calendar
+- branch calendar
+- filters
+- assigned user
+- matter reference
+- documents
+- recurrence
+- reminders
+- Google sync badge
+- scheduling conflicts
+- meeting attendee availability
+
+And court events need special behavior so accidentally dragging a hearing doesn't quietly change an official court date.
+
+---
+
+# Task Manager also needs more depth
+
+Current Tasks is a good starting list. fileciteturn20file0L2-L2
+
+Add:
+
+**List**
+
+**Board**
+
+**Calendar**
+
+**My Tasks**
+
+**Team**
+
+**Court Clerk**
+
+**Waiting External**
+
+**Review Queue**
+
+**Overdue**
+
+Task detail drawer should contain:
+
+```text id="g6pfdd"
+Title
+Description
+Matter
+Stage
+Assignee
+Reviewer
+Priority
+Internal Due
+Official Deadline
+Checklist
+Dependencies
+Comments
+Attachments
+Activity
+Time Entries
+```
+
+The existing `blocked`, `waiting_external` and `waiting_review` domain states should actually appear in the interface.
+
+---
+
+# Documents needs redesign from card grid to legal file manager
+
+The current global Documents workspace is mostly a card grid. fileciteturn22file0L2-L2
+
+For a firm with hundreds or thousands of documents, I would switch desktop to:
+
+```text id="vnnqqr"
+┌─────────────┬──────────────────────────┬─────────────────────┐
+│ Categories  │ Documents                │ Preview             │
+│             │                          │                     │
+│ Pleadings   │ Plaint v5       FILED    │ PDF                 │
+│ Medical     │ Medical Report  REVIEW   │                     │
+│ Evidence    │ Police Abstract FINAL    │                     │
+│ Court       │ Judgment        FILED    │                     │
+└─────────────┴──────────────────────────┴─────────────────────┘
+```
+
+With:
+
+- upload
+- drag/drop
+- version history
+- status
+- linked task
+- linked event
+- uploader
+- date
+- category
+- review state
+
+The current actual preview is a hard-coded simulated pleading and needs replacing with PDF.js/image rendering. fileciteturn32file0L2-L2
+
+---
+
+# Add an Approvals Inbox
+
+This is a major missing workspace.
+
+Partners should have:
+
+## **Approvals**
+
+```text id="xz4nm0"
+Documents          6
+Expenses           3
+Matter Openings    2
+Stage Transitions  4
+Settlements        1
+Closures           2
+```
+
+Example:
+
+```text id="s4nj4g"
+SETTLEMENT APPROVAL
+
+KKC/PI/2026/00427
+Jane Wanjiku
+
+Insurer offer:
+KES 650,000
+
+Advocate recommendation:
+ACCEPT
+
+Client instructed:
+YES
+
+[Approve] [Reject] [Comment]
+```
+
+This gives senior partners one queue rather than making them hunt across modules.
+
+---
+
+# Internal operations are still substantially missing
+
+This is important because your original brief was not only legal case management.
+
+I would add an **Operations** area.
+
+### Internal Projects
+
+```text id="v4mpbr"
+Projects
+Tasks
+Milestones
+Teams
+Documents
+Budgets
+Meetings
+```
+
+Examples:
+
+- office renovations
+- policy reviews
+- recruitment
+- marketing
+- IT upgrades
+- annual compliance
+- procurement
+
+### Office expenses
+
+Separate from matter disbursements.
+
+### Procurement
+
+```text id="6sgky1"
+Request
+Approval
+Vendor
+Purchase
+Delivery
+Invoice
+Payment
+```
+
+### Assets
+
+```text id="tjm4ro"
+Laptop
+Phone
+Printer
+Furniture
+Software licence
+Assigned user
+Branch
+Condition
+```
+
+### Staff administration
+
+Eventually:
+
+- leave
+- contracts
+- training
+- practising certificates
+- performance
+- attendance
+
+Not all of HR needs to be MVP, but the architecture should accommodate it.
+
+---
+
+# Meetings deserve more than a Calendar event
+
+Given the meeting requirements in your handwritten notes, add a **Meeting Workspace**.
+
+```text id="cyo74i"
+Meeting
+Date
+Location / Google Meet
+Organizer
+Attendees
+Matter / Project
+
+Agenda
+
+1. Review pending PI files
+2. Court diary
+3. Finance requests
+
+Attachments
+
+Minutes
+
+Decisions
+
+Action Items
+```
+
+Saving meeting action items should create tasks.
+
+This gives:
+
+```text id="r7tgid"
+Meeting
+→ Decision
+→ Task
+→ Assignee
+→ Deadline
+```
+
+instead of minutes dying quietly in a notebook.
+
+---
+
+# Third-party directory is also missing
+
+Right now external people live as Matter Parties.
+
+Create a reusable **Contacts / Organizations directory**:
+
+```text id="46xy07"
+Insurers
+Hospitals
+Doctors
+Police Stations
+Process Servers
+Opposing Law Firms
+Advocates
+Experts
+Courts
+Vendors
+Employers
+```
+
+Then Matters reference existing entities.
+
+This prevents typing:
+
+> CIC Insurance
+
+347 slightly different ways across files.
+
+---
+
+# The client portal is currently overbuilt relative to internal operations
+
+`ClientPortalView.tsx` is almost 40 KB already. fileciteturn33file0L2-L2
+
+I would temporarily freeze it.
+
+Same with the almost 60 KB Integrations UI. fileciteturn27file0L2-L2
+
+Those are impressive visually, but we currently lack much more fundamental things such as:
+
+**real authentication → real backend → real matter persistence → real documents → court clerk workflow → service → settlement → recovery.**
+
+That is a priority inversion.
+
+Keep those components, but park them.
+
+---
+
+# Recommended final primary navigation
+
+I would change the app hierarchy slightly.
+
+### Main
+
+| Navigation | Purpose |
+|---|---|
+| **Home** | Personal operational dashboard |
+| **My Work** | Tasks, approvals, reviews, waiting items |
+| **Matters** | All legal matters |
+| **Clients & Intake** | CRM + prospective matters |
+| **Court Operations** | Filing, service, court appearances |
+| **Calendar** | Firm diary |
+| **Documents** | Global document vault |
+| **Communications** | Internal channels |
+| **Finance** | Matter + firm finance |
+| **Operations** | Internal projects and administration |
+| **Reports** | Management intelligence |
+| **Admin** | Users, workflows, configuration |
+
+Then hide **Integrations** inside Admin.
+
+Client Portal should ultimately be a separate route/application surface, not an ordinary internal navigation tab.
+
+---
+
+# Screens I would add
+
+The eventual screen inventory should look approximately like this:
+
+| Domain | Screens |
+|---|---|
+| Authentication | Login, Forgot Password, Reset Password |
+| Home | Personal Dashboard, Management Dashboard |
+| My Work | Tasks, Approvals, Reviews, Waiting, Notifications |
+| Intake | Intake List, New Intake, Intake Detail, Conflict Check |
+| Clients | Client List, Client Detail, Edit/KYC |
+| Matters | List, Workflow Board, Create Wizard, Matter Workspace |
+| Workflow | Stage Detail, Handoff, Stage Approval, Workflow History |
+| Evidence | Incident, Vehicles, Witnesses, Evidence |
+| Medical | Medical Dashboard, Providers, Reports, Appointments |
+| Liability | Liability Assessment, Quantum |
+| Negotiation | Insurer Claim, Offers, Settlement Authority |
+| Pleadings | Pleading Bundle, Review Queue |
+| Court | Court Operations Dashboard |
+| Filing | Filing Queue, Filing Detail |
+| Service | Service Queue, Service Detail |
+| Calendar | Month, Week, Day, Agenda |
+| Hearing | Hearing Preparation, Hearing Outcome |
+| Judgment | Judgment / Award |
+| Recovery | Decree, Costs, Recovery, Execution |
+| Settlement | Settlement, Client Distribution |
+| Documents | Vault, Preview, Upload, Review Queue, Templates |
+| Tasks | List, Board, Calendar, Task Detail |
+| Communications | Channels, Matter Thread |
+| Meetings | Meeting Detail, Minutes, Actions |
+| Finance | Dashboard, Expenses, Petty Cash, Accounts, Receipts, Reconciliation |
+| Operations | Projects, Procurement, Assets |
+| Contacts | Third-Party Directory |
+| Reports | Matters, Staff, Court, Finance, Branches |
+| Admin | Users, Roles, Permissions, Branches, Workflow Builder, Categories |
+| Integrations | Provider Connections, Sync Logs |
+| Imports | Excel/CSV Migration Center |
+| Offline | Sync Center |
+
+That gives us the **full grid** the product originally called for.
+
+---
+
+# Current UI direction
+
+The slate/amber visual language is coherent, but I would evolve it.
+
+The code uses a lot of:
+
+```text id="ytxd5m"
+text-[10px]
+text-[11px]
+text-xs
+```
+
+That will become tiring in an office system people stare at for eight hours.
+
+I would make:
+
+**14–16px** primary interface text  
+**13–14px** table text  
+**12px** minimum metadata text
+
+and offer both:
+
+**Light Mode** for normal office use  
+**Dark Mode** for preference/evening work
+
+The dark prototype is visually handsome, but lawyers reading dense file data all day may find a bright document-centric interface easier.
+
+---
+
+# Mobile
+
+The current responsiveness is decent at component level, but I would change mobile navigation.
+
+Current shell primarily turns the sidebar into a mobile menu. fileciteturn28file0L2-L2
+
+For court/field use, I want:
+
+```text id="u8ptci"
+┌──────────────────────────────┐
+│                              │
+│         Current Screen       │
+│                              │
+├──────────────────────────────┤
+│ Home Matters Tasks Calendar ⋯│
+└──────────────────────────────┘
+```
+
+And mobile quick actions:
+
+```text id="jwb0p0"
++ Court Outcome
++ Case Note
++ Task
++ Receipt Photo
++ Document
++ Expense
+```
+
+That could become one of the strongest parts of the system.
+
+---
+
+# Codebase refactor I recommend now
+
+Do **not** rewrite the UI from zero.
+
+Move the existing prototype into the new monorepo.
+
+```text id="qq8r7b"
+KKA/
+
+apps/
+  web/
+  api/
+  worker/
+
+packages/
+  contracts/
+  domain/
+  ui/
+  validation/
+  config/
+
+prisma/
+  schema.prisma
+  migrations/
+  seed.ts
+
+infra/
+  docker-compose.production.yml
+  Caddyfile
+  backups/
+
+docs/
+```
+
+Then progressively replace:
+
+```text id="7556zl"
+AppContext + localStorage
+```
+
+with:
+
+```text id="h2r9n8"
+TanStack Query
+      ↓
+NestJS API
+      ↓
+PostgreSQL
+```
+
+while keeping a small context/store only for UI state.
+
+---
+
+# I would break up AppContext aggressively
+
+Currently it handles:
+
+- navigation
+- current user
+- branches
+- clients
+- intakes
+- matters
+- tasks
+- deadlines
+- calendar
+- documents
+- channels
+- messages
+- expenses
+- accounts
+- payments
+- notifications
+- audit
+- time
+- integrations
+- offline
+- workflow operations
+
+in one file. fileciteturn8file0L2-L2
+
+That's a future bug greenhouse 🌱.
+
+Instead:
+
+```text id="wqvpm3"
+features/matters/
+features/clients/
+features/intake/
+features/workflow/
+features/tasks/
+features/calendar/
+features/documents/
+features/comms/
+features/finance/
+```
+
+Each feature gets:
+
+```text id="2ond92"
+api.ts
+queries.ts
+mutations.ts
+schemas.ts
+components/
+routes/
+```
+
+---
+
+# The immediate build order I recommend
+
+1. **Freeze the current prototype as `prototype-v1`.**
+2. **Create the VPS monorepo structure around it.**
+3. **Move current frontend into `apps/web`.**
+4. **Install TanStack Router and give every screen a real URL.**
+5. **Build NestJS API + PostgreSQL + Prisma.**
+6. **Implement real login/users/branches/RBAC.**
+7. **Make Clients + Intake the first real vertical slice.**
+8. **Make Matters + reference generation real.**
+9. **Implement workflow instances/checklists/handoffs.**
+10. **Implement Tasks + Deadlines.**
+11. **Implement real Calendar.**
+12. **Implement real private file uploads/versioning.**
+13. **Implement Court Operations / Filing / Service.**
+14. **Implement Medical + Evidence.**
+15. **Implement Finance + petty cash/requisitions.**
+16. **Implement Communications + Socket.IO.**
+17. **Implement real PWA/offline queue.**
+18. **Only then activate Google/WhatsApp integrations.**
+19. **Then settlement/recovery/closure depth.**
+20. **Then client portal.**
+
+The repo's biggest strength right now is that **the product idea is already visible**. Its biggest danger is that the prototype is convincing enough to tempt us into treating simulated functionality as architecture.
+
+I would now stop expanding the façade and start pouring concrete behind it. The next coding cycle should focus overwhelmingly on **backend architecture + workflow engine + Court Operations + stage-specific PI screens**, because those are the pieces that turn KKA from a very good legal dashboard prototype into the actual operating system we originally envisioned.

@@ -1,0 +1,58 @@
+{
+  "project": "Kariuki Kagunda & Co. Advocates OS",
+  "architecture": "modular_monolith_multi_process",
+  "primary_domain": "matter",
+  "mvp_priority": "internal_operations",
+  "branches": 2,
+  "default_currency": "KES",
+  "timezone": "Africa/Nairobi",
+  "recommended_stack": {
+    "frontend": "React 19 + Vite 8 + TypeScript + TanStack",
+    "backend": "Node.js 24 LTS + NestJS + Fastify",
+    "orm": "Prisma ORM 7.x",
+    "database": "PostgreSQL 18",
+    "queue_cache_sessions": "Redis 8.2 Extended Support + BullMQ",
+    "realtime": "Socket.IO",
+    "storage": "Private VPS volume through storage adapter; S3 driver ready",
+    "reverse_proxy": "Caddy 2",
+    "containers": "Docker + Docker Compose",
+    "offline": "PWA + Workbox + IndexedDB/Dexie",
+    "testing": "unit + integration + Playwright E2E"
+  },
+  "deployment": "self_hosted_vps",
+  "product_target": "full_working_enterprise_product",
+  "full_product_expansion_date": "2026-09-06",
+  "repository_audit_baseline": {
+    "repository": "davemusau00/KKA",
+    "branch": "main",
+    "commit": "932a49192e460f1d9ef7dc7dce4226cd2ef85f08"
+  },
+  "configuration_architecture": {
+    "first_class": true,
+    "scope_inheritance": true,
+    "versioned": true,
+    "secrets_server_side": true,
+    "high_impact_approval_supported": true
+  },
+  "full_product_docs": [
+    "docs/19_FULL_PRODUCT_VISION_AND_CAPABILITY_MAP.md",
+    "docs/20_ADMIN_SETTINGS_CONFIGURATION_ARCHITECTURE.md",
+    "docs/21_FIRM_MARKS_SIGNATURES_STAMPS_AND_EXECUTION_BLOCKS.md",
+    "docs/22_CURRENT_REPOSITORY_AUDIT_AND_GAP_REGISTER.md",
+    "docs/23_FULL_PRODUCT_DOMAIN_AND_MODULE_EXPANSION.md",
+    "docs/24_EMAIL_COMMUNICATIONS_AND_DELIVERY_CONFIGURATION.md",
+    "docs/25_WORKFLOW_AUTOMATION_CUSTOM_FIELDS_FORMS.md",
+    "docs/26_KNOWLEDGE_MEETINGS_PRECEDENTS_AND_COLLABORATION.md",
+    "docs/27_HR_PROCUREMENT_ASSETS_AND_INTERNAL_OPERATIONS.md",
+    "docs/28_CLIENT_PORTAL_EXTERNAL_COLLABORATION.md",
+    "docs/29_REPORTING_BI_DATA_GOVERNANCE.md",
+    "docs/30_EXTENSIBILITY_PLATFORM_ADMIN_AND_DEVELOPER_TOOLING.md",
+    "docs/31_FULL_PRODUCT_DELIVERY_AND_MIGRATION_PLAN.md",
+    "docs/32_RESEARCH_GROUNDING_AND_SOURCE_REGISTER.md",
+    "docs/33_SETTINGS_SCOPE_PRECEDENCE_MATRIX.md",
+    "docs/34_FULL_PRODUCT_ACCEPTANCE_MATRIX.md",
+    "docs/35_CODEBASE_REFACTOR_TARGET_MAP.md",
+    "docs/36_UI_SCREEN_INVENTORY_FULL_PRODUCT.md",
+    "docs/37_CONFIGURATION_CATALOG_FULL_PRODUCT.md"
+  ]
+}
