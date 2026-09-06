@@ -23,7 +23,12 @@ export class AuthService {
 
   async login(input: LoginInput) {
     const user = await this.prisma.client.user.findUnique({
-      where: { email: input.email.toLowerCase() }
+      where: { email: input.email.toLowerCase() },
+      include: {
+        roles: {
+          include: { role: { include: { permissions: { include: { permission: true } } } } }
+        }
+      }
     });
     if (!user || !user.passwordHash || user.status !== "ACTIVE") {
       throw new UnauthorizedException("Invalid email or password");
@@ -58,7 +63,9 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         firmId: user.firmId,
-        homeBranchId: user.homeBranchId
+        homeBranchId: user.homeBranchId,
+        roleKeys: user.roles.map((ur) => ur.role.key),
+        permissions: Array.from(new Set(user.roles.flatMap((ur) => ur.role.permissions.map((rp) => rp.permission.key))))
       }
     };
   }

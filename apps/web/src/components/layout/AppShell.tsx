@@ -84,6 +84,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   if (!runtimeConfig.enableDemoMode && !isAuthenticatedLive) {
     return (
@@ -97,8 +99,6 @@ export const AppShell: React.FC<Props> = ({ children }) => {
       </div>
     );
   }
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   // Compute live badges
   const unreadNotifCount = notifications.filter((n) => !n.isRead).length;

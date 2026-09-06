@@ -29,8 +29,8 @@ The repository has transitioned from an isolated frontend prototype into a **uni
   - `@kka/database` (`packages/database`): Prisma 7.10.0 database client and repositories
 - **Validation Gates**:
   - `pnpm prisma:validate`: Verified clean (`prisma/schema.prisma` is valid).
-  - `pnpm typecheck`: Monorepo-wide zero errors across all 5 workspace projects.
-  - Test acceptance: use the non-empty workflow suites and results in `docs/DOCUMENT_WORKFLOWS.md`; an empty runner is not acceptance evidence.
+  - `pnpm typecheck`: Monorepo-wide zero errors across all 6 checked workspace projects.
+  - Test acceptance: 11 API/worker workflow tests, 9 Playwright browser tests and the non-empty document-engine suite pass against the local production-shaped stack. An empty runner is not acceptance evidence.
   - `pnpm -r build`: All packages compile production artifacts cleanly (Vite bundle in `apps/web/dist`, compiled JS/d.ts in `packages/*/dist` and `apps/*/dist`).
 - **Engine Compatibility**: Node.js `>=24 <25 || >=26 <27` with `pnpm@10.15.1`. Tested on Node `v26.5.0`.
 - **Docker Readiness**: Updated Dockerfiles for `@kka/api` and `@kka/worker` using multi-stage builds from `node:26-bookworm-slim AS deps`, explicit `pnpm@10.15.1`, and no deprecated corepack.
@@ -39,7 +39,7 @@ The repository has transitioned from an isolated frontend prototype into a **uni
 
 ## 2. Frontend-to-Backend Progressive Integration Status
 
-The integration adheres to the **Progressive Hybrid Bridge pattern**: domain slices inside `AppContext.tsx` dispatch typed requests to the live backend API via `apps/web/src/lib/api/client.ts` with graceful fallback to local storage and seed models when offline.
+The integration is in transition: existing domain slices inside `AppContext.tsx` dispatch typed requests to the live backend API via `apps/web/src/lib/api/client.ts`, while the remaining legacy collections are being moved to domain-specific server queries. Production mode disables business local-storage persistence and seed/reset controls; demo fixtures are development-only.
 
 ```text
 [Tier 0: Transport & Proxy] ──► [Tier 1: Lookups & Catalogs] ──► [Tier 2: Auth, Search & Config] ──► [Tier 3: Clients, Tasks & Intake]
@@ -52,7 +52,7 @@ The integration adheres to the **Progressive Hybrid Bridge pattern**: domain sli
 ### Detailed Tier Progress
 
 - [x] **Tier 0: Transport, Proxy & Client Foundation**
-  - Configured Vite dev proxy in `apps/web/vite.config.ts` forwarding `/api/v1` and `/socket.io` to `http://127.0.0.1:3000`.
+  - Configured Vite dev proxy in `apps/web/vite.config.ts` forwarding `/api/v1` and `/socket.io` to the local API (`3015`); production uses `https://api.kariukikagunda.com/api/v1`.
   - Built typed HTTP client with credentials and error normalization in `apps/web/src/lib/api/client.ts`.
   - Embedded live `ConnectionStatusBadge.tsx` in `AppShell.tsx` pinging `/health/live`.
 
@@ -64,7 +64,7 @@ The integration adheres to the **Progressive Hybrid Bridge pattern**: domain sli
   - Realtime notifications wired to `notificationsApi.list` (`/notifications`).
 
 - [x] **Tier 2: Basic CRUD, Authentication & Admin Configuration**
-  - Real credentials login modal (`LoginModal.tsx`) supporting password auth and dev personas.
+  - Real credentials login modal (`LoginModal.tsx`) with the development persona panel gated behind `VITE_ENABLE_DEMO_MODE`; production uses server-confirmed sessions and RBAC.
   - Automatic session hydration on boot via `authApi.me()`, `loginWithBackend`, and `logoutWithBackend`.
   - Global command search (`GlobalSearchModal.tsx`) debounced against `searchApi.query` (`/search`).
   - Settings studio sync for firm profile and numbering rules via `settingsApi.set` (`/settings`).
@@ -135,7 +135,7 @@ The integration adheres to the **Progressive Hybrid Bridge pattern**: domain sli
 - [ ] Calendar API integration (Frontend prototype active; API integration next)
 - [ ] Court operations API integration (Frontend prototype active; API integration next)
 - [ ] Approvals workflow API integration (Frontend prototype active; API integration next)
-- [ ] Document storage & versioning API integration
+- [x] Document storage, versioning, branding, controlled marks and queued template generation API integration (see `DOCUMENT_WORKFLOWS.md`)
 - [ ] Realtime Socket.IO notification gateway
 - [ ] Finance ledger & trust accounting API integration
 - [ ] Full offline PWA IndexedDB outbox replay

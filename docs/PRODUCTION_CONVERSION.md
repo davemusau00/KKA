@@ -14,10 +14,12 @@ Updated 2026-09-07. This is the working delivery register for converting the Rea
 
 ## Current conversion status
 
+The first foundation increment is implemented and verified locally against a production-shaped split-domain configuration. `apps/web/src/config/runtime.ts` centralizes API and web origins; the production shell requires a live authenticated session; demo persona/reset controls and business local-storage persistence are development-only; login returns server RBAC context; mutating API requests support CSRF when enabled; Caddy has separate web/API host blocks; and the bootstrap seed replaces stale roles on its controlled administrator account. This is a transition boundary while the remaining domain collections leave `AppContext.tsx`, not a claim that all phases below are complete.
+
 | Area | Current state | Production action | Acceptance proof |
 |---|---|---|---|
 | Branding and document execution | Persistent server-backed workflow | Keep as regression slice; verify on the two domains | `docs/DOCUMENT_WORKFLOWS.md`, API and browser suites |
-| Authentication and authorization | Session/RBAC backend exists; web shell still being separated from prototype context | Complete account lifecycle, MFA/CSRF, route guards and server policy coverage | Cross-role API/E2E matrix |
+| Authentication and authorization | Session/RBAC backend, split-domain credentials, production sign-in gate and configurable CSRF are wired | Complete account lifecycle, MFA, route guards and server policy coverage | Cross-role API/E2E matrix |
 | Organization and settings | Backend modules exist; local context remains broad | Move branches, users, settings and permissions to server queries | Reload, second-user and audit tests |
 | Clients, intake and matters | Partial API hydration with local seed fallback | Complete conflict/KYC/engagement, matter spine, assignments and workflow versions | Intake-to-matter vertical slice |
 | Tasks, calendar and court | Modules and prototype workspaces exist | Connect all mutations, deadline propagation, hearings, filings and service evidence | Court-event vertical slice |
@@ -76,4 +78,3 @@ Provision staging and production, configure DNS/TLS for both domains, run import
 - Blank and upgrade migrations pass; builds, typechecks, unit tests, API tests and browser tests pass.
 - Core flows work at 360, 768 and 1440 pixels with keyboard navigation and usable failure states.
 - Backups are encrypted, off-site and periodically restored. Target recovery objectives are at most one hour of data loss and restoration within four hours, demonstrated on the selected VPS.
-

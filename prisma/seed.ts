@@ -151,6 +151,10 @@ async function main() {
       update: { firmId: firm.id, homeBranchId: nairobi.id, status: "ACTIVE", passwordHash }
     });
     const roleId = roleByKey.get("technical_admin")!;
+    // The seed account is the controlled bootstrap administrator. Remove any
+    // stale role assignments left by earlier prototype seeds before assigning
+    // the production bootstrap role, so authorization is deterministic.
+    await prisma.userRole.deleteMany({ where: { userId: user.id } });
     await prisma.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId } }, create: { userId: user.id, roleId }, update: {} });
     await prisma.userBranch.upsert({ where: { userId_branchId: { userId: user.id, branchId: nairobi.id } }, create: { userId: user.id, branchId: nairobi.id }, update: {} });
     console.log(`Seeded admin ${adminEmail}`);
