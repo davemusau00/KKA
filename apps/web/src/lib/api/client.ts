@@ -3,6 +3,7 @@ import { runtimeConfig } from '../../config/runtime';
 
 export class ApiClient {
   private baseUrl: string;
+  private csrfToken: string | undefined;
 
   constructor(baseUrl = runtimeConfig.apiBaseUrl) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
@@ -10,6 +11,16 @@ export class ApiClient {
 
   public setBaseUrl(url: string) {
     this.baseUrl = url.replace(/\/+$/, '');
+  }
+
+  private async ensureCsrf() {
+    if (this.csrfToken) return this.csrfToken;
+    const response = await fetch(this.buildUrl('/auth/csrf'), { credentials: 'include', headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new ApiError(response.status, 'Could not establish a secure session');
+    const body = await response.json() as { token?: string };
+    if (!body.token) throw new ApiError(500, 'Secure session token was not returned');
+    this.csrfToken = body.token;
+    return body.token;
   }
 
   private buildUrl(path: string, params?: RequestOptions['params']): string {
@@ -78,6 +89,8 @@ export class ApiClient {
       'X-Request-Id': `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       ...(headers as Record<string, string>),
     };
+
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) reqHeaders['X-CSRF-Token'] = await this.ensureCsrf();
 
     if (elevationToken) {
       reqHeaders['X-Elevation-Token'] = elevationToken;

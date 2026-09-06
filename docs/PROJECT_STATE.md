@@ -10,6 +10,10 @@
 
 Managed branding, mark/signature management, controlled PDF application, and queued structured/DOCX generation now have persistent workflows. See [the implementation and verification record](DOCUMENT_WORKFLOWS.md) for exact coverage, commands, evidence and deployment limits. This scoped record supersedes older broad validation claims below; the earlier frontend baseline actually had 13 TypeScript errors, which were repaired. The web package now has an explicit typecheck script.
 
+The product is now being converted from prototype to production under the [production conversion register](PRODUCTION_CONVERSION.md). The confirmed domains are `https://os.kariukikagunda.com` and `https://api.kariukikagunda.com/api/v1`. The broad OS inventory below remains a roadmap until each vertical slice has server persistence, authorization, audit, tests and documented evidence.
+
+The production boundary has started: demo persona/reset controls are gated behind `VITE_ENABLE_DEMO_MODE`, unauthenticated production renders only the sign-in surface, browser seed records are cleared in production, business local-storage persistence is disabled outside demo mode, and API/file URLs use the explicit API host. Caddy now serves the web and API domains separately. This is foundation work; remaining domain mutations still require migration from the legacy context.
+
 The following sections retain the earlier OS integration inventory and are not evidence that the wider OS is complete.
 
 ## 1. Architectural Reality & Current Baseline

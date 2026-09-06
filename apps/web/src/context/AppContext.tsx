@@ -788,6 +788,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Local storage auto-sync
   useEffect(() => {
+    if (!runtimeConfig.enableDemoMode) return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_role_permissions`, JSON.stringify(rolePermissionsMap));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_practice_workflows`, JSON.stringify(practiceWorkflows));

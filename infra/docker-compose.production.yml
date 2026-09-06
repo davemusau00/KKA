@@ -53,6 +53,7 @@ services:
       SESSION_COOKIE_SECURE: "true"
       WEB_ORIGIN: https://${WEB_DOMAIN:-os.kariukikagunda.com}
       API_PUBLIC_URL: https://${API_DOMAIN:-api.kariukikagunda.com}
+      CSRF_ENABLED: "true"
       PUBLIC_BRANDING_FIRM_ID: ${PUBLIC_BRANDING_FIRM_ID}
     depends_on:
       postgres: { condition: service_healthy }

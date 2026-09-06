@@ -1,8 +1,12 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 test.beforeEach(async({page})=>{
-  const r=await page.request.post('http://localhost:3015/api/v1/auth/login',{data:{email:process.env.SEED_ADMIN_EMAIL||'documents.admin@example.test',password:process.env.SEED_ADMIN_PASSWORD||'Kka-Documents-Test-2026!'}});expect(r.ok()).toBeTruthy();
   await page.goto('/');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.locator('input[type="email"]').fill(process.env.SEED_ADMIN_EMAIL||'documents.admin@example.test');
+  await page.locator('input[type="password"]').fill(process.env.SEED_ADMIN_PASSWORD||'Kka-Documents-Test-2026!');
+  await page.getByRole('button',{name:'Sign In with Session Cookie'}).click();
+  await expect(page.getByRole('button',{name:/Admin & Staff|Documents/}).first()).toBeVisible({timeout:15000});
 });
 test('managed logo upload, persistence, default restoration, and document placement UI',async({page})=>{
   await page.getByRole('button',{name:/Admin & Staff/}).first().click();

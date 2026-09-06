@@ -6,10 +6,25 @@ import { AuthService } from "./auth.service";
 import { CurrentUser, Public } from "../../platform/auth/decorators";
 import type { AuthenticatedRequest, RequestUser } from "../../platform/auth/auth.types";
 import { env } from "../../platform/env";
+import { randomBytes } from "node:crypto";
 
 @Controller("auth")
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
+
+  @Public()
+  @Get("csrf")
+  csrf(@Res({ passthrough: true }) reply: FastifyReply) {
+    const token = randomBytes(32).toString("base64url");
+    reply.setCookie(env().CSRF_COOKIE_NAME, token, {
+      httpOnly: false,
+      secure: env().SESSION_COOKIE_SECURE,
+      sameSite: env().SESSION_COOKIE_SAME_SITE,
+      path: "/",
+      maxAge: 3600
+    });
+    return { token };
+  }
 
   @Public()
   @Post("login")

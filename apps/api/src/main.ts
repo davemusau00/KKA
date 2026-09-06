@@ -10,6 +10,7 @@ import { AppModule } from "./app.module";
 import { env } from "./platform/env";
 import { assignRequestId } from "./platform/request-context/request-id.hook";
 import { ZodExceptionFilter } from "./platform/http/zod-exception.filter";
+import { ForbiddenException } from "@nestjs/common";
 
 async function bootstrap() {
   const cfg = env();
@@ -36,13 +37,24 @@ async function bootstrap() {
   });
 
   app.getHttpAdapter().getInstance().addHook('onRequest', async request => { assignRequestId(request); });
+  app.getHttpAdapter().getInstance().addHook('onRequest', async request => {
+    if (!cfg.CSRF_ENABLED || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
+    const pathname = request.url.split('?')[0];
+    if (pathname.endsWith('/auth/login') || pathname.endsWith('/auth/accept-invite') || pathname.endsWith('/auth/csrf')) return;
+    const cookie = request.cookies?.[cfg.CSRF_COOKIE_NAME];
+    const header = request.headers['x-csrf-token'];
+    if (!cookie || typeof header !== 'string' || cookie !== header) {
+      throw new ForbiddenException('CSRF validation failed');
+    }
+  });
   // Prisma file sizes are bigint; JSON transports them as decimal strings.
   app.getHttpAdapter().getInstance().addHook('preSerialization', async (_request: unknown, _reply: unknown, payload: unknown) =>
     JSON.parse(JSON.stringify(payload, (_key, value: unknown) => typeof value === 'bigint' ? value.toString() : value)) as unknown);
   app.enableCors({
     origin: cfg.WEB_ORIGIN.split(",").map((origin) => origin.trim()),
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Accept", "X-Request-Id", "X-Elevation-Token", "X-CSRF-Token"]
   });
   app.enableShutdownHooks();
   app.useGlobalFilters(new ZodExceptionFilter());

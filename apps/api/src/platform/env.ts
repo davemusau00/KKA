@@ -22,6 +22,8 @@ const EnvSchema = z.object({
   SESSION_COOKIE_SECURE: boolish.default(false),
   SESSION_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
   SESSION_COOKIE_DOMAIN: z.string().optional(),
+  CSRF_ENABLED: boolish.default(false),
+  CSRF_COOKIE_NAME: z.string().default("kka_csrf"),
   ARGON2_MEMORY_COST: z.coerce.number().int().positive().default(65536),
   ARGON2_TIME_COST: z.coerce.number().int().positive().default(3),
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
