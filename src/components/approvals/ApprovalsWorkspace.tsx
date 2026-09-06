@@ -584,6 +584,88 @@ export const ApprovalsWorkspace: React.FC = () => {
               })}
             </div>
           </div>
+        {/* ─── 5. STAGE 19 FILE CLOSURES ─── */}
+        {(activeTab === 'all' || activeTab === 'closures') && pendingClosures.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <Archive className="w-3.5 h-3.5 text-indigo-400" />
+                Stage 19 Final File Closures &amp; Archival ({pendingClosures.length})
+              </span>
+            </div>
+
+            <div className="grid gap-3">
+              {pendingClosures.map(({ matter, audit }) => (
+                <div
+                  key={matter.id}
+                  className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition space-y-3"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                        Final Archival Signoff
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400">
+                        {matter.internalReference}
+                      </span>
+                      <span className="text-slate-200 font-semibold">{matter.title}</span>
+                    </div>
+
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Opened {new Date(matter.openedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1 text-slate-300">
+                      <div>
+                        Archive Location: <strong className="text-indigo-300 font-mono">{audit?.physicalFileLocation || 'Kagunda Archive Repository - Shelf 3B'}</strong>
+                      </div>
+                      <div className="text-slate-400 text-[11px]">
+                        {audit?.closingNote || 'All decree funds disbursed; ready for 7-year statutory archive.'}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center sm:justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedMatterId(matter.id);
+                          setActiveWorkspace('matters');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Inspect File
+                      </button>
+                      <button
+                        onClick={() => {
+                          finalizeMatterClosureWizard(matter.id, audit || {
+                            matterId: matter.id,
+                            isJudgmentSettlementComplete: true,
+                            isClientFundsReconciled: true,
+                            isOutstandingExpensesResolved: true,
+                            isFinalPaymentMade: true,
+                            isClientInformedAndDischarged: true,
+                            areAllDocumentsFiled: true,
+                            physicalFileLocation: 'Kagunda Archive Repository - Shelf 3B (BOX-2026-NRB-042)',
+                            closingNote: 'Closed and certified by Partner in Central Approvals.',
+                            supervisorApproved: true,
+                            approvedByUserId: currentUser.id,
+                            approvedAt: new Date().toISOString(),
+                            archivedAt: new Date().toISOString(),
+                          });
+                        }}
+                        className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Authorize File Closure
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Empty state */}
