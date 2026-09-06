@@ -74,70 +74,103 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
 
         {/* Content Body: Left Preview, Right Version Log */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Main Simulated Document Canvas */}
-          <div className="flex-1 bg-slate-950/70 p-6 overflow-y-auto flex flex-col items-center">
-            <div className="w-full max-w-2xl bg-white text-slate-900 rounded-lg shadow-xl p-8 min-h-[500px] border border-slate-200 flex flex-col justify-between font-serif relative">
-              {/* Watermark / Stamp if filed */}
-              {currentVersion?.status === 'filed' && (
-                <div className="absolute top-6 right-6 border-2 border-red-600/80 rounded-md p-2 text-center text-red-700 font-sans rotate-6 bg-red-50/70">
-                  <div className="text-[10px] uppercase font-bold tracking-widest">Republic of Kenya</div>
-                  <div className="text-xs font-black">FILED & STAMPED</div>
-                  <div className="text-[9px] font-mono">{currentVersion.courtFilingRef || 'JUD/CTS/2026'}</div>
-                  <div className="text-[9px]">{new Date(currentVersion.createdAt).toLocaleDateString()}</div>
-                </div>
-              )}
-
-              <div>
-                <div className="text-center border-b pb-4 mb-6">
-                  <div className="text-xs font-sans uppercase font-bold text-slate-500 tracking-wider">
-                    In the Chief Magistrate&apos;s Court at Nairobi
+          {/* Main Document Canvas or Live Base64 Preview */}
+          <div className="flex-1 bg-slate-950/70 p-4 sm:p-6 overflow-y-auto flex flex-col items-center justify-start">
+            {currentVersion?.fileDataUrl ? (
+              <div className="w-full max-w-3xl flex-1 flex flex-col items-center justify-center p-2">
+                {currentVersion.fileDataUrl.startsWith('data:image/') ? (
+                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-2xl max-h-full overflow-auto text-center">
+                    <img
+                      src={currentVersion.fileDataUrl}
+                      alt={document.title}
+                      className="max-h-[65vh] object-contain rounded-lg shadow mx-auto"
+                    />
+                    <div className="text-slate-400 text-xs mt-3 flex items-center justify-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{currentVersion.originalFilename}</span>
+                      <span>&bull;</span>
+                      <span>{((currentVersion.fileSizeBytes || 0) / 1024).toFixed(1)} KB</span>
+                    </div>
                   </div>
-                  <div className="text-xs font-sans text-slate-600 font-medium">Civil Division</div>
-                  <h3 className="text-lg font-bold text-slate-900 mt-2 uppercase tracking-wide">
-                    {document.title}
-                  </h3>
-                  <div className="text-xs font-mono text-slate-500 mt-1">
-                    Matter Ref: KKC/PI/2026/00427 | Ver: {currentVersion?.versionNumber}.0
+                ) : currentVersion.fileDataUrl.startsWith('data:application/pdf') ? (
+                  <div className="w-full h-full min-h-[550px] bg-slate-900 rounded-xl border border-slate-800 p-2 shadow-2xl flex flex-col">
+                    <iframe
+                      src={currentVersion.fileDataUrl}
+                      className="w-full flex-1 rounded-lg border-0 min-h-[500px]"
+                      title={document.title}
+                    />
                   </div>
-                </div>
-
-                <div className="text-xs leading-relaxed text-slate-800 space-y-3 font-sans">
-                  <p className="font-semibold">BETWEEN:</p>
-                  <p className="pl-4">JANE WANJIKU DEMO ................................................................. PLAINTIFF</p>
-                  <p className="text-center font-bold my-1">- VERSUS -</p>
-                  <p className="pl-4">SWIFT SHUTTLE SACCO LTD & ANOTHER .......................... DEFENDANTS</p>
-
-                  <div className="border-t border-slate-200 pt-3 space-y-2 text-slate-700">
-                    <p className="font-semibold text-slate-900">LEGAL STATEMENT / PARTICULARS:</p>
-                    <p>
-                      1. The Plaintiff is a female adult of sound mind residing in Nairobi County within the Republic of Kenya.
-                    </p>
-                    <p>
-                      2. At all material times, the 1st Defendant was the registered beneficial owner of motor vehicle registration number KBX 492X (Public Service Vehicle).
-                    </p>
-                    <p>
-                      3. On or about 10th July 2026, the Plaintiff was lawfully crossing the Thika Superhighway when the 1st Defendant&apos;s motor vehicle was so negligently, carelessly, and recklessly driven as to cause severe collision with the Plaintiff.
-                    </p>
-                    <p>
-                      4. By reason of the said collision, the Plaintiff sustained severe compound bodily injuries including right tibia/fibula fracture, severe facial contusions, and permanent traumatic incapacitation.
-                    </p>
+                ) : (
+                  <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-xl p-6 text-slate-200 font-mono text-xs overflow-auto max-h-[65vh]">
+                    <div className="text-slate-400 text-[10px] mb-2 font-bold uppercase">{currentVersion.originalFilename}</div>
+                    <pre className="whitespace-pre-wrap">{currentVersion.contentSnippet || 'Uploaded file content'}</pre>
                   </div>
-                </div>
+                )}
               </div>
+            ) : (
+              <div className="w-full max-w-2xl bg-white text-slate-900 rounded-lg shadow-xl p-8 min-h-[500px] border border-slate-200 flex flex-col justify-between font-serif relative">
+                {/* Watermark / Stamp if filed */}
+                {currentVersion?.status === 'filed' && (
+                  <div className="absolute top-6 right-6 border-2 border-red-600/80 rounded-md p-2 text-center text-red-700 font-sans rotate-6 bg-red-50/70">
+                    <div className="text-[10px] uppercase font-bold tracking-widest">Republic of Kenya</div>
+                    <div className="text-xs font-black">FILED &amp; STAMPED</div>
+                    <div className="text-[9px] font-mono">{currentVersion.courtFilingRef || 'JUD/CTS/2026'}</div>
+                    <div className="text-[9px]">{new Date(currentVersion.createdAt).toLocaleDateString()}</div>
+                  </div>
+                )}
 
-              {/* Bottom Sign-off */}
-              <div className="mt-8 pt-4 border-t border-slate-200 flex items-end justify-between font-sans text-xs">
                 <div>
-                  <div className="text-slate-500 text-[10px]">Drawn & Filed By:</div>
-                  <div className="font-semibold text-slate-900">Kariuki Kagunda & Co. Advocates</div>
-                  <div className="text-slate-600 text-[11px]">View Park Towers, 5th Floor, Nairobi</div>
+                  <div className="text-center border-b pb-4 mb-6">
+                    <div className="text-xs font-sans uppercase font-bold text-slate-500 tracking-wider">
+                      In the Chief Magistrate&apos;s Court at Nairobi
+                    </div>
+                    <div className="text-xs font-sans text-slate-600 font-medium">Civil Division</div>
+                    <h3 className="text-lg font-bold text-slate-900 mt-2 uppercase tracking-wide">
+                      {document.title}
+                    </h3>
+                    <div className="text-xs font-mono text-slate-500 mt-1">
+                      Matter Ref: KKC/PI/2026/00427 | Ver: {currentVersion?.versionNumber}.0
+                    </div>
+                  </div>
+
+                  <div className="text-xs leading-relaxed text-slate-800 space-y-3 font-sans">
+                    <p className="font-semibold">BETWEEN:</p>
+                    <p className="pl-4">JANE WANJIKU DEMO ................................................................. PLAINTIFF</p>
+                    <p className="text-center font-bold my-1">- VERSUS -</p>
+                    <p className="pl-4">SWIFT SHUTTLE SACCO LTD &amp; ANOTHER .......................... DEFENDANTS</p>
+
+                    <div className="border-t border-slate-200 pt-3 space-y-2 text-slate-700">
+                      <p className="font-semibold text-slate-900">LEGAL STATEMENT / PARTICULARS:</p>
+                      <p>
+                        1. The Plaintiff is a female adult of sound mind residing in Nairobi County within the Republic of Kenya.
+                      </p>
+                      <p>
+                        2. At all material times, the 1st Defendant was the registered beneficial owner of motor vehicle registration number KBX 492X (Public Service Vehicle).
+                      </p>
+                      <p>
+                        3. On or about 10th July 2026, the Plaintiff was lawfully crossing the Thika Superhighway when the 1st Defendant&apos;s motor vehicle was so negligently, carelessly, and recklessly driven as to cause severe collision with the Plaintiff.
+                      </p>
+                      <p>
+                        4. By reason of the said collision, the Plaintiff sustained severe compound bodily injuries including right tibia/fibula fracture, severe facial contusions, and permanent traumatic incapacitation.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono text-[10px] text-slate-400">Digital Seal Verified</div>
-                  <div className="text-slate-500 text-[10px]">{currentVersion?.checksum}</div>
+
+                {/* Bottom Sign-off */}
+                <div className="mt-8 pt-4 border-t border-slate-200 flex items-end justify-between font-sans text-xs">
+                  <div>
+                    <div className="text-slate-500 text-[10px]">Drawn &amp; Filed By:</div>
+                    <div className="font-semibold text-slate-900">Kariuki Kagunda &amp; Co. Advocates</div>
+                    <div className="text-slate-600 text-[11px]">View Park Towers, 5th Floor, Nairobi</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-[10px] text-slate-400">Digital Seal Verified</div>
+                    <div className="text-slate-500 text-[10px]">{currentVersion?.checksum}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Right Version Sidebar */}
