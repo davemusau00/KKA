@@ -106,7 +106,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     { id: 'clients', label: 'Clients & Intake', icon: Users, badge: newIntakeCount > 0 ? `${newIntakeCount} leads` : undefined, permission: 'module.clients' as const },
     { id: 'tasks', label: 'Tasks & Deadlines', icon: CheckSquare, badge: overdueTaskCount > 0 ? overdueTaskCount : undefined, badgeColor: 'bg-rose-600', permission: 'module.tasks' as const },
     { id: 'court', label: 'Court Operations', icon: Scale, badge: pendingCourtOutcomeCount > 0 ? `${pendingCourtOutcomeCount} due` : undefined, badgeColor: 'bg-amber-600', permission: 'module.calendar' as const },
-    { id: 'approvals', label: 'Approvals', icon: CheckCircle2, badge: totalApprovalsCount > 0 ? totalApprovalsCount : undefined, badgeColor: 'bg-purple-600', permission: 'finance.view' as const },
+    { id: 'approvals', label: 'Approvals', icon: CheckCircle2, badge: totalApprovalsCount > 0 ? totalApprovalsCount : undefined, badgeColor: 'bg-purple-600', permission: null },
     { id: 'calendar', label: 'Firm Calendar', icon: Calendar, permission: 'module.calendar' as const },
     { id: 'documents', label: 'Documents', icon: FileText, permission: 'module.documents' as const },
     { id: 'comms', label: 'Communications', icon: MessageSquare, permission: 'module.comms' as const },
