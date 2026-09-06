@@ -97,7 +97,7 @@ export const CalendarWorkspace: React.FC = () => {
 
   const handleNext = () => {
     const d = new Date(currentDate);
-    if (viewMode === 'month') d.setMonth(d.getMonth() - 1);
+    if (viewMode === 'month') d.setMonth(d.getMonth() + 1);
     else if (viewMode === 'week') d.setDate(d.getDate() + 7);
     else if (viewMode === 'day') d.setDate(d.getDate() + 1);
     setCurrentDate(d);
