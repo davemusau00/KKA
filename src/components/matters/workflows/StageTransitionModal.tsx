@@ -5,11 +5,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  FileCheck,
   Users,
-  Clock,
-  Layers,
   ShieldAlert,
+  CheckSquare,
+  FileUp,
+  Loader2,
+  Info,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { Matter, PracticeAreaWorkflow, WorkflowStageConfig } from '../../../types';
@@ -27,6 +28,8 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
     tasks,
     documents,
     advanceMatterStageExpanded,
+    completeTask,
+    createDocument,
     currentUser,
   } = useApp();
 
@@ -43,12 +46,14 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
   const [handoffNotes, setHandoffNotes] = useState<string>('');
   const [generateTasks, setGenerateTasks] = useState<boolean>(true);
   const [partnerOverride, setPartnerOverride] = useState<boolean>(false);
+  const [resolvingTaskId, setResolvingTaskId] = useState<string | null>(null);
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
 
   const targetStageConfig: WorkflowStageConfig | undefined = currentWf?.stages.find(
     (s) => s.id === targetStageId
   );
 
-  // Gate evaluation — runs on every render (pure function, no side effects)
+  // Gate evaluation — reactive (re-evaluates on tasks/documents change)
   const matterTasks = tasks.filter((t) => t.matterId === matter.id);
   const matterDocs = documents.filter((d) => d.matterId === matter.id);
 
@@ -75,6 +80,33 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
     }
   };
 
+  const handleResolveTask = async (taskId: string) => {
+    setResolvingTaskId(taskId);
+    await new Promise((r) => setTimeout(r, 300)); // brief feedback pulse
+    completeTask(taskId, true);
+    setResolvingTaskId(null);
+  };
+
+  const handleUploadDoc = async (docType: string) => {
+    setUploadingDocType(docType);
+    await new Promise((r) => setTimeout(r, 500));
+    // Create a placeholder document record to satisfy the gate requirement
+    createDocument({
+      matterId: matter.id,
+      title: docType,
+      category: 'Correspondence',
+      documentType: docType,
+      confidentialityLevel: 'standard',
+      ownerUserId: currentUser.id,
+    });
+    setUploadingDocType(null);
+  };
+
+  const blockedByTasks = gate.blockingTasks.length > 0;
+  const blockedByDocs = gate.missingDocuments.length > 0;
+  const blockedByApprovals = gate.missingApprovals.length > 0;
+  const isBlocked = !gate.canAdvance;
+
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl text-xs">
@@ -90,7 +122,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 font-mono text-sm"
+            className="text-slate-400 hover:text-slate-200 font-mono text-sm w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition"
           >
             ✕
           </button>
@@ -135,45 +167,104 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
             <h3 className="font-mono uppercase font-bold text-slate-300 text-[11px] flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Stage Gate &amp; Prerequisite Enforcement</span>
+              {isBlocked && (
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 text-[10px] font-bold animate-pulse">
+                  BLOCKED
+                </span>
+              )}
+              {!isBlocked && (
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">
+                  CLEARED
+                </span>
+              )}
             </h3>
 
-            {/* Hard blockers — blocking tasks */}
-            {gate.blockingTasks.length > 0 && (
+            {/* Hard blockers — blocking tasks (INTERACTIVE) */}
+            {blockedByTasks && (
               <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/70 space-y-2">
-                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
+                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px] mb-1">
                   <XCircle className="w-3.5 h-3.5 shrink-0" />
                   {gate.blockingTasks.length} Incomplete Task{gate.blockingTasks.length > 1 ? 's' : ''} — Stage Blocked
+                  <span className="ml-auto text-rose-400/60 font-normal">Click to resolve →</span>
                 </div>
                 {gate.blockingTasks.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 text-rose-300/80 ml-5">
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-2 bg-rose-950/60 border border-rose-800/50 rounded-lg px-2.5 py-2 group"
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                    <span>{t.title}</span>
-                    <span className="ml-auto font-mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-rose-950 text-rose-400">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-rose-200 font-medium truncate">{t.title}</div>
+                      {t.description && (
+                        <div className="text-rose-400/70 text-[10px] truncate">{t.description}</div>
+                      )}
+                    </div>
+                    <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-rose-950 text-rose-400 shrink-0">
                       {t.status}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleResolveTask(t.id)}
+                      disabled={resolvingTaskId === t.id}
+                      title="Mark this task as complete"
+                      className="ml-1 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 text-[10px] font-bold transition shrink-0 disabled:opacity-60"
+                    >
+                      {resolvingTaskId === t.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <CheckSquare className="w-3 h-3" />
+                      )}
+                      {resolvingTaskId === t.id ? 'Resolving…' : 'Mark Done'}
+                    </button>
                   </div>
                 ))}
+                <div className="flex items-start gap-1.5 text-rose-400/70 text-[10px] mt-1 pl-1">
+                  <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                  <span>Marking a task done immediately re-evaluates this gate. Partner override available if you cannot resolve.</span>
+                </div>
               </div>
             )}
 
-            {/* Hard blockers — missing documents */}
-            {gate.missingDocuments.length > 0 && (
+            {/* Hard blockers — missing documents (INTERACTIVE) */}
+            {blockedByDocs && (
               <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/70 space-y-2">
-                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
+                <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px] mb-1">
                   <XCircle className="w-3.5 h-3.5 shrink-0" />
                   {gate.missingDocuments.length} Required Document{gate.missingDocuments.length > 1 ? 's' : ''} Missing
+                  <span className="ml-auto text-rose-400/60 font-normal">Click to attach →</span>
                 </div>
                 {gate.missingDocuments.map((docType) => (
-                  <div key={docType} className="flex items-center gap-2 text-rose-300/80 ml-5">
+                  <div
+                    key={docType}
+                    className="flex items-center gap-2 bg-rose-950/60 border border-rose-800/50 rounded-lg px-2.5 py-2"
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                    <span className="font-mono">{docType}</span>
+                    <span className="font-mono text-rose-200 flex-1">{docType}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleUploadDoc(docType)}
+                      disabled={uploadingDocType === docType}
+                      title="Attach this document"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-800/80 hover:bg-blue-700 text-blue-200 text-[10px] font-bold transition shrink-0 disabled:opacity-60"
+                    >
+                      {uploadingDocType === docType ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <FileUp className="w-3 h-3" />
+                      )}
+                      {uploadingDocType === docType ? 'Attaching…' : 'Attach Doc'}
+                    </button>
                   </div>
                 ))}
+                <div className="flex items-start gap-1.5 text-rose-400/70 text-[10px] mt-1 pl-1">
+                  <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                  <span>Attaching a document placeholder allows the gate to clear. Upload the actual file from the Documents tab afterwards.</span>
+                </div>
               </div>
             )}
 
             {/* Hard blockers — missing approvals */}
-            {gate.missingApprovals.length > 0 && (
+            {blockedByApprovals && (
               <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/70 space-y-1">
                 <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[11px]">
                   <XCircle className="w-3.5 h-3.5 shrink-0" />
@@ -203,6 +294,13 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
               <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-[11px] font-semibold">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 All prerequisites met — stage transition is cleared to proceed.
+              </div>
+            )}
+
+            {gate.canAdvance && gate.warnings.length > 0 && (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40 text-emerald-400 text-[11px]">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                Gate cleared (with warnings) — you may proceed.
               </div>
             )}
 
@@ -246,7 +344,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
             {!gate.canAdvance && !isPartner && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-950 border border-rose-800/60 text-rose-300 text-[11px]">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
-                Stage advance is blocked. Complete all required tasks and documents, or request a partner override.
+                Stage advance is blocked. Resolve the items above or request a partner override.
               </div>
             )}
           </div>
@@ -332,5 +430,3 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
     </div>
   );
 };
-
-

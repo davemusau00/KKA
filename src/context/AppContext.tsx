@@ -304,6 +304,7 @@ interface AppContextType {
   completeTask: (id: string, force?: boolean) => { success: boolean; error?: string };
   createCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
   recordCourtOutcome: (eventId: string, status: CourtEventStatus, outcomeNotes: string, nextHearingDate?: string) => void;
+  createDocument: (doc: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'>) => LegalDocument;
   uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string }, notes?: string) => void;
   submitDocumentForReview: (documentId: string, versionId: string, reviewNotes?: string) => void;
   approveDocumentVersion: (documentId: string, versionId: string, comment?: string) => void;
@@ -2224,6 +2225,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [calendarEvents, currentUser.id, logAudit, notify]);
 
+  // Create a new LegalDocument record
+  const createDocument = useCallback(
+    (docData: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'>): LegalDocument => {
+      const now = new Date().toISOString();
+      const docId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const versionId = `ver-${docId}-1`;
+      const initialVersion: DocumentVersion = {
+        id: versionId,
+        documentId: docId,
+        versionNumber: 1,
+        storagePath: `matters/${docData.matterId}/documents/${docId}/v1_placeholder`,
+        originalFilename: `${docData.documentType || docData.title}.pdf`,
+        mimeType: 'application/pdf',
+        fileSizeBytes: 0,
+        checksum: '',
+        uploadedBy: docData.ownerUserId,
+        createdAt: now,
+        status: 'draft',
+        changeSummary: 'Gate placeholder — replace with actual file',
+      };
+      const newDoc: LegalDocument = {
+        id: docId,
+        ...docData,
+        currentVersionId: versionId,
+        versions: [initialVersion],
+        createdAt: now,
+        updatedAt: now,
+      };
+      setDocuments((prev) => [newDoc, ...prev]);
+      logAudit(docData.matterId, 'DOCUMENT_CREATED', { documentId: docId, title: docData.title });
+      return newDoc;
+    },
+    [logAudit]
+  );
+
   // Document Management & Comprehensive Versioning Flow
   const uploadDocumentVersion = useCallback(
     (
@@ -3070,6 +3106,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createCalendarEvent,
         recordCourtOutcome,
         uploadDocumentVersion,
+        createDocument,
         submitDocumentForReview,
         approveDocumentVersion,
         rejectDocumentVersion,
