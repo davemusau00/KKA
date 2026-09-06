@@ -150,25 +150,25 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-mono text-slate-500">Current Active Stage</span>
-              <div className="font-bold text-slate-200 text-sm flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-slate-800 text-amber-400 flex items-center justify-center text-xs font-mono">
+              <div className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-amber-700 dark:text-amber-400 flex items-center justify-center text-xs font-mono">
                   {currentStageNum}
                 </span>
                 <span>{currentStageConfig?.name || `Stage ${currentStageNum}`}</span>
               </div>
-              <div className="text-[11px] text-slate-400">
-                Supervising Partner: <strong className="text-slate-300 font-mono">{matter.supervisingUserId}</strong>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Supervising Partner: <strong className="text-slate-700 dark:text-slate-300 font-mono">{matter.supervisingUserId}</strong>
               </div>
             </div>
 
-            <div className="space-y-1 sm:border-l sm:border-slate-800 sm:pl-4">
-              <span className="text-[10px] uppercase font-mono text-amber-500 font-semibold">
+            <div className="space-y-1 sm:border-l sm:border-slate-200 dark:sm:border-slate-800 sm:pl-4">
+              <span className="text-[10px] uppercase font-mono text-amber-700 dark:text-amber-500 font-semibold">
                 Destination Stage
               </span>
               <select
                 value={targetStageId}
                 onChange={(e) => setTargetStageId(Number(e.target.value))}
-                className="w-full px-2.5 py-1.5 bg-slate-900 border border-amber-600/60 rounded text-slate-100 text-xs font-semibold focus:outline-none"
+                className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-amber-400 dark:border-amber-600/60 rounded text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-none"
               >
                 {currentWf?.stages.map((st) => (
                   <option key={st.id} value={st.id}>
@@ -181,16 +181,16 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
 
           {/* ═══ STAGE GATE SECTION ═══ */}
           <div className="space-y-3">
-            <h3 className="font-mono uppercase font-bold text-slate-300 text-[11px] flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <h3 className="font-mono uppercase font-bold text-slate-700 dark:text-slate-300 text-[11px] flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Stage Gate &amp; Prerequisite Enforcement</span>
               {isBlocked && (
-                <span className="ml-auto px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 text-[10px] font-bold animate-pulse">
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 text-[10px] font-bold animate-pulse">
                   BLOCKED
                 </span>
               )}
               {!isBlocked && (
-                <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold">
                   CLEARED
                 </span>
               )}
@@ -322,22 +322,22 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
             )}
 
             {/* Summary stats */}
-            <div className="space-y-2 p-3 bg-slate-950 border border-slate-800 rounded-xl">
+            <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Stage Tasks Completed:</span>
-                <span className={`font-mono font-semibold ${gate.blockingTasks.length === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <span className="text-slate-600 dark:text-slate-300">Stage Tasks Completed:</span>
+                <span className={`font-mono font-semibold ${gate.blockingTasks.length === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                   {matterTasks.filter((t) => t.stageId === currentStageNum && (t.status === 'completed' || t.status === 'cancelled')).length}
                   {' / '}
                   {matterTasks.filter((t) => t.stageId === currentStageNum).length} Completed
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Stage Documents Attached:</span>
-                <span className="font-mono text-slate-200">{matterDocs.length} Total</span>
+                <span className="text-slate-600 dark:text-slate-300">Stage Documents Attached:</span>
+                <span className="font-mono text-slate-700 dark:text-slate-200">{matterDocs.length} Total</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Target Stage SLA:</span>
-                <span className="font-mono text-blue-400">
+                <span className="text-slate-600 dark:text-slate-300">Target Stage SLA:</span>
+                <span className="font-mono text-blue-700 dark:text-blue-400">
                   {targetStageConfig?.targetDurationDays || 14} Days (Benchmark)
                 </span>
               </div>
@@ -345,21 +345,21 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
 
             {/* Partner override — only visible to managing/senior partner when blocked */}
             {!gate.canAdvance && isPartner && (
-              <label className="flex items-start gap-2 cursor-pointer p-3 rounded-xl bg-slate-950 border border-amber-700/50">
+              <label className="flex items-start gap-2 cursor-pointer p-3 rounded-xl bg-amber-50 dark:bg-slate-950 border border-amber-300 dark:border-amber-700/50">
                 <input
                   type="checkbox"
                   checked={partnerOverride}
                   onChange={(e) => setPartnerOverride(e.target.checked)}
                   className="w-4 h-4 rounded accent-amber-500 mt-0.5"
                 />
-                <span className="text-amber-300/90 text-[11px]">
-                  <strong className="text-amber-300">Partner Override:</strong> I confirm I have reviewed the incomplete prerequisites and authorise this stage advance on supervisory authority. This action will be logged.
+                <span className="text-amber-800 dark:text-amber-300/90 text-[11px]">
+                  <strong className="text-amber-900 dark:text-amber-300">Partner Override:</strong> I confirm I have reviewed the incomplete prerequisites and authorise this stage advance on supervisory authority. This action will be logged.
                 </span>
               </label>
             )}
 
             {!gate.canAdvance && !isPartner && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-950 border border-rose-800/60 text-rose-300 text-[11px]">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-slate-950 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-[11px]">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
                 Stage advance is blocked. Resolve the items above or request a partner override.
               </div>
@@ -368,19 +368,19 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
 
           {/* New Stage Assignee & Handoff Notes */}
           <div className="space-y-4">
-            <h3 className="font-mono uppercase font-bold text-slate-300 text-[11px] flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-blue-400" />
+            <h3 className="font-mono uppercase font-bold text-slate-700 dark:text-slate-300 text-[11px] flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Stage Worker Delegation &amp; Handoff Notes</span>
             </h3>
 
             <div>
-              <label className="block text-slate-400 mb-1">
+              <label className="block text-slate-700 dark:text-slate-400 font-medium mb-1">
                 Assign Stage Lead / Responsible Worker *
               </label>
               <select
                 value={newOwnerId}
                 onChange={(e) => setNewOwnerId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-xs focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-xs focus:border-amber-500 focus:outline-none"
               >
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -394,7 +394,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">
+              <label className="block text-slate-700 dark:text-slate-400 font-medium mb-1">
                 Handoff Instructions / Critical Next Actions *
               </label>
               <textarea
@@ -403,7 +403,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
                 value={handoffNotes}
                 onChange={(e) => setHandoffNotes(e.target.value)}
                 placeholder="e.g. Police abstract secured. Please proceed to request medicolegal examination from Dr. Patel and prepare notice of intention to sue."
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-xs focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-xs focus:border-amber-500 focus:outline-none"
               />
             </div>
 
@@ -412,20 +412,20 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
                 type="checkbox"
                 checked={generateTasks}
                 onChange={(e) => setGenerateTasks(e.target.checked)}
-                className="w-4 h-4 rounded text-amber-600 bg-slate-900 border-slate-700"
+                className="w-4 h-4 rounded text-amber-600 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
               />
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300">
                 Auto-generate standard checklist tasks for Stage {targetStageId} ({targetStageConfig?.name})
               </span>
             </label>
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+          <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700"
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg transition"
             >
               Cancel
             </button>
@@ -435,7 +435,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
               className={`px-5 py-2 font-semibold rounded-lg shadow transition flex items-center gap-1.5 ${
                 canSubmit
                   ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
               }`}
             >
               <span>Execute Stage Advance</span>

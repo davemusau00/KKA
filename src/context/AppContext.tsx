@@ -56,6 +56,8 @@ import {
   FeeNote,
   FeeNoteItem,
   FeeNoteStatus,
+  CalendarEditPolicy,
+  CalendarEventRevision,
 } from '../types';
 import {
   SEED_BRANCHES,
@@ -316,7 +318,26 @@ interface AppContextType {
   updateTask: (id: string, updates: Partial<Task>, force?: boolean) => { success: boolean; error?: string };
   completeTask: (id: string, force?: boolean) => { success: boolean; error?: string };
   createCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
-  recordCourtOutcome: (eventId: string, status: CourtEventStatus, outcomeNotes: string, nextHearingDate?: string) => void;
+  recordCourtOutcome: (
+    eventId: string,
+    status: CourtEventStatus,
+    outcomeNotes: string,
+    nextHearingDate?: string,
+    workflowAutomation?: {
+      filingDeadlineDate?: string;
+      filingTitle?: string;
+      requiredDocumentTypeIds?: string[];
+      draftingTaskTitle?: string;
+    }
+  ) => void;
+  rescheduleCalendarEvent: (
+    eventId: string,
+    newStartAt: string,
+    newEndAt: string,
+    reason: string,
+    source: 'court_order' | 'consent' | 'administrative' | 'adjourned' | 'client_request'
+  ) => { success: boolean; error?: string };
+  linkDocumentToCalendarEvent: (eventId: string, documentId: string) => void;
   createDocument: (doc: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'> & { initialFile?: { filename?: string; size?: number; mimeType?: string; fileDataUrl?: string; changeSummary?: string } }) => LegalDocument;
   uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string; fileDataUrl?: string }, notes?: string) => void;
   submitDocumentForReview: (documentId: string, versionId: string, reviewNotes?: string) => void;
@@ -2237,46 +2258,217 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newEvent;
   }, [googleConnected, logAudit, notify]);
 
-  const recordCourtOutcome = useCallback((eventId: string, status: CourtEventStatus, outcomeNotes: string, nextHearingDate?: string) => {
+  const recordCourtOutcome = useCallback(
+    (
+      eventId: string,
+      status: CourtEventStatus,
+      outcomeNotes: string,
+      nextHearingDate?: string,
+      workflowAutomation?: {
+        filingDeadlineDate?: string;
+        filingTitle?: string;
+        requiredDocumentTypeIds?: string[];
+        draftingTaskTitle?: string;
+      }
+    ) => {
+      setCalendarEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                courtStatus: status,
+                courtOutcome: outcomeNotes,
+                nextCourtDate: nextHearingDate,
+              }
+            : e
+        )
+      );
+
+      const event = calendarEvents.find((e) => e.id === eventId);
+      if (event?.matterId) {
+        logAudit('court.outcome_recorded', 'court_event', eventId, event.matterId, {
+          status,
+          outcomeNotes,
+          nextHearingDate,
+          workflowAutomation,
+        });
+
+        // Automatically diarize the next date if provided!
+        if (nextHearingDate) {
+          const nextDateEvent: CalendarEvent = {
+            id: `evt-${Date.now()}`,
+            matterId: event.matterId,
+            title: `Next Court Mention/Hearing (${event.title})`,
+            eventType: 'court',
+            startAt: `${nextHearingDate}T09:00:00Z`,
+            endAt: `${nextHearingDate}T11:00:00Z`,
+            location: event.location,
+            assignedUserId: event.assignedUserId,
+            organizerId: currentUser.id,
+            courtProceedingId: event.courtProceedingId,
+            courtStatus: 'scheduled',
+            editPolicy: 'reason_required',
+            notes: `Diarized following outcome: ${outcomeNotes}`,
+            syncState: 'synced',
+          };
+          setCalendarEvents((prev) => [...prev, nextDateEvent]);
+          notify(
+            event.assignedUserId,
+            'Next Court Date Diarized',
+            `Next appearance recorded for ${nextHearingDate}`,
+            'court_event',
+            event.matterId,
+            'urgent'
+          );
+        }
+
+        // Automatic Workflow: Court Filing Deadline & Internal Drafting Task
+        if (workflowAutomation?.filingDeadlineDate) {
+          const dlTitle = workflowAutomation.filingTitle || `Court Directions Filing: ${event.title}`;
+          const newDeadline: Deadline = {
+            id: `dl-${Date.now()}`,
+            matterId: event.matterId,
+            title: dlTitle,
+            deadlineType: 'court_directions',
+            officialDueAt: workflowAutomation.filingDeadlineDate,
+            source: `Court Order / Directions (${event.title})`,
+            riskLevel: 'critical',
+            notes: `Directions ordered by court: ${outcomeNotes}`,
+          };
+          setDeadlines((prev) => [newDeadline, ...prev]);
+
+          const deadlineCalEvent: CalendarEvent = {
+            id: `evt-dl-${Date.now()}`,
+            matterId: event.matterId,
+            title: `⏰ FILING DEADLINE: ${dlTitle}`,
+            eventType: 'deadline',
+            startAt: `${workflowAutomation.filingDeadlineDate}T16:00:00Z`,
+            endAt: `${workflowAutomation.filingDeadlineDate}T17:00:00Z`,
+            location: event.location,
+            assignedUserId: event.assignedUserId,
+            organizerId: currentUser.id,
+            editPolicy: 'locked',
+            isStatutoryLocked: true,
+            requiredDocumentTypeIds: workflowAutomation.requiredDocumentTypeIds || [],
+            notes: `Court-mandated deadline: ${outcomeNotes}`,
+            syncState: 'synced',
+          };
+          setCalendarEvents((prev) => [...prev, deadlineCalEvent]);
+
+          // Create internal advocate preparation task due 3 days prior
+          const dlTimestamp = new Date(workflowAutomation.filingDeadlineDate).getTime();
+          const targetTimestamp = isNaN(dlTimestamp) ? Date.now() + 86400000 : dlTimestamp - 3 * 86400000;
+          const draftingDueDate = new Date(targetTimestamp).toISOString().split('T')[0];
+
+          createTask({
+            matterId: event.matterId,
+            title: workflowAutomation.draftingTaskTitle || `Draft & Prepare Pleadings/Submissions for ${event.title}`,
+            assignedUserId: event.assignedUserId,
+            priority: 'urgent',
+            status: 'in_progress',
+            dueDate: draftingDueDate,
+            description: `Prepare filings and required documents compliant with court directions: "${outcomeNotes}". Official court deadline is ${workflowAutomation.filingDeadlineDate}.`,
+            matterStageId: 10,
+          });
+
+          notify(
+            event.assignedUserId,
+            'Court Filing Deadline & Prep Task Generated',
+            `Court ordered deadline on ${workflowAutomation.filingDeadlineDate}. Preparation task assigned.`,
+            'task',
+            event.matterId,
+            'urgent'
+          );
+        }
+      }
+    },
+    [calendarEvents, currentUser.id, logAudit, notify, createTask]
+  );
+
+  const rescheduleCalendarEvent = useCallback(
+    (
+      eventId: string,
+      newStartAt: string,
+      newEndAt: string,
+      reason: string,
+      source: 'court_order' | 'consent' | 'administrative' | 'adjourned' | 'client_request'
+    ): { success: boolean; error?: string } => {
+      const event = calendarEvents.find((e) => e.id === eventId);
+      if (!event) return { success: false, error: 'Event not found' };
+
+      if (event.editPolicy === 'locked' || event.isStatutoryLocked) {
+        return {
+          success: false,
+          error: 'This is a court-ordered deadline or statutory limitation date and cannot be modified without an amended court order.',
+        };
+      }
+
+      if (event.editPolicy === 'reason_required' && !reason.trim()) {
+        return {
+          success: false,
+          error: 'Official reason is required to reschedule a court appearance or hearing.',
+        };
+      }
+
+      const revision: CalendarEventRevision = {
+        id: `rev-${Date.now()}`,
+        eventId,
+        oldStart: event.startAt,
+        oldEnd: event.endAt,
+        newStart: newStartAt,
+        newEnd: newEndAt,
+        reason,
+        source,
+        changedByUserId: currentUser.id,
+        changedAt: new Date().toISOString(),
+      };
+
+      setCalendarEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                startAt: newStartAt,
+                endAt: newEndAt,
+                revisions: [revision, ...(e.revisions || [])],
+              }
+            : e
+        )
+      );
+
+      logAudit('calendar.event_rescheduled', 'court_event', eventId, event.matterId, {
+        oldStart: event.startAt,
+        newStart: newStartAt,
+        reason,
+        source,
+      });
+
+      notify(
+        event.assignedUserId,
+        'Event Rescheduled',
+        `"${event.title}" has been moved to ${new Date(newStartAt).toLocaleDateString()}. Reason: ${reason}`,
+        'court_event',
+        event.matterId
+      );
+
+      return { success: true };
+    },
+    [calendarEvents, currentUser.id, logAudit, notify]
+  );
+
+  const linkDocumentToCalendarEvent = useCallback((eventId: string, documentId: string) => {
     setCalendarEvents((prev) =>
       prev.map((e) =>
         e.id === eventId
           ? {
               ...e,
-              courtStatus: status,
-              courtOutcome: outcomeNotes,
-              nextCourtDate: nextHearingDate,
+              linkedDocumentIds: Array.from(new Set([...(e.linkedDocumentIds || []), documentId])),
             }
           : e
       )
     );
-
-    const event = calendarEvents.find((e) => e.id === eventId);
-    if (event?.matterId) {
-      logAudit('court.outcome_recorded', 'court_event', eventId, event.matterId, { status, outcomeNotes, nextHearingDate });
-
-      // Automatically diarize the next date if provided!
-      if (nextHearingDate) {
-        const nextDateEvent: CalendarEvent = {
-          id: `evt-${Date.now()}`,
-          matterId: event.matterId,
-          title: `Next Court Mention/Hearing (${event.title})`,
-          eventType: 'court',
-          startAt: `${nextHearingDate}T09:00:00Z`,
-          endAt: `${nextHearingDate}T11:00:00Z`,
-          location: event.location,
-          assignedUserId: event.assignedUserId,
-          organizerId: currentUser.id,
-          courtProceedingId: event.courtProceedingId,
-          courtStatus: 'scheduled',
-          notes: `Diarized following outcome: ${outcomeNotes}`,
-          syncState: 'synced',
-        };
-        setCalendarEvents((prev) => [...prev, nextDateEvent]);
-        notify(event.assignedUserId, 'Next Court Date Diarized', `Next appearance recorded for ${nextHearingDate}`, 'court_event', event.matterId);
-      }
-    }
-  }, [calendarEvents, currentUser.id, logAudit, notify]);
+    logAudit('calendar.document_linked', 'court_event', eventId, undefined, { documentId });
+  }, [logAudit]);
 
   // Create a new LegalDocument record
   const createDocument = useCallback(
@@ -3248,6 +3440,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         completeTask,
         createCalendarEvent,
         recordCourtOutcome,
+        rescheduleCalendarEvent,
+        linkDocumentToCalendarEvent,
         uploadDocumentVersion,
         createDocument,
         submitDocumentForReview,

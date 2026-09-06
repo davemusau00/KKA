@@ -102,14 +102,14 @@ export const MatterClosureWizard: React.FC<MatterClosureWizardProps> = ({ matter
             ].map((item) => (
               <label
                 key={item.key}
-                className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800/40"
+                className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition"
               >
-                <span className="font-medium text-slate-200">{item.label}</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{item.label}</span>
                 <input
                   type="checkbox"
                   checked={Boolean(localData[item.key])}
                   onChange={(e) => setLocalData({ ...localData, [item.key]: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 bg-slate-900 border-slate-700"
+                  className="w-4 h-4 rounded text-emerald-600 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
                 />
               </label>
             ))}
@@ -119,61 +119,61 @@ export const MatterClosureWizard: React.FC<MatterClosureWizardProps> = ({ matter
         {/* Physical Archive & Retention Schedule */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Physical Archive Details */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-            <h3 className="font-mono font-bold text-slate-200 uppercase text-xs flex items-center gap-1.5">
-              <Box className="w-3.5 h-3.5 text-blue-400" />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-4">
+            <h3 className="font-mono font-bold text-slate-700 dark:text-slate-200 uppercase text-xs flex items-center gap-1.5">
+              <Box className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Physical Storage &amp; Archive Location</span>
             </h3>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-slate-400 mb-1">Physical Archive File Location / Shelf Code *</label>
+                <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Physical Archive File Location / Shelf Code *</label>
                 <input
                   type="text"
                   required
                   value={localData.physicalFileLocation}
                   onChange={(e) => setLocalData({ ...localData, physicalFileLocation: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-mono"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Supervising Advocate Approval</label>
-                <div className="p-2.5 bg-slate-950 border border-slate-800 rounded text-slate-300 font-mono text-xs flex items-center justify-between">
+                <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Supervising Advocate Approval</label>
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-700 dark:text-slate-300 font-mono text-xs flex items-center justify-between">
                   <span>Authorized by: {currentUser.fullName}</span>
-                  <span className="text-emerald-400 font-bold">VERIFIED</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">VERIFIED</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Retention & Feedback */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-            <h3 className="font-mono font-bold text-slate-200 uppercase text-xs flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-4">
+            <h3 className="font-mono font-bold text-slate-700 dark:text-slate-200 uppercase text-xs flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>7-Year Statutory Retention Expiry</span>
             </h3>
 
             <div className="space-y-3">
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs space-y-1">
-                <span className="text-slate-400">Scheduled Physical &amp; Digital Destruction Date:</span>
-                <div className="font-mono text-amber-400 font-bold text-sm">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs space-y-1">
+                <span className="text-slate-500 dark:text-slate-400">Scheduled Physical &amp; Digital Destruction Date:</span>
+                <div className="font-mono text-amber-700 dark:text-amber-400 font-bold text-sm">
                   {new Date(Date.now() + 7 * 365 * 86400000).toISOString().slice(0, 10)}
                 </div>
-                <span className="text-slate-500 text-[11px]">In accordance with Law Society of Kenya retention bylaws.</span>
+                <span className="text-slate-400 dark:text-slate-500 text-[11px]">In accordance with Law Society of Kenya retention bylaws.</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Closing Notes */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-          <label className="block text-slate-400 font-medium">Final Advocate Closing Memorandum</label>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2">
+          <label className="block text-slate-600 dark:text-slate-400 font-medium">Final Advocate Closing Memorandum</label>
           <textarea
             rows={2}
             value={localData.closingNote || ''}
             onChange={(e) => setLocalData({ ...localData, closingNote: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-xs"
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-xs"
           />
         </div>
 
@@ -193,7 +193,7 @@ export const MatterClosureWizard: React.FC<MatterClosureWizardProps> = ({ matter
               className={`px-6 py-2.5 rounded-xl font-semibold shadow flex items-center gap-2 transition ${
                 canClose
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
               }`}
             >
               <Lock className="w-4 h-4" />

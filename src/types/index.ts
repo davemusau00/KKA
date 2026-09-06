@@ -417,6 +417,21 @@ export type CalendarEventType =
 
 export type CourtEventStatus = 'scheduled' | 'attended' | 'adjourned' | 'completed' | 'cancelled';
 
+export type CalendarEditPolicy = 'free' | 'confirm' | 'reason_required' | 'approval_required' | 'locked';
+
+export interface CalendarEventRevision {
+  id: string;
+  eventId: string;
+  oldStart: string;
+  oldEnd: string;
+  newStart: string;
+  newEnd: string;
+  reason: string;
+  source: 'court_order' | 'consent' | 'administrative' | 'adjourned' | 'client_request';
+  changedByUserId: string;
+  changedAt: string;
+}
+
 export interface CalendarEvent {
   id: string;
   matterId?: string;
@@ -438,6 +453,16 @@ export interface CalendarEvent {
   nextCourtDate?: string;
   externalGoogleEventId?: string;
   syncState?: 'synced' | 'pending' | 'failed';
+  editPolicy?: CalendarEditPolicy;
+  requiredDocumentTypeIds?: string[];
+  revisions?: CalendarEventRevision[];
+  sourceType?: 'manual' | 'court_order' | 'workflow' | 'task' | 'deadline';
+  isStatutoryLocked?: boolean;
+  reminders?: {
+    target: 'advocate' | 'clerk' | 'client' | 'supervisor';
+    advanceNotice: string;
+    channel: 'push' | 'sms' | 'whatsapp' | 'email';
+  }[];
 }
 
 export type DocumentStatus = 
