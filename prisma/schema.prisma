@@ -699,7 +699,6 @@ model Client {
   firm      Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
   matters   Matter[]
   intakes   Intake[]
-  settings  SettingValue[]
 
   @@index([firmId, displayName])
   @@index([firmId, phone])
