@@ -98,7 +98,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     0
   );
   const pendingHandoffCount = stageHandoffs.filter((h) => !h.acknowledgedAt).length;
-  const totalApprovalsCount = pendingExpenseCount + pendingDocReviewCount + pendingHandoffCount;
+  const pendingClosureCount = matters.filter((m) => m.currentStageId === 19 && m.status === 'active').length;
+  const totalApprovalsCount = pendingExpenseCount + pendingDocReviewCount + pendingHandoffCount + pendingClosureCount;
 
   const allNavigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
