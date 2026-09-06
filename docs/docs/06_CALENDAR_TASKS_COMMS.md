@@ -211,3 +211,49 @@ Internal meeting:
 
 Future:
 - free/busy Google lookup where permitted.
+
+## 16. Mobile Calendar Architecture & Temporal Command Centre
+
+The calendar is not merely an appointment diary; it functions as a **Temporal Command Centre** tying court operations, matters, tasks, deadlines, documents, and notifications into an actionable workflow engine.
+
+### 16.1 Mobile Hierarchy & Anti-Compression Principles
+Desktop calendars attempt to present a 7-column grid. On mobile viewports (~360px - 450px), squeezing 7 columns creates unreadable vertical keyholes. 
+
+Mature mobile calendar hierarchy:
+1. **DEFAULT VIEW: Today / Agenda**: High-density vertical timeline showing upcoming appointments, appearances, and deadlines with immediate actionability.
+2. **Horizontal Swipeable Date Strip**: 14-day interactive strip with day abbreviations, date numerals, and status indicator dots (amber for court, rose for deadlines, blue for meetings, conflict alerts). Tapping a date focuses the day agenda immediately.
+3. **SECONDARY VIEW: 3-Day View**: Displays 3 wide, readable columns (minimum 110px width) rather than an impossible 7-column compression.
+4. **SECONDARY VIEW: Day View**: Detailed hourly / chronological focus for complex court hearing days.
+5. **OPTIONAL VIEW: Month Overview**: Used strictly for density scanning and date navigation. Day cells display category dots; tapping any date reveals that day's clean agenda cards underneath.
+
+### 16.2 Event Card Information Hierarchy
+Mobile cards expose:
+`[TYPE BADGE + TIME] · [CONFLICT PILL]`
+`TITLE (Bold)`
+`⚖ MATTER REFERENCE & CLIENT NAME`
+`📍 LOCATION / COURTROOM · 👤 ASSIGNED ADVOCATE`
+`[RECORD OUTCOME] · [DETAILS / INSPECT]`
+
+### 16.3 Context-Aware Event Bottom Sheet & Side Drawer
+Tapping an event opens a sliding bottom sheet on mobile (with drag handle) or a sliding drawer on desktop:
+- **Full Legal Context**: Associated matter reference, stage, court proceeding, and trial judge.
+- **Legal Edit Policy Badge**: Displays `🔒 Locked Order`, `🛡️ Reason Required`, `Confirm`, or `Free`.
+- **Required Documents Checklist**: Verifies presence of mandatory bundles (e.g., Plaint, Verifying Affidavit, Trial Bundle, Medical Report) with one-click direct file linking.
+- **Recorded Directives & Rulings**: Displays previous outcomes, judge orders, and next court dates.
+- **Audit Revision History**: Tracks every rescheduled date, mandatory reason, and legal source authority.
+
+### 16.4 Legal Edit Policies (`CalendarEditPolicy`)
+Legal events cannot all be equally modified or dragged:
+- `free`: Internal team meetings, drafting blocks, administrative reminders.
+- `confirm`: Client consultations, medical appointments (requires confirmation dialog).
+- `reason_required`: Court hearings, mentions, rulings (requires formal reason e.g., adjourned by court, judge directions, witness absent).
+- `locked`: Statutory limitation expiry dates (Cap 22) and court-ordered mandatory filing deadlines. Cannot be rescheduled without amended court direction or registry order.
+
+### 16.5 Automated Court Outcome Propagation Pipeline
+Recording a court outcome (`Attended`, `Adjourned`, `Concluded`) executes multi-object propagation:
+1. Updates the hearing outcome directives and court status.
+2. Automatically diarizes the next court appearance on the adjourned date.
+3. If court directions include filing deadlines, creates an official `Deadline` record and calendar deadline event (`locked`).
+4. Generates an internal advocate preparation task (due 3 days before the filing deadline) linked to the matter.
+5. Dispatches notifications to assigned advocates and court clerks, with audit logs recorded.
+
