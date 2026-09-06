@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { validateImage } from '@kka/document-engine';
+import { validateImage, visibleBranding } from '@kka/document-engine';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { StorageService } from '../../platform/storage/storage.service';
 import { AuditService } from '../../platform/audit/audit.service';
@@ -28,13 +28,14 @@ export class BrandingService {
   async upload(firmId: string, actorId: string, buffer: Buffer, mime: string) {
     let image: Awaited<ReturnType<typeof validateImage>>;
     try { image = await validateImage(buffer, mime); } catch (error) { throw new BadRequestException(error instanceof Error ? error.message : 'Invalid image'); }
-    const stored = await this.storage.putMark({ filename: 'firm-logo.png', mimeType: image.mimeType, buffer: image.buffer });
-    await this.prisma.client.$transaction(async tx => {
+    const stored = await this.storage.putMark({ filename: 'firm-logo.png', mimeType: image.mimeType, buffer: await visibleBranding(image.buffer) });
+    try { await this.prisma.client.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${firmId + ':branding'}))`;
-      const asset = await tx.firmMarkAsset.create({ data: { firmId, type: 'LOGO', displayName: 'Firm branding logo', intendedUse: 'Application branding', permittedRoleKeys: [], permittedUserIds: [], allowedDocumentTypes: [], allowedMatterTypes: [], approvalRoleKeys: [], createdById: actorId } });
-      const version = await tx.firmMarkAssetVersion.create({ data: { assetId: asset.id, version: 1, storagePath: stored.path, mimeType: stored.mimeType, checksumSha256: stored.checksumSha256, widthPx: image.width, heightPx: image.height, transparentReady: image.transparent, createdById: actorId } });
+      const asset = await tx.firmMarkAsset.findFirst({ where: { firmId, type: 'LOGO', intendedUse: 'Application branding', active: true, branchId: null }, orderBy: { createdAt: 'asc' } }) ?? await tx.firmMarkAsset.create({ data: { firmId, type: 'LOGO', displayName: 'Firm branding logo', intendedUse: 'Application branding', permittedRoleKeys: [], permittedUserIds: [], allowedDocumentTypes: [], allowedMatterTypes: [], approvalRoleKeys: [], createdById: actorId } });
+      const previous = await tx.firmMarkAssetVersion.findFirst({ where: { assetId: asset.id }, orderBy: { version: 'desc' } });
+      const version = await tx.firmMarkAssetVersion.create({ data: { assetId: asset.id, version: (previous?.version ?? 0) + 1, storagePath: stored.path, mimeType: stored.mimeType, checksumSha256: stored.checksumSha256, widthPx: image.width, heightPx: image.height, transparentReady: image.transparent, createdById: actorId } });
       await this.select(tx, firmId, actorId, version.id);
-    });
+    }); } catch (e) { await this.storage.deleteMark(stored.path).catch(() => undefined); throw e; }
     return this.metadata(firmId);
   }
   private async select(tx: import('@kka/database').Prisma.TransactionClient, firmId: string, actorId: string, versionId: string | null) {

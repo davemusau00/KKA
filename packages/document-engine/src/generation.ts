@@ -5,7 +5,8 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { documentStorage } from './storage';
 import { mergeDocx, convertDocx, renderStructured } from './templates';
-import { renderMarks } from './index';
+import { renderMarks, visibleBranding } from './index';
+import { appendAudit } from './audit';
 const hash = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 interface Payload { templateVersionId: string; values: Record<string,string>; configuration: unknown; logoVersionId: string | null; logoChecksum: string | null; preview: boolean; previewPath?: string }
 export async function processGeneration(prisma: KkaPrismaClient, id: string) {
@@ -36,6 +37,7 @@ export async function processGeneration(prisma: KkaPrismaClient, id: string) {
         if (!v || v.checksumSha256 !== payload.logoChecksum) throw new Error('Pinned logo is no longer available');
         logo = await markStore.readBuffer(v.storagePath); if (hash(logo) !== payload.logoChecksum) throw new Error('Logo checksum mismatch');
       } else logo = await fs.readFile(join(__dirname,'../assets/firm-logo.png'));
+      logo = await visibleBranding(logo);
     }
     let pdf: Buffer, docx: Buffer | undefined;
     if (template.sourceStoragePath) {
@@ -62,9 +64,8 @@ export async function processGeneration(prisma: KkaPrismaClient, id: string) {
       const result = await create(pdfStored);
       await tx.document.update({where:{id:doc.id},data:{currentVersionId:result.id}});
       await tx.documentOperation.update({where:{id},data:{status:'COMPLETED',outputVersionId:result.id,outputDocxVersionId:word?.id}});
-      const previous = await tx.auditEvent.findFirst({where:{firmId:op.firmId},orderBy:{occurredAt:'desc'}});
       const metadata = { templateVersionId:template.id,operationId:id,outputVersionId:result.id,logoVersionId:payload.logoVersionId,checksum:pdfStored.checksumSha256 };
-      await tx.auditEvent.create({data:{firmId:op.firmId,actorUserId:op.actorId,action:'document.generated',entityType:'document_operation',entityId:id,matterId:doc.matterId,metadata,previousHash:previous?.eventHash,eventHash:hash(Buffer.from(JSON.stringify({previousHash:previous?.eventHash,...metadata})))}});
+      await appendAudit(tx,{firmId:op.firmId,actorUserId:op.actorId,action:'document.generated',entityType:'document_operation',entityId:id,matterId:doc.matterId,metadata});
     });
     return { id,status:'COMPLETED' };
   } catch (e) {

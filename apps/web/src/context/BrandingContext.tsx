@@ -13,7 +13,20 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     try { setBranding(await apiClient.get<Branding>(authenticated ? '/branding' : '/branding/public')); } catch { setBranding(defaultBranding); }
   }, []);
   useEffect(() => { void refresh(); window.addEventListener('focus', refresh); window.addEventListener('kka:auth-changed', refresh); return () => { window.removeEventListener('focus', refresh); window.removeEventListener('kka:auth-changed', refresh); }; }, [refresh]);
-  useEffect(() => { document.querySelectorAll<HTMLLinkElement>('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(link => { link.href = branding.imageUrl; }); }, [branding]);
+  useEffect(() => {
+    let active=true; const img=new Image();
+    img.onload=()=>{
+      if(!active)return;
+      const canvas=document.createElement('canvas');canvas.width=180;canvas.height=180;const ctx=canvas.getContext('2d')!;
+      const scale=160/Math.max(img.naturalWidth,img.naturalHeight);ctx.drawImage(img,(180-img.naturalWidth*scale)/2,(180-img.naturalHeight*scale)/2,img.naturalWidth*scale,img.naturalHeight*scale);
+      const pixels=ctx.getImageData(0,0,180,180);let maximum=0;
+      for(let i=3;i<pixels.data.length;i+=4)maximum=Math.max(maximum,pixels.data[i]);
+      if(maximum>0&&maximum<64){for(let i=3;i<pixels.data.length;i+=4)pixels.data[i]=Math.round(pixels.data[i]*255/maximum);ctx.putImageData(pixels,0,0);}
+      document.querySelectorAll<HTMLLinkElement>('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(link=>{link.href=canvas.toDataURL('image/png');});
+    };
+    img.onerror=()=>{if(img.src.endsWith('/firm-logo.png'))return;img.src='/firm-logo.png';};img.src=branding.imageUrl;
+    return()=>{active=false;};
+  }, [branding]);
   return <Context.Provider value={{ branding, canManage, refresh }}>{children}</Context.Provider>;
 }
 export const useBranding = () => useContext(Context);

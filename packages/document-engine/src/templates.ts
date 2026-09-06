@@ -70,7 +70,7 @@ export function mergeDocx(source: Buffer, values: MergeValues, logo?: Buffer) {
     }
     zip.file('word/document.xml',xml);
   }
-  const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, parser: tag => ({ get: () => merge(`{${tag.trim()}}`, values) }) });
+  const doc = new Docxtemplater(zip, { errorLogging: false, paragraphLoop: true, linebreaks: true, parser: tag => ({ get: () => merge(`{${tag.trim()}}`, values) }) });
   doc.render(values);
   return doc.getZip().generate({ type: 'nodebuffer' });
 }

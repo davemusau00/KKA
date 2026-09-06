@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validateImage, renderMarks, validatePlacement, merge, templateHtml, validateDocx } from './index';
 import { LocalPrivateStorageDriver } from './storage/local.storage';
+import { demonstrationDocx, mergeDocx, MERGE_FIELDS } from './index';
 test('decodes images, preserves dimensions and rejects false MIME and corrupt content',async()=>{
   const image=await sharp({create:{width:320,height:80,channels:4,background:'#b9a48c'}}).png().toBuffer();
   const result=await validateImage(image,'image/png');assert.equal(result.width,320);assert.equal(result.height,80);assert.equal(result.transparent,true);
@@ -30,4 +31,10 @@ test('private local storage works on Windows and denies traversal',async()=>{
   const root=await fs.mkdtemp(join(tmpdir(),'kka-storage-test-'));const driver=new LocalPrivateStorageDriver(root);
   const v=await driver.put({namespace:'marks',filename:'test.png',mimeType:'image/png',buffer:Buffer.from('test')});assert.equal((await driver.readBuffer(v.path)).toString(),'test');
   await assert.rejects(driver.readBuffer('../outside'));await driver.delete(v.path);assert.equal(await driver.exists(v.path),false);
+});
+test('Word templates merge values and embed branding without signature assets',async()=>{
+  const image=await sharp({create:{width:100,height:50,channels:4,background:'#b9a48c'}}).png().toBuffer();
+  const output=mergeDocx(demonstrationDocx(),Object.fromEntries(MERGE_FIELDS.map(k=>[k,'Synthetic example'])),image);
+  const zip=validateDocx(output);assert.ok(zip.file('word/media/kka-branding.png'));assert.ok(!zip.file('word/document.xml')!.asText().includes('{input.body}'));
+  assert.throws(()=>mergeDocx(demonstrationDocx(),{},image));
 });

@@ -1,3 +1,4 @@
+import { BrandImage } from '../../common/BrandImage';
 import React, { useEffect, useState } from 'react';
 import { useBranding } from '../../../context/BrandingContext';
 import { apiClient } from '../../../lib/api/client';
@@ -18,7 +19,7 @@ export function BrandingEditor() {
   }
   return <section className="space-y-3 mb-5" aria-label="Firm branding">
     <h3 className="font-semibold">Firm logo</h3>
-    <div className="rounded-xl bg-white p-3 w-full max-w-64"><img className="h-24 w-full object-contain" src={preview || branding.imageUrl} alt={preview ? 'Unsaved logo preview' : 'Current firm logo'} /></div>
+    <BrandImage className="h-28 w-full max-w-64 p-3" src={preview || branding.imageUrl} alt={preview ? 'Unsaved logo preview' : 'Current firm logo'} />
     <p className="text-sm">{branding.source === 'managed' ? 'Saved firm branding' : 'Bundled default logo'}. PNG or JPEG, up to 5 MiB and 4096 pixels per side.</p>
     {canManage ? <><input aria-label="Upload firm logo" type="file" accept="image/png,image/jpeg" disabled={busy} onChange={e => { const next = e.target.files?.[0]; setMessage(''); if (next && next.size > 5 * 1024 * 1024) { setMessage('Maximum upload size is 5 MiB.'); return; } setFile(next ?? null); }} />
     <div className="flex flex-wrap gap-2"><button className="admin-btn-primary" disabled={!file || busy} onClick={() => save()}>Save logo</button><button className="admin-btn-secondary" disabled={!file || busy} onClick={() => setFile(null)}>Cancel preview</button><button className="admin-btn-secondary" disabled={busy || branding.source === 'default'} onClick={() => save(true)}>Restore default</button></div></> : <p className="text-sm">Sign in with firm settings permission to manage the logo.</p>}

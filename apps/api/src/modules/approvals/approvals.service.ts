@@ -2,15 +2,13 @@ import { DocumentWorkflowService } from '../marks/document-workflow.service';
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
-import { MarksService } from "../marks/marks.service";
 
 @Injectable()
 export class ApprovalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly workflow: DocumentWorkflowService,
-    private readonly marks: MarksService
+    private readonly workflow: DocumentWorkflowService
   ) {}
 
   list(firmId: string, status: "PENDING" | "APPROVED" | "REJECTED" = "PENDING") {
@@ -144,11 +142,6 @@ export class ApprovalsService {
           data: { lifecycle: "ACTIVE", approvedById: actorId, approvedAt: new Date() }
         })
       ]);
-      return;
-    }
-
-    if (request.type === "DOCUMENT_MARK") {
-      await this.marks.applyApproved(firmId, actorId, payload);
       return;
     }
 

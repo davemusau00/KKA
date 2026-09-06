@@ -75,7 +75,11 @@ export class DocumentWorkflowService {
   }
   async preview(user: RequestUser, input: ApplyDocumentMarks) {
     const checked = await this.validate(user, input, false);
-    try { return await renderMarks(checked.buffer, checked.marks); } catch (e) { throw new BadRequestException(e instanceof Error ? e.message : 'Could not render PDF'); }
+    try {
+      const output = await renderMarks(checked.buffer, checked.marks);
+      await this.audit.record({ firmId:user.firmId,actorUserId:user.id,action:'document.mark_previewed',entityType:'document_version',entityId:input.inputVersionId,metadata:{placements:input.items.length} });
+      return output;
+    } catch (e) { throw new BadRequestException(e instanceof Error ? e.message : 'Could not render PDF'); }
   }
   async legacy(user: RequestUser, input: { documentId: string; inputVersionId: string; markAssetId: string; markAssetVersionId: string; placementPresetId?: string; executionBlockVersionId?: string; reason?: string; elevationToken?: string }) {
     await this.access.document(user, input.documentId);
@@ -99,10 +103,18 @@ export class DocumentWorkflowService {
     const checked = await this.validate(user, input, true);
     // Validate geometry before creating an approval or changing any document.
     await renderMarks(checked.buffer, checked.marks);
-    const op = await this.prisma.client.$transaction(async tx => {
+    let op: DocumentOperation;
+    try { op = await this.prisma.client.$transaction(async tx => {
       const approval = checked.approval ? await tx.approvalRequest.create({ data: { firmId: user.firmId, type: 'DOCUMENT_MARK', entityType: 'Document', entityId: input.documentId, requestedById: user.id, requiredRoleKeys: checked.approvalRoles.length ? checked.approvalRoles : ['managing_partner'], assignedUserIds: [], payload: json(safe), reason: input.reason } }) : null;
       return tx.documentOperation.create({ data: { firmId: user.firmId, actorId: user.id, documentId: input.documentId, kind: 'MARKS', idempotencyKey: input.idempotencyKey, payloadHash, payload: json({ ...safe, inputChecksum: checked.version.checksumSha256, assetChecksums: checked.marks.map(m => m.checksum) }), status: approval ? 'PENDING_APPROVAL' : 'QUEUED', approvalRequestId: approval?.id } });
-    });
+    }); } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const concurrent = await this.prisma.client.documentOperation.findUnique({ where: { firmId_idempotencyKey: { firmId: user.firmId, idempotencyKey: input.idempotencyKey } } });
+        if (concurrent && concurrent.payloadHash === payloadHash && concurrent.actorId === user.id) return this.safe(concurrent);
+        throw new ConflictException('Request key already used');
+      }
+      throw e;
+    }
     return checked.approval ? this.safe(op) : this.execute(op.id);
   }
   safe(op: DocumentOperation) {
@@ -125,7 +137,7 @@ export class DocumentWorkflowService {
       const approval = await this.prisma.client.approvalRequest.findUnique({ where: { id: op.approvalRequestId } });
       if (approval?.status !== 'APPROVED') throw new ForbiddenException('Application approval is required');
     }
-    const claimed = await this.prisma.client.documentOperation.updateMany({ where: { id, status: { in: ['QUEUED','FAILED','APPROVED'] } }, data: { status: 'PROCESSING', attempts: { increment: 1 }, error: null } });
+    const claimed = await this.prisma.client.documentOperation.updateMany({ where: { id, OR: [{ status: { in: ['QUEUED','FAILED','APPROVED'] } }, { status: 'PROCESSING', updatedAt: { lt: new Date(Date.now() - 300000) } }] }, data: { status: 'PROCESSING', attempts: { increment: 1 }, error: null } });
     if (!claimed.count) return this.safe(await this.prisma.client.documentOperation.findUniqueOrThrow({ where: { id } }));
     let storedPath: string | undefined;
     try {
@@ -138,6 +150,8 @@ export class DocumentWorkflowService {
       const stored = await this.storage.putDocument({ filename: 'marked.pdf', mimeType: 'application/pdf', buffer: output }); storedPath = stored.path;
       const result = await this.prisma.client.$transaction(async tx => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${op.documentId}))`;
+        const current = await tx.documentOperation.findUniqueOrThrow({ where: { id } });
+        if (current.status !== 'PROCESSING' || current.attempts !== op.attempts + 1) throw new ConflictException('Operation lease changed; retry from history');
         const latest = await tx.documentVersion.findFirst({ where: { documentId: op.documentId }, orderBy: { versionNumber: 'desc' } });
         const v = await tx.documentVersion.create({ data: { documentId: op.documentId, versionNumber: (latest?.versionNumber ?? 0) + 1, storageDriver: stored.driver, storagePath: stored.path, originalFilename: stored.originalFilename, mimeType: stored.mimeType, fileSizeBytes: BigInt(stored.sizeBytes), checksumSha256: stored.checksumSha256, uploadedById: op.actorId, status: 'DRAFT', changeSummary: input.reason } });
         for (const m of checked.marks) await tx.documentMarkApplication.create({ data: { documentId: op.documentId, inputVersionId: input.inputVersionId, outputVersionId: v.id, markAssetId: m.assetId, markAssetVersionId: m.signature ? undefined : m.versionId, signatureAssetVersionId: m.signature ? m.versionId : undefined, signerUserId: m.signerId, operationId: op.id, requestedById: op.actorId, status: 'APPLIED', placementResolved: json(m.placement), inputChecksum: checked.version.checksumSha256, outputChecksum: stored.checksumSha256, reason: input.reason, appliedAt: new Date() } });
@@ -148,7 +162,8 @@ export class DocumentWorkflowService {
       return this.safe(result);
     } catch (e) {
       if (storedPath) await this.storage.deleteDocument(storedPath).catch(() => undefined);
-      const row = await this.prisma.client.documentOperation.update({ where: { id }, data: { status: 'FAILED', error: e instanceof Error ? e.message : 'Rendering failed' } });
+      await this.prisma.client.documentOperation.updateMany({ where: { id, status:'PROCESSING', attempts:op.attempts+1 }, data: { status: 'FAILED', error: e instanceof Error ? e.message : 'Rendering failed' } });
+      const row = await this.prisma.client.documentOperation.findUniqueOrThrow({where:{id}});
       return this.safe(row);
     }
   }

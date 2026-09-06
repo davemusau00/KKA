@@ -14,10 +14,22 @@ export const MarkUpdateSchema = z.object({
   requiresApproval: z.boolean().optional(), approvalRoleKeys: z.array(z.string()).optional(),
   effectiveFrom: z.string().datetime().nullable().optional(), effectiveTo: z.string().datetime().nullable().optional(),
   canApplyAutomatically: z.boolean().optional()
+  ,minRotationDegrees: z.number().min(-180).max(180).optional(), maxRotationDegrees: z.number().min(-180).max(180).optional(), minOpacity: z.number().min(0.1).max(1).optional()
 });
 @Injectable()
 export class RegistryService {
   constructor(private readonly prisma: PrismaService, private readonly storage: StorageService, private readonly audit: AuditService) {}
+  private async permitted(user: RequestUser, asset: { branchId: string | null; permittedUserIds: string[]; permittedRoleKeys: string[] }) {
+    if (user.permissions.includes('admin.settings_manage')) return true;
+    if (asset.branchId && !await this.prisma.client.userBranch.findFirst({ where: { userId: user.id, branchId: asset.branchId } })) return false;
+    return !asset.permittedUserIds.length && !asset.permittedRoleKeys.length || asset.permittedUserIds.includes(user.id) || asset.permittedRoleKeys.some(r => user.roleKeys.includes(r));
+  }
+  async list(user: RequestUser) {
+    const assets = await this.prisma.client.firmMarkAsset.findMany({ where: { firmId: user.firmId }, include: { versions: { orderBy: { version: 'desc' }, select: { id:true,version:true,mimeType:true,checksumSha256:true,widthPx:true,heightPx:true,createdAt:true } } }, orderBy: { displayName:'asc' } });
+    const visible = [];
+    for (const asset of assets) if (await this.permitted(user,asset)) visible.push(asset);
+    return visible;
+  }
   async update(user: RequestUser, id: string, input: z.infer<typeof MarkUpdateSchema>) {
     const asset = await this.prisma.client.firmMarkAsset.findFirst({ where: { id, firmId: user.firmId } });
     if (!asset) throw new NotFoundException('Mark not found');
@@ -26,6 +38,7 @@ export class RegistryService {
     const from = input.effectiveFrom === undefined ? asset.effectiveFrom : input.effectiveFrom ? new Date(input.effectiveFrom) : null;
     const to = input.effectiveTo === undefined ? asset.effectiveTo : input.effectiveTo ? new Date(input.effectiveTo) : null;
     if (from && to && from >= to) throw new BadRequestException('Effective end must follow start');
+    if ((input.minRotationDegrees ?? asset.minRotationDegrees) > (input.maxRotationDegrees ?? asset.maxRotationDegrees)) throw new BadRequestException('Minimum rotation cannot exceed maximum rotation');
     return this.prisma.client.$transaction(async tx => {
       const row = await tx.firmMarkAsset.update({ where: { id }, data: { ...input, effectiveFrom: from, effectiveTo: to } });
       await this.audit.record({ firmId: user.firmId, actorUserId: user.id, action: 'mark.updated', entityType: 'firm_mark_asset', entityId: id, metadata: { active: row.active } }, tx);
@@ -67,6 +80,7 @@ export class RegistryService {
     const v = signature ? await this.prisma.client.signatureAssetVersion.findFirst({ where: { id: versionId, profile: { user: { firmId: user.firmId }, ...(user.permissions.includes('admin.settings_manage') ? {} : { userId: user.id }) } } })
       : await this.prisma.client.firmMarkAssetVersion.findFirst({ where: { id: versionId, asset: { firmId: user.firmId } }, include: { asset: true } });
     if (!v) throw new NotFoundException('Asset not found');
+    if (!signature && 'asset' in v && !await this.permitted(user,v.asset)) throw new ForbiddenException('Mark preview is restricted');
     await this.audit.record({ firmId: user.firmId, actorUserId: user.id, action: 'asset.previewed', entityType: signature ? 'signature_asset_version' : 'firm_mark_asset_version', entityId: versionId });
     return { stream: await this.storage.openMark(v.storagePath), mimeType: v.mimeType };
   }

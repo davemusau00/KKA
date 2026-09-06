@@ -1,8 +1,8 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { apiClient } from '../../../lib/api/client';
 import { useBranding } from '../../../context/BrandingContext';
 interface Version { id: string; version: number; active?: boolean; createdAt: string }
-interface Mark { id: string; displayName: string; type: string; description?: string; active: boolean; branchId?: string; versions: Version[]; permittedRoleKeys: string[]; permittedUserIds: string[]; allowedDocumentTypes: string[]; allowedMatterTypes: string[]; requiresApproval: boolean; approvalRoleKeys: string[]; effectiveFrom?: string; effectiveTo?: string }
+interface Mark { id: string; displayName: string; type: string; description?: string; active: boolean; branchId?: string; versions: Version[]; permittedRoleKeys: string[]; permittedUserIds: string[]; allowedDocumentTypes: string[]; allowedMatterTypes: string[]; requiresApproval: boolean; approvalRoleKeys: string[]; effectiveFrom?: string; effectiveTo?: string; minRotationDegrees?: number; maxRotationDegrees?: number; minOpacity?: number }
 interface Signature { id: string; userId: string; professionalDisplayName: string; approvalStatus: string; typedSignatureAllowed: boolean; versions: Version[] }
 const types = ['LOGO','FIRM_SEAL','BRANCH_SEAL','RECEIVED_STAMP','PAID_STAMP','APPROVED_STAMP','CERTIFIED_COPY_STAMP','CONFIDENTIAL_STAMP','DRAFT_STAMP','COPY_STAMP','INTERNAL_REVIEW_STAMP','CUSTOM_OPERATIONAL_MARK'];
 const words = (s: string) => s.toLowerCase().replaceAll('_',' ');
@@ -17,16 +17,17 @@ export function FirmMarksStampsTab() {
   const [approval, setApproval] = useState(false), [approvalRoles, setApprovalRoles] = useState('managing_partner'), [from, setFrom] = useState(''), [to, setTo] = useState('');
   const [file, setFile] = useState<File | null>(null), [sigUser, setSigUser] = useState(''), [sigName, setSigName] = useState('');
   const [sigId, setSigId] = useState(''), [sigMode, setSigMode] = useState('upload'), [typed, setTyped] = useState('');
+  const [minRotation,setMinRotation]=useState('0'),[maxRotation,setMaxRotation]=useState('0'),[minOpacity,setMinOpacity]=useState('0.2');
   const [delegate, setDelegate] = useState(''), [delegateEnd, setDelegateEnd] = useState('');
   const canvas = useRef<HTMLCanvasElement>(null), drawing = useRef(false);
   async function load() { const [m,s,u,b] = await Promise.all([apiClient.get<Mark[]>('/marks'), apiClient.get<Signature[]>('/marks/signature-profiles'), apiClient.get<typeof users>('/users'), apiClient.get<typeof branches>('/organization/branches')]); setMarks(m); setSignatures(s); setUsers(u); setBranches(b); }
   useEffect(() => { load().catch(e => setMessage(e.message)); }, []);
   async function run(action: () => Promise<unknown>) { setBusy(true); setMessage(''); try { await action(); await load(); setMessage('Saved on server.'); } catch (e) { setMessage(e instanceof Error ? e.message : 'Request failed'); } finally { setBusy(false); } }
-  function startEdit(m: Mark) { setEdit(m); setName(m.displayName); setType(m.type); setBranch(m.branchId || ''); setRoles(m.permittedRoleKeys.join(', ')); setAllowedUsers(m.permittedUserIds); setDocTypes(m.allowedDocumentTypes.join(', ')); setMatterTypes(m.allowedMatterTypes.join(', ')); setApproval(m.requiresApproval); setApprovalRoles(m.approvalRoleKeys.join(', ')); setFrom(m.effectiveFrom?.slice(0,16) || ''); setTo(m.effectiveTo?.slice(0,16) || ''); setFile(null); }
+  function startEdit(m: Mark) { setEdit(m); setName(m.displayName); setType(m.type); setBranch(m.branchId || ''); setRoles(m.permittedRoleKeys.join(', ')); setAllowedUsers(m.permittedUserIds); setDocTypes(m.allowedDocumentTypes.join(', ')); setMatterTypes(m.allowedMatterTypes.join(', ')); setApproval(m.requiresApproval); setApprovalRoles(m.approvalRoleKeys.join(', ')); setFrom(m.effectiveFrom?.slice(0,16) || ''); setTo(m.effectiveTo?.slice(0,16) || ''); setFile(null); setMinRotation(String(m.minRotationDegrees??0));setMaxRotation(String(m.maxRotationDegrees??0));setMinOpacity(String(m.minOpacity??0.2)); }
   async function saveMark() {
-    const config = { displayName: name, branchId: branch || null, permittedRoleKeys: split(roles), permittedUserIds: allowedUsers, allowedDocumentTypes: split(docTypes), allowedMatterTypes: split(matterTypes), requiresApproval: approval, approvalRoleKeys: approval ? split(approvalRoles) : [], effectiveFrom: from ? new Date(from).toISOString() : null, effectiveTo: to ? new Date(to).toISOString() : null };
+    const config = { minRotationDegrees:Number(minRotation),maxRotationDegrees:Number(maxRotation),minOpacity:Number(minOpacity),displayName: name, branchId: branch || null, permittedRoleKeys: split(roles), permittedUserIds: allowedUsers, allowedDocumentTypes: split(docTypes), allowedMatterTypes: split(matterTypes), requiresApproval: approval, approvalRoleKeys: approval ? split(approvalRoles) : [], effectiveFrom: from ? new Date(from).toISOString() : null, effectiveTo: to ? new Date(to).toISOString() : null };
     let id = edit?.id;
-    if (!id) { const created = await apiClient.post<Mark>('/marks', { ...config, branchId: branch || undefined, type, description: 'Uploaded firm artwork', intendedUse: 'Document branding and controlled application' }); id = created.id; }
+    if (!id) { const created = await apiClient.post<Mark>('/marks', { ...config, branchId: branch || undefined, type, description: 'Uploaded firm artwork', intendedUse: 'Document branding and controlled application' }); id = created.id; setEdit({...created,versions:[]}); }
     await apiClient.patch(`/marks/${id}`, config);
     if (file) { const data = new FormData(); data.append('file', file); await apiClient.post(`/marks/${id}/versions`, data); }
     setFile(null); setEdit(null); setName('');
@@ -61,7 +62,7 @@ export function FirmMarksStampsTab() {
         {input('Allowed role keys (comma separated; blank = unrestricted)',roles,setRoles)}
         <label>Authorized users<select multiple className="admin-input" value={allowedUsers} onChange={e=>setAllowedUsers([...e.target.selectedOptions].map(o=>o.value))}>{users.map(u=><option key={u.id} value={u.id}>{u.fullName}</option>)}</select></label>
         {input('Document types (comma separated; blank = all)',docTypes,setDocTypes)}{input('Matter types (comma separated; blank = all)',matterTypes,setMatterTypes)}
-        {input('Effective from',from,setFrom,'datetime-local')}{input('Effective until',to,setTo,'datetime-local')}
+        {input('Effective from',from,setFrom,'datetime-local')}{input('Effective until',to,setTo,'datetime-local')}{input('Minimum rotation (degrees)',minRotation,setMinRotation,'number')}{input('Maximum rotation (degrees)',maxRotation,setMaxRotation,'number')}{input('Minimum opacity',minOpacity,setMinOpacity,'number')}
       </div><label className="flex gap-2"><input type="checkbox" checked={approval} onChange={e=>setApproval(e.target.checked)} />Require application approval</label>{approval && input('Approval role keys',approvalRoles,setApprovalRoles)}
       <label className="block">Artwork (PNG/JPEG, maximum 5 MiB)<input type="file" accept="image/png,image/jpeg" onChange={e=>setFile(e.target.files?.[0]??null)} /></label>
       <button className="admin-btn-primary" disabled={busy || name.trim().length<2 || (!edit && !file)}>Save artwork</button>{edit && <button type="button" className="admin-btn-secondary" onClick={()=>{setEdit(null);setName('');setFile(null);}}>Cancel edit</button>}

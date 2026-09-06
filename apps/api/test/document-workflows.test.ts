@@ -6,6 +6,7 @@ import { promises as fs } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import argon2 from 'argon2';
+import { demonstrationDocx, demonstrationLetter, demonstrationPleading } from '@kka/document-engine';
 const base=process.env.TEST_API_URL||'http://localhost:3015/api/v1';
 const db=createPrismaClient(process.env.DATABASE_URL!);
 const password=process.env.SEED_ADMIN_PASSWORD!;
@@ -111,4 +112,33 @@ test('signature uploads reset approval, raw assets stay private, and expired del
 test('simultaneous distinct applications allocate unique document versions',async()=>{
   const results=await Promise.all([ok<{status:string;outputVersionId:string}>('/document-operations/apply',marks()),ok<{status:string;outputVersionId:string}>('/document-operations/apply',marks())]);
   assert.ok(results.every(r=>r.status==='COMPLETED'));assert.notEqual(results[0]!.outputVersionId,results[1]!.outputVersionId);
+});
+async function awaitOperation(id:string) {
+  const deadline=Date.now()+120000;
+  while(Date.now()<deadline){const op=await db.documentOperation.findUniqueOrThrow({where:{id}});if(op.status==='COMPLETED')return op;if(op.status==='FAILED')throw new Error(op.error||'Generation failed');await new Promise(resolve=>setTimeout(resolve,500));}
+  throw new Error('Generation did not finish within two minutes');
+}
+test('structured letters and pleadings generate through the real worker with pinned branding',async()=>{
+  for(const [name,content] of [['Demonstration letter',demonstrationLetter],['Demonstration pleading',demonstrationPleading]] as const){
+    const template=await ok<{id:string;templateId:string}>('/document-templates',{name,key:`demo-${randomUUID()}`,category:'Demonstration',content,configuration:{logo:'active',marks:[]}});
+    const input={documentId:docId,templateVersionId:template.id,idempotencyKey:randomUUID(),inputs:{'input.recipient':'Synthetic Recipient','input.subject':'Synthetic Test Subject','input.body':'This example contains no real client information.'}};
+    assert.equal((await request('/document-templates/generate',input)).status,404);
+    const before=await db.documentVersion.count({where:{documentId:docId}});
+    const preview=await ok<{id:string}>('/document-templates/preview',input);await awaitOperation(preview.id);
+    assert.equal(await db.documentVersion.count({where:{documentId:docId}}),before);
+    assert.equal((await request(`/document-operations/${preview.id}/preview-file`)).status,200);
+    await ok(`/document-templates/versions/${template.id}/publish`,{});
+    const op=await ok<{id:string}>('/document-templates/generate',{...input,idempotencyKey:randomUUID()});const finished=await awaitOperation(op.id);assert.ok(finished.outputVersionId);
+    const v=await db.documentVersion.findUniqueOrThrow({where:{id:finished.outputVersionId!}});assert.equal(v.status,'DRAFT');assert.equal(v.mimeType,'application/pdf');
+    await ok(`/document-templates/${template.templateId}`,{active:false},'PATCH');assert.equal((await request('/document-templates/generate',{...input,idempotencyKey:randomUUID()})).status,404);
+    await ok(`/document-templates/${template.templateId}`,{active:true},'PATCH');
+  }
+});
+test('Word template generates editable DOCX and PDF with no controlled signature images in DOCX',async()=>{
+  const template=await ok<{templateId:string}>('/document-templates',{name:'Demonstration Word letter',key:`word-${randomUUID()}`,category:'Demonstration',content:demonstrationLetter});
+  const data=upload(demonstrationDocx(),'application/vnd.openxmlformats-officedocument.wordprocessingml.document','letter.docx');
+  const version=await ok<{id:string}>(`/document-templates/${template.templateId}/docx`,data);await ok(`/document-templates/versions/${version.id}/publish`,{});
+  const op=await ok<{id:string}>('/document-templates/generate',{documentId:docId,templateVersionId:version.id,idempotencyKey:randomUUID(),inputs:{'input.recipient':'Synthetic Recipient','input.subject':'Synthetic Word Example','input.body':'Demonstration only.'}});
+  const finished=await awaitOperation(op.id);assert.ok(finished.outputDocxVersionId);assert.ok(finished.outputVersionId);
+  const word=await request(`/documents/versions/${finished.outputDocxVersionId}/download`);assert.equal(word.status,200);
 });

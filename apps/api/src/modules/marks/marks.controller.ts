@@ -16,7 +16,7 @@ export class MarksController {
   @Get()
   @RequirePermissions("document.view")
   list(@CurrentUser() user: RequestUser) {
-    return this.marks.listAssets(user.firmId);
+    return this.registry.list(user);
   }
 
   @Post()
@@ -105,7 +105,7 @@ export class MarksController {
 
   @Post("signature-profiles")
   @RequirePermissions("admin.settings_manage")
-  signatureProfile(@CurrentUser()user:RequestUser,@Body()body:unknown){const input=z.object({userId:z.string(),professionalDisplayName:z.string().min(2),postNominals:z.string().optional(),jobTitle:z.string().optional(),admissionNumber:z.string().optional(),typedSignatureAllowed:z.boolean().default(false),approvalStatus:z.string().default("PENDING")}).parse(body);return this.marks.upsertSignatureProfile(user.firmId,user.id,input);}
+  signatureProfile(@CurrentUser()user:RequestUser,@Body()body:unknown){const input=z.object({userId:z.string(),professionalDisplayName:z.string().min(2),postNominals:z.string().optional(),jobTitle:z.string().optional(),admissionNumber:z.string().optional(),typedSignatureAllowed:z.boolean().default(false),approvalStatus:z.enum(["PENDING","APPROVED","RETIRED"]).default("PENDING")}).parse(body);return this.marks.upsertSignatureProfile(user.firmId,user.id,input);}
 
   @Post("signature-profiles/:id/assets")
   @RequirePermissions("admin.settings_manage")
