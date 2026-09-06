@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DollarSign,
   Plus,
@@ -1112,236 +1113,244 @@ export const FinanceWorkspace: React.FC = () => {
       )}
 
       {/* MODAL 1: GENERATE NEW FEE NOTE */}
-      {showFeeNoteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <form onSubmit={handleCreateFeeNote} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-2xl space-y-4 my-8 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      {showFeeNoteModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <form
+            onSubmit={handleCreateFeeNote}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-xs"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 p-5 shrink-0 bg-slate-50 dark:bg-slate-950/80">
               <div>
-                <h3 className="font-serif font-bold text-base text-slate-100">
+                <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">
                   Generate Advocate-Client Fee Note &amp; Bill
                 </h3>
-                <p className="text-slate-400 text-xs">
+                <p className="text-slate-500 dark:text-slate-400 text-xs">
                   Advocates Act (Cap 16) &bull; Advocates (Remuneration) Order
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowFeeNoteModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Matter Selection */}
-            <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Matter File Reference</label>
-              <select
-                value={fnMatterId}
-                onChange={(e) => {
-                  const mId = e.target.value;
-                  setFnMatterId(mId);
-                  const unbilled = timeEntries.filter((t) => t.matterId === mId && !t.isBilled).map((t) => t.id);
-                  setSelectedTimeEntryIds(unbilled);
-                  const disb = expenses
-                    .filter((exp) => exp.matterId === mId && (exp.status === 'approved' || exp.status === 'disbursed' || exp.status === 'reconciled'))
-                    .map((exp) => exp.id);
-                  setSelectedExpenseIds(disb);
-                  const avail = getMatterTrustBalance(mId);
-                  setFnTrustAmountToApply(avail > 0 ? String(avail) : '0');
-                }}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
-              >
-                {matters.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.internalReference} - {m.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Modal Body - Scrollable */}
+            <div className="overflow-y-auto flex-1 p-5 sm:p-6 space-y-4">
+              {/* Matter Selection */}
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">ARO Remuneration Scale</label>
-                <input
-                  type="text"
-                  value={fnAroScale}
-                  onChange={(e) => setFnAroScale(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Signatory Advocate</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Matter File Reference</label>
                 <select
-                  value={fnSignatoryId}
-                  onChange={(e) => setFnSignatoryId(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
+                  value={fnMatterId}
+                  onChange={(e) => {
+                    const mId = e.target.value;
+                    setFnMatterId(mId);
+                    const unbilled = timeEntries.filter((t) => t.matterId === mId && !t.isBilled).map((t) => t.id);
+                    setSelectedTimeEntryIds(unbilled);
+                    const disb = expenses
+                      .filter((exp) => exp.matterId === mId && (exp.status === 'approved' || exp.status === 'disbursed' || exp.status === 'reconciled'))
+                      .map((exp) => exp.id);
+                    setSelectedExpenseIds(disb);
+                    const avail = getMatterTrustBalance(mId);
+                    setFnTrustAmountToApply(avail > 0 ? String(avail) : '0');
+                  }}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono"
                 >
-                  {users.filter((u) => u.role === 'senior_partner' || u.role === 'advocate').map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName} ({u.jobTitle})
+                  {matters.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.internalReference} - {m.title}
                     </option>
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Instruction Fee Row */}
-            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-              <div className="font-semibold text-amber-400 flex items-center justify-between">
-                <span>Instruction Fee (ARO Schedule 6)</span>
-                <span className="text-[11px] text-slate-400">Subject to 16% VAT</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  type="number"
-                  value={fnInstructionFee}
-                  onChange={(e) => setFnInstructionFee(e.target.value)}
-                  placeholder="Amount (KES)"
-                  className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 font-mono font-bold outline-none text-xs"
-                />
-                <input
-                  type="text"
-                  value={fnInstructionFeeDesc}
-                  onChange={(e) => setFnInstructionFeeDesc(e.target.value)}
-                  placeholder="Instruction particulars description..."
-                  className="sm:col-span-2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Unbilled Time Entries Checklist */}
-            <div className="space-y-2">
-              <label className="block text-slate-300 font-semibold">
-                Include Unbilled Professional Time ({timeEntries.filter((t) => t.matterId === fnMatterId && !t.isBilled).length} Available)
-              </label>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-slate-950/60 rounded-xl border border-slate-800">
-                {timeEntries.filter((t) => t.matterId === fnMatterId && !t.isBilled).length === 0 ? (
-                  <div className="text-slate-500 py-2 text-center text-xs">No unbilled time entries found for this matter.</div>
-                ) : (
-                  timeEntries
-                    .filter((t) => t.matterId === fnMatterId && !t.isBilled)
-                    .map((entry) => {
-                      const isChecked = selectedTimeEntryIds.includes(entry.id);
-                      return (
-                        <label
-                          key={entry.id}
-                          className={`p-2 rounded-lg border flex items-center justify-between cursor-pointer transition text-xs ${
-                            isChecked ? 'bg-amber-950/30 border-amber-800/80 text-slate-100' : 'bg-slate-900 border-slate-800 text-slate-400'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedTimeEntryIds((prev) => [...prev, entry.id]);
-                                } else {
-                                  setSelectedTimeEntryIds((prev) => prev.filter((id) => id !== entry.id));
-                                }
-                              }}
-                              className="accent-amber-600 rounded"
-                            />
-                            <span>{entry.activityType}: {entry.notes}</span>
-                          </div>
-                          <span className="font-mono font-bold text-amber-400 shrink-0">
-                            KES {entry.totalAmount.toLocaleString()}
-                          </span>
-                        </label>
-                      );
-                    })
-                )}
-              </div>
-            </div>
-
-            {/* Reimbursable Disbursements Checklist */}
-            <div className="space-y-2">
-              <label className="block text-slate-300 font-semibold">
-                Include Reimbursable Out-of-Pocket Disbursements (0% VAT per Kenya Tax Law)
-              </label>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-slate-950/60 rounded-xl border border-slate-800">
-                {expenses.filter((e) => e.matterId === fnMatterId && (e.status === 'approved' || e.status === 'disbursed' || e.status === 'reconciled')).length === 0 ? (
-                  <div className="text-slate-500 py-2 text-center text-xs">No approved disbursements found for this matter.</div>
-                ) : (
-                  expenses
-                    .filter((e) => e.matterId === fnMatterId && (e.status === 'approved' || e.status === 'disbursed' || e.status === 'reconciled'))
-                    .map((exp) => {
-                      const isChecked = selectedExpenseIds.includes(exp.id);
-                      return (
-                        <label
-                          key={exp.id}
-                          className={`p-2 rounded-lg border flex items-center justify-between cursor-pointer transition text-xs ${
-                            isChecked ? 'bg-emerald-950/30 border-emerald-800/80 text-slate-100' : 'bg-slate-900 border-slate-800 text-slate-400'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedExpenseIds((prev) => [...prev, exp.id]);
-                                } else {
-                                  setSelectedExpenseIds((prev) => prev.filter((id) => id !== exp.id));
-                                }
-                              }}
-                              className="accent-emerald-600 rounded"
-                            />
-                            <span>{exp.description}</span>
-                          </div>
-                          <span className="font-mono font-bold text-slate-200 shrink-0">
-                            KES {exp.amount.toLocaleString()}
-                          </span>
-                        </label>
-                      );
-                    })
-                )}
-              </div>
-            </div>
-
-            {/* Trust Funds Retainer Deduction Block */}
-            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 font-semibold text-slate-200 cursor-pointer">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">ARO Remuneration Scale</label>
                   <input
-                    type="checkbox"
-                    checked={fnApplyTrustFunds}
-                    onChange={(e) => setFnApplyTrustFunds(e.target.checked)}
-                    className="accent-emerald-600 rounded"
+                    type="text"
+                    value={fnAroScale}
+                    onChange={(e) => setFnAroScale(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
                   />
-                  <span>Apply Available Client Trust Float (Advocates Accounts Rules Sec 13)</span>
-                </label>
-                <span className="font-mono text-emerald-400 font-bold">
-                  Available: KES {getMatterTrustBalance(fnMatterId).toLocaleString()}
-                </span>
+                </div>
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Signatory Advocate</label>
+                  <select
+                    value={fnSignatoryId}
+                    onChange={(e) => setFnSignatoryId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
+                  >
+                    {users.filter((u) => u.role === 'senior_partner' || u.role === 'advocate').map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.fullName} ({u.jobTitle})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              {fnApplyTrustFunds && (
-                <input
-                  type="number"
-                  value={fnTrustAmountToApply}
-                  onChange={(e) => setFnTrustAmountToApply(e.target.value)}
-                  placeholder="Trust amount to deduct (KES)"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 font-mono outline-none text-xs"
+
+              {/* Instruction Fee Row */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="font-semibold text-amber-700 dark:text-amber-400 flex items-center justify-between">
+                  <span>Instruction Fee (ARO Schedule 6)</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Subject to 16% VAT</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    value={fnInstructionFee}
+                    onChange={(e) => setFnInstructionFee(e.target.value)}
+                    placeholder="Amount (KES)"
+                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 font-mono font-bold outline-none text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={fnInstructionFeeDesc}
+                    onChange={(e) => setFnInstructionFeeDesc(e.target.value)}
+                    placeholder="Instruction particulars description..."
+                    className="sm:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Unbilled Time Entries Checklist */}
+              <div className="space-y-2">
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold">
+                  Include Unbilled Professional Time ({timeEntries.filter((t) => t.matterId === fnMatterId && !t.isBilled).length} Available)
+                </label>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
+                  {timeEntries.filter((t) => t.matterId === fnMatterId && !t.isBilled).length === 0 ? (
+                    <div className="text-slate-500 py-2 text-center text-xs">No unbilled time entries found for this matter.</div>
+                  ) : (
+                    timeEntries
+                      .filter((t) => t.matterId === fnMatterId && !t.isBilled)
+                      .map((entry) => {
+                        const isChecked = selectedTimeEntryIds.includes(entry.id);
+                        return (
+                          <label
+                            key={entry.id}
+                            className={`p-2 rounded-lg border flex items-center justify-between cursor-pointer transition text-xs ${
+                              isChecked
+                                ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/80 text-slate-900 dark:text-slate-100'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedTimeEntryIds((prev) => [...prev, entry.id]);
+                                  } else {
+                                    setSelectedTimeEntryIds((prev) => prev.filter((id) => id !== entry.id));
+                                  }
+                                }}
+                                className="accent-amber-600 rounded"
+                              />
+                              <span className="truncate">{entry.description}</span>
+                            </div>
+                            <span className="font-mono font-bold shrink-0 ml-2">KES {entry.totalAmount.toLocaleString()}</span>
+                          </label>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+
+              {/* Disbursements Checklist */}
+              <div className="space-y-2">
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold">
+                  Include Approved / Paid Disbursements ({expenses.filter((exp) => exp.matterId === fnMatterId && (exp.status === 'approved' || exp.status === 'disbursed' || exp.status === 'reconciled')).length} Available)
+                </label>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
+                  {expenses.filter((exp) => exp.matterId === fnMatterId && (exp.status === 'approved' || exp.status === 'disbursed' || exp.status === 'reconciled')).length === 0 ? (
+                    <div className="text-slate-500 py-2 text-center text-xs">No approved disbursements found for this matter.</div>
+                  ) : (
+                    expenses
+                      .filter((exp) => exp.matterId === fnMatterId && (exp.status === 'approved' || exp.status === 'disbursed' || exp.status === 'reconciled'))
+                      .map((exp) => {
+                        const isChecked = selectedExpenseIds.includes(exp.id);
+                        return (
+                          <label
+                            key={exp.id}
+                            className={`p-2 rounded-lg border flex items-center justify-between cursor-pointer transition text-xs ${
+                              isChecked
+                                ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/80 text-slate-900 dark:text-slate-100'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedExpenseIds((prev) => [...prev, exp.id]);
+                                  } else {
+                                    setSelectedExpenseIds((prev) => prev.filter((id) => id !== exp.id));
+                                  }
+                                }}
+                                className="accent-emerald-600 rounded"
+                              />
+                              <span className="truncate">{exp.description}</span>
+                            </div>
+                            <span className="font-mono font-bold shrink-0 ml-2">KES {exp.amount.toLocaleString()}</span>
+                          </label>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+
+              {/* Trust Funds Retainer Deduction Block */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={fnApplyTrustFunds}
+                      onChange={(e) => setFnApplyTrustFunds(e.target.checked)}
+                      className="accent-emerald-600 rounded"
+                    />
+                    <span>Apply Available Client Trust Float (Advocates Accounts Rules Sec 13)</span>
+                  </label>
+                  <span className="font-mono text-emerald-700 dark:text-emerald-400 font-bold">
+                    Available: KES {getMatterTrustBalance(fnMatterId).toLocaleString()}
+                  </span>
+                </div>
+                {fnApplyTrustFunds && (
+                  <input
+                    type="number"
+                    value={fnTrustAmountToApply}
+                    onChange={(e) => setFnTrustAmountToApply(e.target.value)}
+                    placeholder="Trust amount to deduct (KES)"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 font-mono outline-none text-xs"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Narrative &amp; Bill Notes</label>
+                <textarea
+                  rows={2}
+                  value={fnNotes}
+                  onChange={(e) => setFnNotes(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs resize-none"
                 />
-              )}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Narrative &amp; Bill Notes</label>
-              <textarea
-                rows={2}
-                value={fnNotes}
-                onChange={(e) => setFnNotes(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none text-xs resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            {/* Modal Footer - Fixed */}
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowFeeNoteModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition"
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition"
               >
                 Cancel
               </button>
@@ -1353,18 +1362,19 @@ export const FinanceWorkspace: React.FC = () => {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 2: PREVIEW / PRINT AUTHENTIC KENYAN ADVOCATE FEE NOTE */}
-      {previewFeeNote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl my-8 shadow-2xl overflow-hidden text-xs">
-            {/* Action Bar */}
-            <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+      {previewFeeNote && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            {/* Action Bar - Fixed / Sticky at top */}
+            <div className="p-4 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 z-10">
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-amber-400">{previewFeeNote.feeNoteNumber}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold bg-slate-800 text-slate-300">
+                <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-sm">{previewFeeNote.feeNoteNumber}</span>
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full uppercase font-bold bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300">
                   {previewFeeNote.status.replace('_', ' ')}
                 </span>
               </div>
@@ -1378,88 +1388,89 @@ export const FinanceWorkspace: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setPreviewFeeNote(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+                  title="Close (Esc)"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Printable Advocate Bill Layout */}
-            <div className="p-6 sm:p-8 space-y-6 bg-slate-900 text-slate-100">
+            {/* Printable Advocate Bill Layout - Scrollable Body */}
+            <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
               {/* Firm Letterhead */}
-              <div className="text-center border-b-2 border-slate-700 pb-5 space-y-1">
-                <h2 className="text-lg sm:text-xl font-serif font-black tracking-wide text-amber-400 uppercase">
+              <div className="text-center border-b-2 border-slate-200 dark:border-slate-700 pb-5 space-y-1">
+                <h2 className="text-lg sm:text-xl font-serif font-black tracking-wide text-slate-900 dark:text-amber-400 uppercase">
                   Kariuki Kagunda &amp; Associates
                 </h2>
-                <div className="text-xs font-semibold text-slate-300 uppercase tracking-widest">
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
                   Advocates &bull; Commissioners for Oaths &bull; Notaries Public
                 </div>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                   5th Floor, View Park Towers, Uhuru Highway, Nairobi &bull; TSS Towers, 3rd Floor, Mombasa
                 </div>
-                <div className="text-[11px] text-slate-400 font-mono">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                   Tel: +254 20 221 4450 / +254 722 100 200 &bull; Email: billing@kklaw.co.ke &bull; KRA PIN: P051234567Z
                 </div>
               </div>
 
               {/* Title */}
               <div className="text-center space-y-1">
-                <h3 className="text-base font-serif font-bold text-slate-100 uppercase tracking-wider underline">
+                <h3 className="text-base font-serif font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider underline">
                   Advocate-Client Fee Note &amp; Bill of Costs
                 </h3>
-                <div className="text-[11px] text-amber-500/90 font-mono">
-                  Drawn under Section 45 of the Advocates Act (Cap 16) &amp; {previewFeeNote.aroScaleReference || 'ARO Schedule 6'}
+                <div className="text-[11px] text-amber-700 dark:text-amber-400 font-mono">
+                  Drawn under Section 45 of the Advocates Act (Cap 16) &amp; {previewFeeNote.aroScaleReference || 'ARO Schedule 6 (Civil Litigation)'}
                 </div>
               </div>
 
               {/* Bill Metadata Grid */}
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs">
                 <div>
-                  <span className="text-slate-400 text-[11px] block">Client / Payee:</span>
-                  <span className="font-bold text-slate-100 text-sm">
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Client / Payee:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                     {clients.find((c) => c.id === previewFeeNote.clientId)?.displayName || 'Client'}
                   </span>
-                  <span className="text-slate-400 text-[11px] block mt-1">
+                  <span className="text-slate-600 dark:text-slate-400 text-[11px] block mt-1">
                     Matter: {matters.find((m) => m.id === previewFeeNote.matterId)?.title}
                   </span>
-                  <span className="font-mono text-amber-400 text-[11px] block">
+                  <span className="font-mono text-amber-700 dark:text-amber-400 font-semibold text-[11px] block">
                     Ref: {matters.find((m) => m.id === previewFeeNote.matterId)?.internalReference}
                   </span>
                 </div>
-                <div className="text-right space-y-1">
+                <div className="sm:text-right space-y-1">
                   <div>
-                    <span className="text-slate-400 text-[11px]">Fee Note No: </span>
-                    <span className="font-mono font-bold text-slate-100">{previewFeeNote.feeNoteNumber}</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">Fee Note No: </span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{previewFeeNote.feeNoteNumber}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px]">Date of Issue: </span>
-                    <span className="font-mono text-slate-200">{new Date(previewFeeNote.issuedDate).toLocaleDateString()}</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">Date of Issue: </span>
+                    <span className="font-mono text-slate-700 dark:text-slate-200">{new Date(previewFeeNote.issuedDate).toLocaleDateString()}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px]">Payment Due Date: </span>
-                    <span className="font-mono text-amber-400">{new Date(previewFeeNote.dueDate).toLocaleDateString()}</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">Payment Due Date: </span>
+                    <span className="font-mono font-bold text-amber-700 dark:text-amber-400">{new Date(previewFeeNote.dueDate).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* Itemized Schedule */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider border-b border-slate-800 pb-1">
+              <div className="space-y-3">
+                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1">
                   Itemized Particulars of Professional Services &amp; Disbursements
                 </h4>
-                <div className="divide-y divide-slate-800/80">
+                <div className="divide-y divide-slate-200 dark:divide-slate-800">
                   {previewFeeNote.items.map((item, idx) => (
                     <div key={item.id} className="py-2.5 flex items-start justify-between gap-4">
                       <div className="space-y-0.5 flex-1">
-                        <div className="text-slate-200 font-medium text-xs">
+                        <div className="text-slate-900 dark:text-slate-200 font-medium text-xs">
                           {idx + 1}. {item.description}
                         </div>
-                        <div className="text-[11px] text-slate-500 font-mono">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                           {item.category === 'professional_fee' ? 'Professional Legal Service (Taxable @ 16%)' : 'Reimbursable Court / Witness Disbursement (Exempt from VAT)'}
                         </div>
                       </div>
-                      <div className="font-mono font-bold text-slate-100 shrink-0 text-xs">
+                      <div className="font-mono font-bold text-slate-900 dark:text-slate-100 shrink-0 text-xs">
                         KES {item.amount.toLocaleString()}
                       </div>
                     </div>
@@ -1468,66 +1479,66 @@ export const FinanceWorkspace: React.FC = () => {
               </div>
 
               {/* Totals & Tax Calculation Box */}
-              <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 font-mono text-xs">
-                <div className="flex items-center justify-between text-slate-300">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-2 font-mono text-xs">
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
                   <span>Professional Legal Fees Subtotal:</span>
-                  <span>KES {previewFeeNote.professionalFeesSubtotal.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">KES {previewFeeNote.professionalFeesSubtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-300">
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
                   <span>16% Value Added Tax (VAT Act, 2013):</span>
-                  <span>KES {previewFeeNote.vatAmount.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">KES {previewFeeNote.vatAmount.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-300">
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
                   <span>Reimbursable Disbursements Subtotal:</span>
-                  <span>KES {previewFeeNote.disbursementsSubtotal.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">KES {previewFeeNote.disbursementsSubtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-100 font-bold border-t border-slate-800 pt-2 text-sm">
+                <div className="flex items-center justify-between text-slate-900 dark:text-slate-100 font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-sm">
                   <span>Gross Total Amount Rendered:</span>
                   <span>KES {previewFeeNote.grossTotal.toLocaleString()}</span>
                 </div>
                 {previewFeeNote.trustFundsApplied > 0 && (
-                  <div className="flex items-center justify-between text-emerald-400 font-bold">
+                  <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200 dark:border-emerald-800">
                     <span>Less: Retainer Applied from Client Trust A/C 7041:</span>
                     <span>- KES {previewFeeNote.trustFundsApplied.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-amber-400 font-bold text-base border-t border-slate-800 pt-2">
+                <div className="flex items-center justify-between text-slate-900 dark:text-amber-400 font-bold text-base border-t-2 border-slate-300 dark:border-slate-800 pt-2">
                   <span>Net Balance Payable by Client:</span>
-                  <span>KES {previewFeeNote.netBalanceDue.toLocaleString()}</span>
+                  <span className="font-black text-lg text-slate-900 dark:text-amber-400">KES {previewFeeNote.netBalanceDue.toLocaleString()}</span>
                 </div>
               </div>
 
               {/* Statutory Notice & Payment Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-[11px] text-slate-400">
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <span className="font-bold text-slate-300 block">Settlement Instructions:</span>
-                  <div>Bank: <strong>Stanbic Bank Kenya</strong></div>
-                  <div>Branch: <strong>Kenyatta Avenue</strong></div>
-                  <div>Account: <strong>010029381920 (Office Operating)</strong></div>
-                  <div>M-Pesa Paybill: <strong>522123</strong> &bull; Acc: <strong>{previewFeeNote.feeNoteNumber}</strong></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-[11px] text-slate-600 dark:text-slate-400">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <span className="font-bold text-slate-900 dark:text-slate-300 block">Settlement Instructions:</span>
+                  <div>Bank: <strong className="text-slate-800 dark:text-slate-200">Stanbic Bank Kenya</strong></div>
+                  <div>Branch: <strong className="text-slate-800 dark:text-slate-200">Kenyatta Avenue</strong></div>
+                  <div>Account: <strong className="text-slate-800 dark:text-slate-200">010029381920 (Office Operating)</strong></div>
+                  <div>M-Pesa Paybill: <strong className="text-slate-800 dark:text-slate-200">522123</strong> &bull; Acc: <strong className="text-slate-800 dark:text-slate-200">{previewFeeNote.feeNoteNumber}</strong></div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <span className="font-bold text-slate-300 block">Statutory Section 48 Notice:</span>
-                  <p className="text-[10px] leading-relaxed">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <span className="font-bold text-slate-900 dark:text-slate-300 block">Statutory Section 48 Notice:</span>
+                  <p className="text-[10px] leading-relaxed text-slate-600 dark:text-slate-400">
                     Under Section 48 of the Advocates Act (Cap 16), interest at the rate of 14% per annum will be charged on all fees and disbursements remaining unpaid after thirty (30) days from the delivery of this bill.
                   </p>
                 </div>
               </div>
 
               {/* Advocate Signature Block */}
-              <div className="pt-4 border-t border-slate-800 flex items-end justify-between">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-end justify-between">
                 <div>
-                  <div className="text-[11px] text-slate-400 font-mono">Drawn, Signed &amp; Delivered:</div>
-                  <div className="font-serif font-bold text-slate-100 text-sm mt-1">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Drawn, Signed &amp; Delivered:</div>
+                  <div className="font-serif font-bold text-slate-900 dark:text-slate-100 text-sm mt-1">
                     {users.find((u) => u.id === previewFeeNote.signatoryAdvocateId)?.fullName || 'Kariuki Kagunda, SC'}
                   </div>
-                  <div className="text-slate-400 text-[11px]">
+                  <div className="text-slate-600 dark:text-slate-400 text-[11px]">
                     Senior Managing Partner &bull; Advocate of the High Court of Kenya
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="inline-block p-2 border-2 border-amber-600/40 rounded-xl text-amber-400 font-mono text-[10px] uppercase font-bold text-center">
+                  <div className="inline-block p-2.5 border-2 border-amber-700/60 dark:border-amber-600/40 bg-amber-50/50 dark:bg-transparent rounded-xl text-amber-800 dark:text-amber-400 font-mono text-[10px] uppercase font-bold text-center shadow-sm">
                     Kariuki Kagunda &amp; Associates<br />
                     Official Firm Seal
                   </div>
@@ -1535,7 +1546,8 @@ export const FinanceWorkspace: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 3: RECORD CLIENT TRUST DEPOSIT */}

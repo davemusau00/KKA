@@ -103,7 +103,7 @@ export const HomeDashboard: React.FC = () => {
               className={`px-3 py-1.5 rounded-lg font-medium transition ${
                 viewScope === 'personal'
                   ? 'bg-amber-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               My Work
@@ -113,7 +113,7 @@ export const HomeDashboard: React.FC = () => {
               className={`px-3 py-1.5 rounded-lg font-medium transition ${
                 viewScope === 'branch'
                   ? 'bg-amber-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               My Branch
@@ -123,7 +123,7 @@ export const HomeDashboard: React.FC = () => {
               className={`px-3 py-1.5 rounded-lg font-medium transition ${
                 viewScope === 'firm'
                   ? 'bg-amber-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Firm-Wide
@@ -142,19 +142,19 @@ export const HomeDashboard: React.FC = () => {
 
       {/* Critical Alert Banners */}
       {stalledMatters.length > 0 && (
-        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-rose-950/20 animate-in fade-in">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm dark:shadow-lg dark:shadow-rose-950/20 animate-in fade-in">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-rose-900/60 text-rose-300 shrink-0">
+            <div className="p-2 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 shrink-0">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-semibold text-rose-200 text-sm flex items-center gap-2">
+              <div className="font-semibold text-rose-900 dark:text-rose-200 text-sm flex items-center gap-2">
                 <span>Stalled Matters Detected ({stalledMatters.length})</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-900 text-rose-200 uppercase font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 dark:bg-rose-900 dark:text-rose-200 uppercase font-bold">
                   Attention Required
                 </span>
               </div>
-              <p className="text-xs text-rose-300/80 mt-0.5">
+              <p className="text-xs text-rose-700 dark:text-rose-300/80 mt-0.5">
                 {stalledMatters[0].internalReference}: {stalledMatters[0].title} has exceeded stage target with no activity for 38 days.
               </p>
             </div>
@@ -164,7 +164,7 @@ export const HomeDashboard: React.FC = () => {
               setSelectedMatterId(stalledMatters[0].id);
               setActiveWorkspace('matters');
             }}
-            className="px-3 py-1.5 rounded-lg bg-rose-800 hover:bg-rose-700 text-white text-xs font-semibold shrink-0 transition"
+            className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 dark:bg-rose-800 dark:hover:bg-rose-700 text-white text-xs font-semibold shrink-0 transition shadow-sm"
           >
             Review Stalled Matter
           </button>
@@ -210,7 +210,7 @@ export const HomeDashboard: React.FC = () => {
           <div className="text-2xl font-bold font-serif text-rose-400 mt-2">
             {overdueTasks.length}
           </div>
-          <div className="text-[11px] text-rose-300/80 mt-1">
+          <div className="text-[11px] text-rose-700 dark:text-rose-300 font-medium mt-1">
             Statutory deadlines at risk
           </div>
         </div>
