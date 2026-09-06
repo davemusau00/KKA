@@ -312,8 +312,8 @@ interface AppContextType {
   completeTask: (id: string, force?: boolean) => { success: boolean; error?: string };
   createCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
   recordCourtOutcome: (eventId: string, status: CourtEventStatus, outcomeNotes: string, nextHearingDate?: string) => void;
-  createDocument: (doc: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'>) => LegalDocument;
-  uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string }, notes?: string) => void;
+  createDocument: (doc: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'> & { initialFile?: { filename?: string; size?: number; mimeType?: string; fileDataUrl?: string; changeSummary?: string } }) => LegalDocument;
+  uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string; fileDataUrl?: string }, notes?: string) => void;
   submitDocumentForReview: (documentId: string, versionId: string, reviewNotes?: string) => void;
   approveDocumentVersion: (documentId: string, versionId: string, comment?: string) => void;
   rejectDocumentVersion: (documentId: string, versionId: string, reason: string) => void;
@@ -2263,7 +2263,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Create a new LegalDocument record
   const createDocument = useCallback(
-    (docData: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'>): LegalDocument => {
+    (
+      docData: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'> & {
+        initialFile?: {
+          filename?: string;
+          size?: number;
+          mimeType?: string;
+          fileDataUrl?: string;
+          changeSummary?: string;
+        };
+      }
+    ): LegalDocument => {
       const now = new Date().toISOString();
       const docId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const versionId = `ver-${docId}-1`;
@@ -2271,19 +2281,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         id: versionId,
         documentId: docId,
         versionNumber: 1,
-        storagePath: `matters/${docData.matterId}/documents/${docId}/v1_placeholder`,
-        originalFilename: `${docData.documentType || docData.title}.pdf`,
-        mimeType: 'application/pdf',
-        fileSizeBytes: 0,
+        storagePath: `matters/${docData.matterId}/documents/${docId}/v1`,
+        originalFilename: docData.initialFile?.filename || `${docData.documentType || docData.title}.pdf`,
+        mimeType: docData.initialFile?.mimeType || 'application/pdf',
+        fileSizeBytes: docData.initialFile?.size || 0,
+        fileDataUrl: docData.initialFile?.fileDataUrl,
         checksum: '',
         uploadedBy: docData.ownerUserId,
         createdAt: now,
         status: 'draft',
-        changeSummary: 'Gate placeholder — replace with actual file',
+        changeSummary: docData.initialFile?.changeSummary || 'Initial document upload',
       };
+      const { initialFile, ...cleanDocData } = docData;
       const newDoc: LegalDocument = {
         id: docId,
-        ...docData,
+        ...cleanDocData,
         currentVersionId: versionId,
         versions: [initialVersion],
         createdAt: now,
@@ -2300,7 +2312,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const uploadDocumentVersion = useCallback(
     (
       documentId: string,
-      file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string },
+      file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string; fileDataUrl?: string },
       notes?: string
     ) => {
       setDocuments((prev) =>
@@ -2315,6 +2327,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             originalFilename: file.name,
             mimeType: file.mimeType || 'application/pdf',
             fileSizeBytes: file.size,
+            fileDataUrl: file.fileDataUrl,
             checksum: `sha256_${Math.random().toString(36).substring(2, 10)}`,
             uploadedBy: currentUser.id,
             createdAt: new Date().toISOString(),

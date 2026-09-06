@@ -55,14 +55,25 @@ export const DocumentsWorkspace: React.FC = () => {
     return true;
   });
 
+  const [selectedFileDataUrl, setSelectedFileDataUrl] = useState<string>('');
+  const [selectedFileMime, setSelectedFileMime] = useState<string>('application/pdf');
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFileName(file.name);
       setSelectedFileSize(file.size);
+      setSelectedFileMime(file.type || 'application/pdf');
       if (!docTitle) {
         setDocTitle(file.name.replace(/\.[^/.]+$/, ''));
       }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setSelectedFileDataUrl(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -77,11 +88,19 @@ export const DocumentsWorkspace: React.FC = () => {
       documentType: docType,
       confidentialityLevel: confidentiality,
       ownerUserId: currentUser.id,
+      initialFile: {
+        filename: selectedFileName || `${docTitle}.pdf`,
+        size: selectedFileSize || 10240,
+        mimeType: selectedFileMime,
+        fileDataUrl: selectedFileDataUrl || undefined,
+        changeSummary: versionNotes || 'Initial document upload',
+      },
     });
 
     setShowUploadModal(false);
     setDocTitle('');
     setSelectedFileName('');
+    setSelectedFileDataUrl('');
     setVersionNotes('');
   };
 

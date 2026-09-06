@@ -467,6 +467,7 @@ export interface DocumentVersion {
   notes?: string;
   changeSummary?: string; // Short description of changes made in this version
   contentSnippet?: string; // Full or preview text of this version for diff & inspection
+  fileDataUrl?: string; // Base64 Data URL for real uploaded file preview (PDF, Image, Text)
   reviewedBy?: string; // userId
   reviewedAt?: string;
   reviewComment?: string;
