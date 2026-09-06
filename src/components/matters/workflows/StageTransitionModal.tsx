@@ -126,20 +126,20 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl text-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl text-xs">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>
-            <span className="text-xs font-mono uppercase text-amber-500 font-bold">
+            <span className="text-xs font-mono uppercase text-amber-700 dark:text-amber-500 font-bold">
               Stage Transition &amp; Work Handover Engine
             </span>
-            <h2 className="text-lg font-serif font-bold text-slate-100">
+            <h2 className="text-lg font-serif font-bold text-slate-900 dark:text-slate-100">
               Advance Matter: {matter.internalReference}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 font-mono text-sm w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-mono text-sm w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition"
           >
             ✕
           </button>
@@ -147,7 +147,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
 
         <form onSubmit={handleAdvance} className="space-y-6">
           {/* Current vs Target Stage Visualizer */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-mono text-slate-500">Current Active Stage</span>
               <div className="font-bold text-slate-200 text-sm flex items-center gap-1.5">

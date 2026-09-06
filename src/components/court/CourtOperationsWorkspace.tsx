@@ -973,12 +973,12 @@ export const CourtOperationsWorkspace: React.FC = () => {
       {/* MODAL: Update CTS Filing Package */}
       {selectedFilingToUpdate && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-100 text-sm">Update CTS E-Filing Details</h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Update CTS E-Filing Details</h3>
               <button
                 onClick={() => setSelectedFilingToUpdate(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 ✕
               </button>
@@ -986,25 +986,25 @@ export const CourtOperationsWorkspace: React.FC = () => {
 
             <form onSubmit={handleUpdateFilingCts} className="space-y-4">
               <div>
-                <label className="block text-slate-400 text-xs mb-1">Judiciary CTS Reference / Barcode *</label>
+                <label className="block text-slate-700 dark:text-slate-400 text-xs mb-1">Judiciary CTS Reference / Barcode *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. CTS-2026-NAI-00892"
                   value={ctsInput}
                   onChange={(e) => setCtsInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-xs focus:border-blue-500 focus:outline-none font-mono"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-xs focus:border-amber-500 focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 text-xs mb-1">Assigned Official Court Case Number</label>
+                <label className="block text-slate-700 dark:text-slate-400 text-xs mb-1">Assigned Official Court Case Number</label>
                 <input
                   type="text"
                   placeholder="e.g. HCCC NO. E142 OF 2026"
                   value={caseNoInput}
                   onChange={(e) => setCaseNoInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-xs focus:border-blue-500 focus:outline-none font-mono"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-xs focus:border-amber-500 focus:outline-none font-mono"
                 />
               </div>
 
@@ -1012,13 +1012,13 @@ export const CourtOperationsWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedFilingToUpdate(null)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-1"
+                  className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold flex items-center gap-1 shadow transition"
                 >
                   <Send className="w-3.5 h-3.5" /> Save CTS Submission
                 </button>
@@ -1031,12 +1031,12 @@ export const CourtOperationsWorkspace: React.FC = () => {
       {/* MODAL: Record Service Attempt */}
       {selectedServiceToUpdate && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-100 text-sm">Record Process Server Attempt</h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Record Process Server Attempt</h3>
               <button
                 onClick={() => setSelectedServiceToUpdate(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 ✕
               </button>

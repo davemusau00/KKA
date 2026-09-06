@@ -234,24 +234,24 @@ export const DocumentsWorkspace: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <form
             onSubmit={handleUploadSubmit}
-            className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-serif font-bold text-base text-slate-100 flex items-center gap-2">
-                <FileUp className="w-4 h-4 text-blue-400" />
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FileUp className="w-4 h-4 text-amber-600 dark:text-blue-400" />
                 Upload Legal Document
               </h3>
               <button
                 type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="text-slate-400 hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 ✕
               </button>
             </div>
 
             {/* File drop area */}
-            <div className="p-4 border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl bg-slate-950/50 text-center transition cursor-pointer relative">
+            <div className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-500 rounded-xl bg-slate-50 dark:bg-slate-950/50 text-center transition cursor-pointer relative">
               <input
                 type="file"
                 onChange={handleFileChange}

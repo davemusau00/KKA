@@ -516,22 +516,22 @@ export const TasksWorkspace: React.FC = () => {
       {/* Blocked by Dependency Notice Modal */}
       {blockedNotice && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <div className="bg-slate-900 border border-amber-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
-                <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
+          <div className="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-sm">
+                <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0" />
                 <span>Task Dependency Protection Enforced</span>
               </div>
               <button
                 onClick={() => setBlockedNotice(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-200"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-2 text-xs">
-              <p className="text-slate-300">
+              <p className="text-slate-700 dark:text-slate-300">
                 You cannot update <strong>"{blockedNotice.task.title}"</strong> to{' '}
                 <span className="font-mono text-amber-400 font-bold uppercase">
                   {blockedNotice.attemptedStatus.replace('_', ' ')}
@@ -600,19 +600,19 @@ export const TasksWorkspace: React.FC = () => {
       {/* Edit Dependencies Modal */}
       {editingDepTask && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
               <div className="min-w-0">
-                <h3 className="font-serif font-bold text-base text-slate-100">Configure Task Dependencies</h3>
-                <p className="text-slate-400 text-[11px] truncate max-w-xs sm:max-w-sm mt-0.5">{editingDepTask.title}</p>
+                <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">Configure Task Dependencies</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px] truncate max-w-xs sm:max-w-sm mt-0.5">{editingDepTask.title}</p>
               </div>
-              <button onClick={() => setEditingDepTask(null)} className="p-1 text-slate-400 hover:text-slate-200 shrink-0">
+              <button onClick={() => setEditingDepTask(null)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <p className="text-slate-300 text-xs">
+              <p className="text-slate-700 dark:text-slate-300 text-xs">
                 Select tasks that must be completed before <strong>"{editingDepTask.title}"</strong> can be started or
                 completed:
               </p>
@@ -687,24 +687,33 @@ export const TasksWorkspace: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <form
             onSubmit={handleCreateTask}
-            className="bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto"
           >
-            <h3 className="font-serif font-bold text-base text-slate-100">Create Action Task</h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">Create Action Task</h3>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
             <div>
-              <label className="block text-slate-300 mb-1">Task Title</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-medium">Task Title</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Draft and file Notice of Appointment of Advocates"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1">Associated Matter</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1 font-medium">Associated Matter</label>
               <select
                 value={matterId}
                 onChange={(e) => {

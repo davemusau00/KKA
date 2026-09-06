@@ -307,37 +307,37 @@ export const ClientsWorkspace: React.FC = () => {
       {/* MODAL: ONBOARD NEW CLIENT */}
       {showNewClientModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleCreateClientSubmit} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-serif font-bold text-base text-slate-100">
+          <form onSubmit={handleCreateClientSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">
                 Register New Client Profile
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-400">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-slate-800 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-transparent">
                 KYC &amp; Onboarding
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 mb-1">Client Classification</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1">Client Classification</label>
                 <select
                   value={newClientType}
                   onChange={(e) => setNewClientType(e.target.value as any)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none"
                 >
                   <option value="person">Individual (Natural Person)</option>
                   <option value="organization">Corporate / Entity</option>
                 </select>
               </div>
               <div>
-                <label className="block text-slate-300 mb-1">National ID / Reg No</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1">National ID / Reg No</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. 24891230"
                   value={newClientIdNumber}
                   onChange={(e) => setNewClientIdNumber(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono"
                 />
               </div>
             </div>
