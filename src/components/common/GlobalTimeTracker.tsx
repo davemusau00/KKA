@@ -157,24 +157,24 @@ export const GlobalTimeTracker: React.FC = () => {
       {/* Timer Details / Start Modal */}
       {isModalOpen && mounted && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 w-full max-w-lg shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 w-full max-w-lg shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif font-bold text-slate-100 text-base">
+                  <h3 className="font-serif font-bold text-slate-900 dark:text-slate-100 text-base">
                     {activeTimer ? 'Active Billable Timer' : 'Start Billable Matter Timer'}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Precision tracking synced directly to Kenya Advocates Accounts &amp; Finance Ledger
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-100 p-1 rounded-lg hover:bg-slate-800"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -183,26 +183,26 @@ export const GlobalTimeTracker: React.FC = () => {
             {activeTimer ? (
               /* Active Timer Controls */
               <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center space-y-2">
-                  <span className="text-xs font-mono uppercase text-amber-400 tracking-wider">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center space-y-2">
+                  <span className="text-xs font-mono uppercase text-amber-700 dark:text-amber-400 tracking-wider">
                     {activeTimer.isRunning ? 'Timer Running' : 'Timer Paused'} &bull; {activeTimer.activityType}
                   </span>
-                  <div className="font-mono text-4xl sm:text-5xl font-bold text-slate-100 tracking-tight">
+                  <div className="font-mono text-4xl sm:text-5xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                     {elapsedDisplay}
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-slate-400 mt-1">
+                  <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 mt-1">
                     <span>
-                      Rate: <strong className="text-slate-200">KES {activeTimer.hourlyRate.toLocaleString()}/hr</strong>
+                      Rate: <strong className="text-slate-900 dark:text-slate-200">KES {activeTimer.hourlyRate.toLocaleString()}/hr</strong>
                     </span>
                     <span>&bull;</span>
                     <span>
-                      Accrued: <strong className="text-emerald-400">KES {currentAccruedFee.toLocaleString()}</strong>
+                      Accrued: <strong className="text-emerald-700 dark:text-emerald-400">KES {currentAccruedFee.toLocaleString()}</strong>
                     </span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1 text-xs">
-                  <div className="text-slate-400">Target Matter:</div>
+                <div className="p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1 text-xs">
+                  <div className="text-slate-500 dark:text-slate-400">Target Matter:</div>
                   <div className="font-semibold text-slate-100">
                     {activeMatter?.internalReference} - {activeMatter?.title}
                   </div>

@@ -114,6 +114,17 @@
   html.light .via-slate-950,
   html.light .to-slate-900,
   html.light .to-slate-950,
+  html.light [class*="from-slate-9"],
+  html.light [class*="from-slate-8"],
+  html.light [class*="via-slate-9"],
+  html.light [class*="via-slate-8"],
+  html.light [class*="to-slate-9"],
+  html.light [class*="to-slate-8"],
+  html.light [class*="dark:bg-slate-9"],
+  html.light [class*="dark:bg-slate-8"],
+  html.light [class*="dark:from-"],
+  html.light [class*="dark:via-"],
+  html.light [class*="dark:to-"],
   html.light .from-purple-950\/40,
   html.light .from-blue-950\/40,
   html.light .from-amber-950\/40,
@@ -126,24 +137,18 @@
   /* ── Borders ─────────────────────────────────────────────── */
   html.light .border-slate-900,
   html.light .border-slate-800,
-  html.light .border-slate-800\/40,
-  html.light .border-slate-800\/50,
-  html.light .border-slate-800\/60,
-  html.light .border-slate-800\/70,
-  html.light .border-slate-800\/80,
-  html.light .border-slate-800\/90 {
+  html.light [class*="border-slate-9"],
+  html.light [class*="border-slate-8"] {
     border-color: #e2e8f0 !important;
   }
   html.light .border-slate-700,
-  html.light .border-slate-700\/40,
-  html.light .border-slate-700\/50,
-  html.light .border-slate-700\/60,
-  html.light .border-slate-700\/70,
-  html.light .border-slate-700\/80 {
+  html.light [class*="border-slate-7"] {
     border-color: #cbd5e1 !important;
   }
   html.light .border-slate-600,
-  html.light .border-slate-500 {
+  html.light .border-slate-500,
+  html.light [class*="border-slate-6"],
+  html.light [class*="border-slate-5"] {
     border-color: #94a3b8 !important;
   }
 
