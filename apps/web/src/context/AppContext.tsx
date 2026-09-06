@@ -128,7 +128,7 @@ import {
 } from '../data/adminSeedData';
 import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
 import { generateSequentialMatterReference } from '../utils/matterReference';
-import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi } from '../lib/api';
+import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi } from '../lib/api';
 
 export interface ActiveTimerState {
   matterId: string;
@@ -858,12 +858,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const liveCheck = await healthApi.checkLive();
         if (liveCheck.status !== 'ok' || !isMounted) return;
 
-        // Backend is online and responsive: hydrate Tier 1 catalogs and verify auth session
-        const [dirRes, branchRes, notifRes, meRes] = await Promise.allSettled([
+        // Backend is online and responsive: hydrate catalogs and operational collections
+        const [dirRes, branchRes, notifRes, meRes, clientRes, taskRes] = await Promise.allSettled([
           directoryApi.list(),
           organizationApi.listBranches(),
           notificationsApi.list(false),
           authApi.me(),
+          clientsApi.list({ limit: 100 }),
+          tasksApi.list({ limit: 100 }),
         ]);
 
         if (isMounted && dirRes.status === 'fulfilled' && Array.isArray(dirRes.value) && dirRes.value.length > 0) {
@@ -935,6 +937,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
             });
           }
+        }
+
+        if (isMounted && clientRes.status === 'fulfilled' && clientRes.value?.data?.length > 0) {
+          setClients(clientRes.value.data.map((c) => ({
+            id: c.id,
+            clientType: c.type === 'CORPORATE' ? 'corporate' : 'person',
+            displayName: c.displayName,
+            idNumber: c.idNumber || '',
+            kraPin: c.kraPin || '',
+            phone: c.primaryPhone,
+            email: c.primaryEmail || '',
+            postalAddress: c.postalAddress || '',
+            county: c.county || 'Nairobi',
+            preferredContactMethod: 'phone',
+            status: c.status === 'ACTIVE' ? 'active' : 'inactive',
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+          })));
+        }
+
+        if (isMounted && taskRes.status === 'fulfilled' && taskRes.value?.data?.length > 0) {
+          const revStatusMap: Record<string, any> = {
+            TODO: 'todo',
+            IN_PROGRESS: 'in_progress',
+            IN_REVIEW: 'review',
+            COMPLETED: 'completed',
+            CANCELLED: 'cancelled',
+          };
+          setTasks(taskRes.value.data.map((t) => ({
+            id: t.id,
+            matterId: t.matterId || '',
+            title: t.title,
+            description: t.description || '',
+            assignedTo: t.assignedToId || 'usr-adv-1',
+            status: revStatusMap[t.status] || 'todo',
+            priority: (t.priority?.toLowerCase() as any) || 'medium',
+            dueDate: t.dueDate || new Date().toISOString(),
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+            dependsOnTaskIds: [],
+          })));
         }
       } catch (err) {
         // Gracefully retain local storage prototype state
@@ -1399,6 +1442,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAudit('intake.created', 'client', newIntake.id, undefined, {
       clientName: newIntake.clientName,
       conflictStatus: conflictRecord.status,
+    });
+
+    intakeApi.create({
+      clientName: intakeData.clientName,
+      phone: intakeData.phone,
+      email: intakeData.email || undefined,
+      practiceArea: 'PERSONAL_INJURY',
+      briefDescription: intakeData.briefDescription,
+      incidentDate: intakeData.incidentDate || undefined,
+      source: intakeData.source || 'Direct Walk-in',
+      assignedToId: intakeData.assignedToId || undefined,
+    }).then((created) => {
+      if (created?.id) {
+        setIntakes((prev) =>
+          prev.map((i) => (i.id === newIntake.id ? { ...i, id: created.id } : i))
+        );
+      }
+    }).catch((err) => {
+      console.warn('Backend intake sync offline/queued:', err);
     });
 
     if (conflictRecord.status !== 'clear') {
@@ -2330,6 +2392,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setClients((prev) => [newClient, ...prev]);
     logAudit('client.created', 'client', newClient.id, undefined, { name: newClient.displayName });
+
+    clientsApi.create({
+      type: clientData.clientType === 'corporate' ? 'CORPORATE' : 'INDIVIDUAL',
+      displayName: clientData.displayName,
+      primaryPhone: clientData.phone,
+      primaryEmail: clientData.email || undefined,
+      idNumber: clientData.idNumber || undefined,
+      kraPin: clientData.kraPin || undefined,
+      postalAddress: clientData.postalAddress || undefined,
+      county: clientData.county || undefined,
+    }).then((created) => {
+      if (created?.id) {
+        setClients((prev) =>
+          prev.map((c) => (c.id === newClient.id ? { ...c, id: created.id } : c))
+        );
+      }
+    }).catch((err) => {
+      console.warn('Backend client sync offline/queued:', err);
+    });
+
     return newClient;
   }, [logAudit]);
 
@@ -2337,6 +2419,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setClients((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c))
     );
+
+    clientsApi.update(id, {
+      displayName: updates.displayName,
+      primaryPhone: updates.phone,
+      primaryEmail: updates.email,
+      idNumber: updates.idNumber,
+      kraPin: updates.kraPin,
+      postalAddress: updates.postalAddress,
+      county: updates.county,
+    }).catch((err) => {
+      console.warn('Backend client update offline/queued:', err);
+    });
   }, []);
 
   // Convert Intake to Matter
@@ -2427,6 +2521,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       queueMutation('task', 'create', newTask as unknown as Record<string, unknown>);
     }
 
+    tasksApi.create({
+      title: taskData.title,
+      description: taskData.description,
+      priority: taskData.priority ? (taskData.priority.toUpperCase() as any) : 'MEDIUM',
+      assignedToId: taskData.assignedTo,
+      matterId: taskData.matterId,
+      dueDate: taskData.dueDate,
+    }).then((created) => {
+      if (created?.id) {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === newTask.id ? { ...t, id: created.id } : t))
+        );
+      }
+    }).catch((err) => {
+      console.warn('Backend task sync offline/queued:', err);
+    });
+
     return newTask;
   }, [currentUser, logAudit, notify, isOnline, queueMutation]);
 
@@ -2455,6 +2566,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
     if (!isOnline) {
       queueMutation('task', 'update', { id, ...updates });
+    }
+
+    if (updates.status) {
+      const statusMap: Record<string, any> = {
+        todo: 'TODO',
+        in_progress: 'IN_PROGRESS',
+        review: 'IN_REVIEW',
+        completed: 'COMPLETED',
+        cancelled: 'CANCELLED',
+      };
+      const backendStatus = statusMap[updates.status] || 'TODO';
+      tasksApi.setStatus(id, backendStatus).catch((err) => {
+        console.warn('Backend task status sync offline/queued:', err);
+      });
     }
     return { success: true };
   }, [tasks, currentUser.id, notify, isOnline, queueMutation]);
@@ -2486,6 +2611,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!isOnline) {
       queueMutation('task', 'update', { id, status: 'completed', completedAt: now });
     }
+
+    tasksApi.setStatus(id, 'COMPLETED').catch((err) => {
+      console.warn('Backend complete task sync offline/queued:', err);
+    });
     return { success: true };
   }, [tasks, currentUser.id, logAudit, notify, isOnline, queueMutation]);
 
@@ -3172,6 +3301,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
     logAudit('admin.firm_settings_updated', 'system', 'firm_settings');
     notify(currentUser.id, 'Firm Settings Updated', 'Firm profile, financial policies, and rules updated.', 'system');
+
+    if (updates.firmProfile) {
+      settingsApi.set('firm.profile', updates.firmProfile, 'FIRM').catch((err) => {
+        console.warn('Backend firm profile sync offline/queued:', err);
+      });
+    }
   }, [currentUser.id, logAudit, notify]);
 
   // System Admin & Governance Studio Mutators
@@ -3256,6 +3391,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
     logAudit('admin.numbering_scheme_updated', 'system', 'numbering_scheme', undefined, updates);
     notify(currentUser.id, 'Numbering Schemes Updated', 'Identifier sequences and prefixes updated.', 'system');
+
+    settingsApi.set('firm.numbering', updates, 'FIRM').catch((err) => {
+      console.warn('Backend numbering scheme sync offline/queued:', err);
+    });
   }, [currentUser.id, logAudit, notify]);
 
   const createDatabaseBackupSnapshot = useCallback((type: BackupSnapshot['type'] = 'manual', notes?: string): BackupSnapshot => {
