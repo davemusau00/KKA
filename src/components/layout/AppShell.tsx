@@ -25,6 +25,8 @@ import {
   ExternalLink,
   Shield,
   Sun,
+  Scale,
+  CheckCircle2,
   Moon,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -62,6 +64,9 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     matters,
     expenses,
     intakes,
+    calendarEvents,
+    documents,
+    stageHandoffs,
     hasUserPermission,
     effectivePermissions,
     theme,
@@ -81,12 +86,28 @@ export const AppShell: React.FC<Props> = ({ children }) => {
   const activeMatterCount = matters.filter((m) => m.status === 'active').length;
   const newIntakeCount = intakes.filter((i) => i.disposition === 'new' || i.disposition === 'under_review').length;
 
+  const pendingCourtOutcomeCount = calendarEvents.filter(
+    (e) =>
+      e.eventType === 'court' &&
+      new Date(e.startAt) < new Date() &&
+      ((e.courtStatus || 'scheduled') === 'scheduled' || e.courtStatus === 'attended')
+  ).length;
+
+  const pendingDocReviewCount = documents.reduce(
+    (acc, d) => acc + d.versions.filter((v) => v.status === 'in_review').length,
+    0
+  );
+  const pendingHandoffCount = stageHandoffs.filter((h) => !h.acknowledgedAt).length;
+  const totalApprovalsCount = pendingExpenseCount + pendingDocReviewCount + pendingHandoffCount;
+
   const allNavigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
     { id: 'matters', label: 'Matters', icon: Briefcase, badge: activeMatterCount, permission: 'module.matters' as const },
     { id: 'clients', label: 'Clients & Intake', icon: Users, badge: newIntakeCount > 0 ? `${newIntakeCount} leads` : undefined, permission: 'module.clients' as const },
     { id: 'tasks', label: 'Tasks & Deadlines', icon: CheckSquare, badge: overdueTaskCount > 0 ? overdueTaskCount : undefined, badgeColor: 'bg-rose-600', permission: 'module.tasks' as const },
-    { id: 'calendar', label: 'Court & Calendar', icon: Calendar, permission: 'module.calendar' as const },
+    { id: 'court', label: 'Court Operations', icon: Scale, badge: pendingCourtOutcomeCount > 0 ? `${pendingCourtOutcomeCount} due` : undefined, badgeColor: 'bg-amber-600', permission: 'module.calendar' as const },
+    { id: 'approvals', label: 'Approvals', icon: CheckCircle2, badge: totalApprovalsCount > 0 ? totalApprovalsCount : undefined, badgeColor: 'bg-purple-600', permission: 'finance.view' as const },
+    { id: 'calendar', label: 'Firm Calendar', icon: Calendar, permission: 'module.calendar' as const },
     { id: 'documents', label: 'Documents', icon: FileText, permission: 'module.documents' as const },
     { id: 'comms', label: 'Communications', icon: MessageSquare, permission: 'module.comms' as const },
     { id: 'finance', label: 'Finance & Accounts', icon: DollarSign, badge: pendingExpenseCount > 0 ? pendingExpenseCount : undefined, badgeColor: 'bg-amber-600', permission: 'finance.view' as const },

@@ -50,6 +50,8 @@ import {
   MatterClosureAuditData,
   DirectoryContact,
   StageHandoff,
+  StageHandoffChecklistItem,
+  StageHandoffSupervisorSignOff,
   Branch,
 } from '../types';
 import {
@@ -249,7 +251,13 @@ interface AppContextType {
     toStageId: number,
     newOwnerId: string,
     handoffNotes: string,
-    options?: { generateStandardTasks?: boolean; handoffChecklistCompleted?: boolean }
+    options?: {
+      generateStandardTasks?: boolean;
+      handoffChecklistCompleted?: boolean;
+      checklistItems?: StageHandoffChecklistItem[];
+      supervisorSignOff?: StageHandoffSupervisorSignOff;
+      criticalNextAction?: string;
+    }
   ) => { success: boolean; error?: string };
   createClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client;
   updateClient: (id: string, updates: Partial<Client>) => void;
@@ -983,6 +991,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setTasks((prev) => [...newTasksToAdd, ...prev]);
 
+    // Create first-class StageHandoff record
+    const newHandoff: StageHandoff = {
+      id: `hnd-${Date.now()}`,
+      matterId,
+      fromStageId,
+      toStageId,
+      fromUserId: currentUser.id,
+      toUserId: newOwnerId,
+      handoffNotes: handoffNotes || `Stage transition from Stage ${fromStageId} to Stage ${toStageId} (${stageName})`,
+      criticalNextAction: `Execute Stage ${toStageId}: ${stageName}`,
+      checklistCompleted: true,
+      createdAt: now,
+      ...(newOwnerId === currentUser.id
+        ? { acknowledgedAt: now, acknowledgedByUserId: currentUser.id }
+        : {}),
+    };
+    setStageHandoffs((prev) => [newHandoff, ...prev]);
+
     logAudit('matter.stage_changed', 'handoff', matterId, matterId, {
       fromStage: fromStageId,
       toStage: toStageId,
@@ -1494,7 +1520,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
 
     return newMatter;
-  }, [intakes, matters.length, currentUser, logAudit, notify]);
+  }, [intakes, matters, currentUser, logAudit, notify]);
 
   // Stage Transition Expanded Workflow
   const advanceMatterStageExpanded = useCallback((
@@ -1502,7 +1528,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     toStageId: number,
     newOwnerId: string,
     handoffNotes: string,
-    options?: { generateStandardTasks?: boolean; handoffChecklistCompleted?: boolean }
+    options?: {
+      generateStandardTasks?: boolean;
+      handoffChecklistCompleted?: boolean;
+      checklistItems?: StageHandoffChecklistItem[];
+      supervisorSignOff?: StageHandoffSupervisorSignOff;
+      criticalNextAction?: string;
+    }
   ): { success: boolean; error?: string } => {
     const targetMatter = matters.find((m) => m.id === matterId);
     if (!targetMatter) return { success: false, error: 'Matter not found' };
@@ -1538,6 +1570,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fromUserId: currentUser.id,
       toUserId: newOwnerId,
       handoffNotes: handoffNotes || `Stage transition from Stage ${fromStageId} to Stage ${toStageId} (${stageName})`,
+      criticalNextAction: options?.criticalNextAction || `Execute Stage ${toStageId}: ${stageName}`,
+      checklistCompleted: options?.handoffChecklistCompleted ?? true,
+      checklistItems: options?.checklistItems || [],
+      supervisorSignOff: options?.supervisorSignOff,
       createdAt: now,
       ...(newOwnerId === currentUser.id
         ? { acknowledgedAt: now, acknowledgedByUserId: currentUser.id }

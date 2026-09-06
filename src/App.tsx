@@ -6,6 +6,8 @@ import { MattersWorkspace } from './components/matters/MattersWorkspace';
 import { ClientsWorkspace } from './components/clients/ClientsWorkspace';
 import { TasksWorkspace } from './components/tasks/TasksWorkspace';
 import { CalendarWorkspace } from './components/calendar/CalendarWorkspace';
+import { CourtOperationsWorkspace } from './components/court/CourtOperationsWorkspace';
+import { ApprovalsWorkspace } from './components/approvals/ApprovalsWorkspace';
 import { DocumentsWorkspace } from './components/documents/DocumentsWorkspace';
 import { CommunicationsWorkspace } from './components/comms/CommunicationsWorkspace';
 import { FinanceWorkspace } from './components/finance/FinanceWorkspace';
@@ -22,6 +24,8 @@ const MainWorkspaceRouter: React.FC = () => {
       {activeWorkspace === 'matters' && <MattersWorkspace />}
       {activeWorkspace === 'clients' && <ClientsWorkspace />}
       {activeWorkspace === 'tasks' && <TasksWorkspace />}
+      {activeWorkspace === 'court' && <CourtOperationsWorkspace />}
+      {activeWorkspace === 'approvals' && <ApprovalsWorkspace />}
       {activeWorkspace === 'calendar' && <CalendarWorkspace />}
       {activeWorkspace === 'documents' && <DocumentsWorkspace />}
       {activeWorkspace === 'comms' && <CommunicationsWorkspace />}

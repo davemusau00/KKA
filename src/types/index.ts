@@ -125,6 +125,9 @@ export interface Client {
   occupation?: string;
   employer?: string;
   dateOfBirth?: string;
+  kraPin?: string;
+  kycStatus?: 'verified' | 'pending' | 'unverified';
+  kycVerifiedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -330,6 +333,17 @@ export interface WorkflowStageDefinition extends WorkflowStageConfig {
   defaultRole: RoleId; // alias for backwards compatibility
 }
 
+export interface StageHandoffChecklistItem {
+  text: string;
+  completed: boolean;
+}
+
+export interface StageHandoffSupervisorSignOff {
+  supervisorId: string;
+  signatureNote?: string;
+  signedAt: string;
+}
+
 export interface StageHandoff {
   id: string;
   matterId: string;
@@ -338,6 +352,10 @@ export interface StageHandoff {
   fromUserId: string;
   toUserId: string;
   handoffNotes: string;
+  criticalNextAction?: string;
+  checklistCompleted?: boolean;
+  checklistItems?: StageHandoffChecklistItem[];
+  supervisorSignOff?: StageHandoffSupervisorSignOff;
   createdAt: string;
   acknowledgedAt?: string;
   acknowledgedByUserId?: string;

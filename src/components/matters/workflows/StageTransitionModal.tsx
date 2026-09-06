@@ -71,9 +71,26 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({ matt
 
   const handleAdvance = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    const checklistItems = [
+      ...gate.blockingTasks.map((t) => ({ text: `Task: ${t.title}`, completed: t.status === 'completed' })),
+      ...((currentStageConfig?.requiredDocuments || currentStageConfig?.requiredDocumentTypes || []).map((d) => ({
+        text: `Document: ${d}`,
+        completed: !gate.missingDocuments.includes(d),
+      }))),
+    ];
+
     const result = advanceMatterStageExpanded(matter.id, targetStageId, newOwnerId, handoffNotes, {
       generateStandardTasks: generateTasks,
+      handoffChecklistCompleted: gate.canAdvance,
+      criticalNextAction: `Execute Stage ${targetStageId}: ${targetStageConfig?.name || 'In Progress'}`,
+      checklistItems: checklistItems.length > 0 ? checklistItems : [{ text: 'Standard stage gate verification', completed: true }],
+      supervisorSignOff: isPartner
+        ? {
+            supervisorId: currentUser.id,
+            signatureNote: partnerOverride ? 'Partner Stage Gate Override Approved' : 'Stage Gate Validated & Sign-off Approved',
+            signedAt: new Date().toISOString(),
+          }
+        : undefined,
     });
     if (result.success) {
       onClose();

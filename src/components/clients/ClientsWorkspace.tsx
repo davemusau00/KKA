@@ -24,6 +24,7 @@ export const ClientsWorkspace: React.FC = () => {
     intakes,
     matters,
     createClient,
+    updateClient,
     setSelectedMatterId,
     setActiveWorkspace,
   } = useApp();
@@ -187,9 +188,36 @@ export const ClientsWorkspace: React.FC = () => {
                     <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-amber-400">
                       {client.clientType}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Verified Client
-                    </span>
+                    {client.kycStatus === 'verified' || !client.kycStatus ? (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+                        <ShieldCheck className="w-3.5 h-3.5" /> KYC Verified
+                      </span>
+                    ) : client.kycStatus === 'pending' ? (
+                      <button
+                        onClick={() =>
+                          updateClient(client.id, {
+                            kycStatus: 'verified',
+                            kycVerifiedAt: new Date().toISOString(),
+                          })
+                        }
+                        className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold bg-amber-950/60 hover:bg-amber-900/80 px-2 py-0.5 rounded-full border border-amber-800 transition"
+                        title="Click to mark KYC verified"
+                      >
+                        <AlertTriangle className="w-3 h-3" /> KYC Pending (Verify)
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          updateClient(client.id, {
+                            kycStatus: 'verified',
+                            kycVerifiedAt: new Date().toISOString(),
+                          })
+                        }
+                        className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 font-medium bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded-full transition"
+                      >
+                        <ShieldCheck className="w-3 h-3" /> Verify KYC
+                      </button>
+                    )}
                   </div>
 
                   <h3 className="font-serif font-bold text-base text-slate-100">{client.displayName}</h3>

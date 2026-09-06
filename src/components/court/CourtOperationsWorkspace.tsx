@@ -66,17 +66,18 @@ export const CourtOperationsWorkspace: React.FC = () => {
 
   const filteredEvents = courtEvents.filter((e) => {
     const eventDate = new Date(e.startAt);
-    if (filterStatus === 'upcoming') return eventDate >= now && e.status === 'scheduled';
-    if (filterStatus === 'pending_outcome') return eventDate < now && (e.status === 'scheduled' || e.status === 'attended');
-    if (filterStatus === 'completed') return e.status === 'completed' || e.status === 'adjourned';
+    const status = e.courtStatus || 'scheduled';
+    if (filterStatus === 'upcoming') return eventDate >= now && status === 'scheduled';
+    if (filterStatus === 'pending_outcome') return eventDate < now && (status === 'scheduled' || status === 'attended');
+    if (filterStatus === 'completed') return status === 'completed' || status === 'adjourned';
     return true;
   });
 
-  const upcomingCount = courtEvents.filter((e) => new Date(e.startAt) >= now && e.status === 'scheduled').length;
+  const upcomingCount = courtEvents.filter((e) => new Date(e.startAt) >= now && (e.courtStatus || 'scheduled') === 'scheduled').length;
   const pendingOutcomeCount = courtEvents.filter(
-    (e) => new Date(e.startAt) < now && (e.status === 'scheduled' || e.status === 'attended')
+    (e) => new Date(e.startAt) < now && ((e.courtStatus || 'scheduled') === 'scheduled' || e.courtStatus === 'attended')
   ).length;
-  const completedCount = courtEvents.filter((e) => e.status === 'completed' || e.status === 'adjourned').length;
+  const completedCount = courtEvents.filter((e) => e.courtStatus === 'completed' || e.courtStatus === 'adjourned').length;
 
   const handleCreateCourtDate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +90,8 @@ export const CourtOperationsWorkspace: React.FC = () => {
       endAt: `${newDate}T${String(parseInt(newTime) + 2).padStart(2, '0')}:00:00Z`,
       location: newLocation,
       assignedUserId: newAssignee,
-      status: 'scheduled',
+      organizerId: currentUser.id,
+      courtStatus: 'scheduled',
     });
     setNewTitle('');
     setView('diary');
@@ -104,8 +106,8 @@ export const CourtOperationsWorkspace: React.FC = () => {
     setNextDate('');
   };
 
-  const getMatter = (matterId: string) => matters.find((m) => m.id === matterId);
-  const getUser = (userId: string) => users.find((u) => u.id === userId);
+  const getMatter = (matterId?: string) => (matterId ? matters.find((m) => m.id === matterId) : undefined);
+  const getUser = (userId?: string) => (userId ? users.find((u) => u.id === userId) : undefined);
 
   const tabs: { id: CourtView; label: string; badge?: number }[] = [
     { id: 'diary', label: 'Court Diary', badge: upcomingCount },
@@ -210,8 +212,9 @@ export const CourtOperationsWorkspace: React.FC = () => {
                   const matter = getMatter(event.matterId);
                   const assignee = getUser(event.assignedUserId);
                   const eventDate = new Date(event.startAt);
-                  const isOverdue = eventDate < now && (event.status === 'scheduled' || event.status === 'attended');
-                  const statusClass = COURT_STATUS_COLOR[event.status] || COURT_STATUS_COLOR.default;
+                  const cStatus = event.courtStatus || 'scheduled';
+                  const isOverdue = eventDate < now && (cStatus === 'scheduled' || cStatus === 'attended');
+                  const statusClass = COURT_STATUS_COLOR[cStatus] || COURT_STATUS_COLOR.default;
 
                   return (
                     <div
@@ -250,7 +253,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
 
                           <div className="flex items-center gap-2 flex-wrap mt-1">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass}`}>
-                              {event.status.toUpperCase()}
+                              {cStatus.toUpperCase()}
                             </span>
                             {matter && (
                               <button
@@ -268,17 +271,17 @@ export const CourtOperationsWorkspace: React.FC = () => {
                             )}
                           </div>
 
-                          {event.outcomeNotes && (
+                          {event.courtOutcome && (
                             <div className="mt-2 p-2.5 rounded-lg bg-slate-800/60 border border-slate-700 text-[11px] text-slate-300">
                               <div className="text-[9px] uppercase font-mono text-slate-500 mb-0.5">Outcome Notes</div>
-                              {event.outcomeNotes}
+                              {event.courtOutcome}
                             </div>
                           )}
                         </div>
 
                         {/* Action buttons */}
                         <div className="flex flex-col gap-2 shrink-0">
-                          {(event.status === 'scheduled' || event.status === 'attended') && (
+                          {(cStatus === 'scheduled' || cStatus === 'attended') && (
                             <button
                               onClick={() => { setSelectedEvent(event); setView('outcomes'); }}
                               className="px-3 py-1.5 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-emerald-100 text-[11px] font-bold flex items-center gap-1 transition"
@@ -305,7 +308,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
             {!selectedEvent ? (
               <div className="space-y-3">
                 {courtEvents
-                  .filter((e) => e.status === 'scheduled' || e.status === 'attended')
+                  .filter((e) => (e.courtStatus || 'scheduled') === 'scheduled' || e.courtStatus === 'attended')
                   .filter((e) => new Date(e.startAt) < now)
                   .map((event) => {
                     const matter = getMatter(event.matterId);
@@ -333,7 +336,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
                   })}
 
                 {courtEvents.filter((e) =>
-                  (e.status === 'scheduled' || e.status === 'attended') && new Date(e.startAt) < now
+                  ((e.courtStatus || 'scheduled') === 'scheduled' || e.courtStatus === 'attended') && new Date(e.startAt) < now
                 ).length === 0 && (
                   <div className="py-12 text-center text-slate-400">
                     <CheckCircle className="w-10 h-10 mx-auto mb-2 text-emerald-600" />
