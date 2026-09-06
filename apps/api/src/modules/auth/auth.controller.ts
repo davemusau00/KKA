@@ -53,8 +53,4 @@ export class AuthController {
     return user;
   }
 
-  @Post('elevate')
-  elevate(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.auth.elevate(user.id, z.object({ password: z.string().min(1) }).parse(body).password);
-  }
 }

@@ -16,3 +16,7 @@ data/documents/
 data/marks/
 data/backups/
 !.env.backend.example
+
+.artifacts/
+playwright-report/
+test-results/

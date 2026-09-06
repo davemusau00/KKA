@@ -1,11 +1,10 @@
 import "dotenv/config";
 import argon2 from "argon2";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../packages/database/generated/prisma/client";
+import { createPrismaClient } from '../packages/database/src';
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required for seed");
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+const prisma = createPrismaClient(url);
 
 const permissionKeys = [
   "module.dashboard", "module.matters", "module.clients", "module.tasks", "module.calendar", "module.documents",

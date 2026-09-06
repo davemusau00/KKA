@@ -50,11 +50,8 @@ export interface BackendIntakeLead {
 }
 
 export interface CreateIntakeLeadDto {
-  practiceArea: string;
-  incidentDate?: string;
-  incidentLocation?: string;
-  incidentSummary?: string;
-  assignedToId?: string;
+  clientName: string; phone: string; email?: string; practiceArea: string;
+  incidentDate?: string; incidentLocation?: string; briefDescription: string; source?: string; assignedOwnerId?: string;
 }
 
 export interface CreateIntakePartyDto {

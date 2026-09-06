@@ -943,7 +943,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (isMounted && clientRes.status === 'fulfilled' && clientRes.value?.data?.length > 0) {
           setClients(clientRes.value.data.map((c) => ({
             id: c.id,
-            clientType: c.type === 'CORPORATE' ? 'corporate' : 'person',
+            clientType: c.type === 'CORPORATE' ? 'organization' : 'person',
             displayName: c.displayName,
             idNumber: c.idNumber || '',
             kraPin: c.kraPin || '',
@@ -974,7 +974,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             assignedTo: t.assignedToId || 'usr-adv-1',
             status: revStatusMap[t.status] || 'todo',
             priority: (t.priority?.toLowerCase() as any) || 'medium',
-            dueDate: t.dueDate || new Date().toISOString(),
+            dueAt: t.dueDate || new Date().toISOString(),
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             dependsOnTaskIds: [],
@@ -1448,12 +1448,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
 
     intakeApi.create({
-      practiceArea: 'PERSONAL_INJURY',
-      incidentSummary: leadData.briefDescription,
-      incidentDate: leadData.incidentDate || undefined,
+      clientName: leadData.clientName, phone: leadData.phone, email: leadData.email || undefined,
+      practiceArea: leadData.practiceArea, briefDescription: leadData.briefDescription, source: leadData.source,
+      assignedOwnerId: leadData.assignedIntakeOwnerId || undefined,
+      incidentDate: leadData.incidentDate ? new Date(leadData.incidentDate).toISOString() : undefined,
     }).then(async (created) => {
       if (created?.id) {
-        await intakeApi.addParty(created.id, { role: 'CLAIMANT', name: leadData.clientName, phone: leadData.phone, email: leadData.email || undefined });
         setIntakes((prev) =>
           prev.map((i) => (i.id === newIntake.id ? { ...i, id: created.id } : i))
         );

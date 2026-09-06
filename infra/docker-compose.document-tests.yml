@@ -1,0 +1,15 @@
+name: kka-documents-test
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: kka_test
+      POSTGRES_PASSWORD: kka_local_test_only
+      POSTGRES_DB: kka_documents_test
+    ports: ["127.0.0.1:55439:5432"]
+    volumes: ["database:/var/lib/postgresql"]
+  redis:
+    image: redis:8-alpine
+    ports: ["127.0.0.1:6389:6379"]
+volumes:
+  database:

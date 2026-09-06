@@ -9,7 +9,7 @@ import { TasksWorkspace } from './components/tasks/TasksWorkspace';
 import { CalendarWorkspace } from './components/calendar/CalendarWorkspace';
 import { CourtOperationsWorkspace } from './components/court/CourtOperationsWorkspace';
 import { ApprovalsWorkspace } from './components/approvals/ApprovalsWorkspace';
-import { DocumentsWorkspace } from './components/documents/DocumentsWorkspace';
+import { DocumentStudio as DocumentsWorkspace } from './components/documents/DocumentStudio';
 import { CommunicationsWorkspace } from './components/comms/CommunicationsWorkspace';
 import { FinanceWorkspace } from './components/finance/FinanceWorkspace';
 import { ReportsWorkspace } from './components/reports/ReportsWorkspace';

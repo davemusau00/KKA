@@ -36,6 +36,9 @@ async function bootstrap() {
   });
 
   (app.getHttpAdapter().getInstance() as any).addHook("onRequest", assignRequestId);
+  // Prisma file sizes are bigint; JSON transports them as decimal strings.
+  app.getHttpAdapter().getInstance().addHook('preSerialization', async (_request: unknown, _reply: unknown, payload: unknown) =>
+    JSON.parse(JSON.stringify(payload, (_key, value: unknown) => typeof value === 'bigint' ? value.toString() : value)) as unknown);
   app.enableCors({
     origin: cfg.WEB_ORIGIN.split(",").map((origin) => origin.trim()),
     credentials: true,

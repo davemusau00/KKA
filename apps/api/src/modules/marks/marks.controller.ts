@@ -1,3 +1,4 @@
+import { DocumentWorkflowService } from './document-workflow.service';
 import { Body, Controller, Get, Param, Post, Req, BadRequestException, Patch, Res } from "@nestjs/common";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { ApplyMarkSchema, CreateMarkAssetSchema } from "@kka/contracts";
@@ -10,7 +11,7 @@ import { env } from "../../platform/env";
 
 @Controller("marks")
 export class MarksController {
-  constructor(private readonly marks: MarksService, private readonly registry: RegistryService) {}
+  constructor(private readonly marks: MarksService, private readonly registry: RegistryService, private readonly workflow: DocumentWorkflowService) {}
 
   @Get()
   @RequirePermissions("document.view")
@@ -117,6 +118,6 @@ export class MarksController {
   @Post("apply")
   @RequirePermissions("document.sign")
   apply(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.marks.apply(user.firmId, { id: user.id, roleKeys: user.roleKeys }, ApplyMarkSchema.parse(body));
+    return this.workflow.legacy(user, ApplyMarkSchema.parse(body));
   }
 }

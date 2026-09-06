@@ -1,3 +1,4 @@
+import { DocumentWorkflowService } from '../marks/document-workflow.service';
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
@@ -8,6 +9,7 @@ export class ApprovalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly workflow: DocumentWorkflowService,
     private readonly marks: MarksService
   ) {}
 
@@ -41,6 +43,20 @@ export class ApprovalsService {
     }
     if (request.requestedById === actorId && request.type !== "LOW_RISK_SELF_APPROVAL") {
       throw new BadRequestException("Requester cannot approve their own request");
+    }
+
+    if (request.type === 'DOCUMENT_MARK') {
+      const operation = await this.prisma.client.documentOperation.findUnique({ where: { approvalRequestId: request.id } });
+      if (!operation) throw new BadRequestException('Legacy approval must be resubmitted with pinned document assets');
+      await this.prisma.client.$transaction(async tx => {
+        const changed = await tx.approvalRequest.updateMany({ where: { id: request.id, status: 'PENDING' }, data: { status: decision, resolvedAt: new Date() } });
+        if (!changed.count) throw new BadRequestException('Approval already resolved');
+        await tx.approvalDecision.create({ data: { approvalRequestId: request.id, decidedById: actorId, decision, comment } });
+        await tx.documentOperation.update({ where: { id: operation.id }, data: { status: decision === 'APPROVED' ? 'APPROVED' : 'REJECTED' } });
+        await this.audit.record({ firmId, actorUserId: actorId, action: 'document.application_decision', entityType: 'approval_request', entityId: request.id, metadata: { decision } }, tx);
+      });
+      const application = decision === 'APPROVED' ? await this.workflow.execute(operation.id) : null;
+      return { ...request, status: decision, application };
     }
 
     await this.prisma.client.$transaction([

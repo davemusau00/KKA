@@ -53,7 +53,7 @@ export const tasksApi = {
   get: (id: string) => apiClient.get<BackendTask>(`/tasks/${id}`),
 
   /** Create a new task */
-  create: (dto: CreateTaskDto) => apiClient.post<BackendTask>('/tasks', dto),
+  create: (dto: CreateTaskDto) => apiClient.post<BackendTask>('/tasks', { ...dto, dueAt: dto.dueDate ? new Date(dto.dueDate).toISOString() : undefined }),
 
   /** Update task metadata */
   update: (id: string, dto: Partial<CreateTaskDto>) =>

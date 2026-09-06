@@ -54,9 +54,9 @@ export const clientsApi = {
 
   /** Create a new client record */
   create: (dto: CreateClientDto) =>
-    apiClient.post<BackendClient>('/clients', dto),
+    apiClient.post<BackendClient>('/clients', { ...dto, type: dto.type === 'CORPORATE' ? 'ORGANIZATION' : 'PERSON', phone: dto.primaryPhone, email: dto.primaryEmail }),
 
   /** Update client profile */
   update: (id: string, dto: Partial<CreateClientDto>) =>
-    apiClient.patch<BackendClient>(`/clients/${id}`, dto),
+    apiClient.patch<BackendClient>(`/clients/${id}`, { ...dto, ...(dto.type ? { type: dto.type === 'CORPORATE' ? 'ORGANIZATION' : 'PERSON' } : {}), phone: dto.primaryPhone, email: dto.primaryEmail }),
 };

@@ -10,6 +10,7 @@ COPY pnpm-workspace.yaml tsconfig.base.json prisma.config.ts ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/document-engine/package.json packages/document-engine/package.json
 COPY packages/database/package.json packages/database/package.json
 
 COPY prisma ./prisma
@@ -27,6 +28,7 @@ COPY apps/api ./apps/api
 
 RUN pnpm --filter @kka/contracts build \
  && pnpm --filter @kka/database build \
+ && pnpm --filter @kka/document-engine build \
  && pnpm --filter @kka/api build
 
 

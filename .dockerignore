@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.cache
+.git
+.artifacts
+.env*
+data
+test-results
+playwright-report
+packages/database/generated

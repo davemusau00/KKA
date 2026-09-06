@@ -34,12 +34,13 @@ export class MarksService {
   listAssets(firmId: string) {
     return this.prisma.client.firmMarkAsset.findMany({
       where: { firmId },
-      include: { versions: { orderBy: { version: "desc" } } },
+      include: { versions: { orderBy: { version: "desc" }, select: { id: true, version: true, mimeType: true, checksumSha256: true, widthPx: true, heightPx: true, createdAt: true } } },
       orderBy: [{ active: "desc" }, { displayName: "asc" }]
     });
   }
 
   async createAsset(firmId: string, actorId: string, input: any) {
+    if (input.branchId && !await this.prisma.client.branch.findFirst({ where: { id: input.branchId, firmId } })) throw new BadRequestException('Branch not found');
     const asset = await this.prisma.client.firmMarkAsset.create({
       data: {
         firmId,
@@ -192,6 +193,8 @@ export class MarksService {
   async createDelegation(firmId: string, actorId: string, input: any) {
     const profile = await this.prisma.client.signatureProfile.findFirst({ where: { id: input.delegatorProfileId, user: { firmId } } });
     if (!profile) throw new NotFoundException("Delegator profile not found");
+    if (!await this.prisma.client.user.findFirst({ where: { id: input.delegateUserId, firmId, status: 'ACTIVE' } })) throw new BadRequestException('Delegate not found');
+    if (new Date(input.endsAt) <= new Date(input.startsAt) || new Date(input.endsAt) <= new Date()) throw new BadRequestException('Delegation must have a future end after its start');
     const row = await this.prisma.client.signatureDelegation.create({ data: { delegatorProfileId: input.delegatorProfileId, delegateUserId: input.delegateUserId, allowedActions: input.allowedActions ?? [], allowedMatterTypes: input.allowedMatterTypes ?? [], allowedDocumentTypes: input.allowedDocumentTypes ?? [], startsAt: new Date(input.startsAt), endsAt: new Date(input.endsAt), reason: input.reason } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "signature.delegation_created", entityType: "signature_delegation", entityId: row.id, metadata: { delegateUserId: row.delegateUserId, endsAt: row.endsAt } });
     return row;

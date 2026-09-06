@@ -140,16 +140,16 @@ export const ClientPortalView: React.FC<Props> = ({ initialClientId, onClose }) 
       <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/30 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">
           <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-            <ShieldCheck className="w-6 h-6" />
+            <FirmLogo size="md" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                End-to-End Encrypted Portal
+                Firm Client Portal
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
-                Access Token Active
+                Client view
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-serif font-bold text-slate-100 mt-0.5">

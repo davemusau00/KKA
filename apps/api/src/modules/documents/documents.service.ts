@@ -26,7 +26,7 @@ export class DocumentsService {
         } : {})
       },
       include: {
-        versions: { orderBy: { versionNumber: "desc" }, take: 10 },
+        versions: { orderBy: { versionNumber: "desc" } },
         currentVersion: true
       },
       orderBy: { updatedAt: "desc" },
@@ -76,9 +76,12 @@ export class DocumentsService {
       mimeType: file.mimetype,
       buffer: file.buffer
     });
-    const versionNumber = (document.versions[0]?.versionNumber ?? 0) + 1;
+
 
     const version = await this.prisma.client.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${documentId}))`;
+      const latest = await tx.documentVersion.findFirst({where:{documentId},orderBy:{versionNumber:'desc'}});
+      const versionNumber = (latest?.versionNumber ?? 0) + 1;
       const created = await tx.documentVersion.create({
         data: {
           documentId,
@@ -105,7 +108,7 @@ export class DocumentsService {
       firmId, actorUserId: actorId, action: "document.version_uploaded",
       entityType: "document_version", entityId: version.id, matterId: document.matterId,
       metadata: {
-        documentId, versionNumber, filename: stored.originalFilename,
+        documentId, versionNumber: version.versionNumber, filename: stored.originalFilename,
         sizeBytes: stored.sizeBytes, checksumSha256: stored.checksumSha256
       }
     });
