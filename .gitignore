@@ -9,3 +9,10 @@ coverage/
 .vite/
 .env*
 !.env.example
+packages/database/generated/
+data/postgres/
+data/redis/
+data/documents/
+data/marks/
+data/backups/
+!.env.backend.example
