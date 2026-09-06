@@ -133,7 +133,7 @@ export const ApprovalsWorkspace: React.FC = () => {
       </div>
 
       {/* KPI Stats Bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTab('finance')}
           className={`p-4 rounded-2xl border cursor-pointer transition ${
@@ -163,7 +163,7 @@ export const ApprovalsWorkspace: React.FC = () => {
             <FileText className="w-4 h-4 text-blue-400" />
           </div>
           <div className="mt-2 text-xl font-bold text-slate-100">{pendingDocs.length}</div>
-          <div className="text-[11px] text-blue-400 mt-0.5">Pleadings & drafts awaiting signoff</div>
+          <div className="text-[11px] text-blue-400 mt-0.5">Pleadings awaiting signoff</div>
         </div>
 
         <div
@@ -197,6 +197,22 @@ export const ApprovalsWorkspace: React.FC = () => {
           <div className="mt-2 text-xl font-bold text-slate-100">{pendingHandoffs.length}</div>
           <div className="text-[11px] text-purple-400 mt-0.5">Responsibility acceptances</div>
         </div>
+
+        <div
+          onClick={() => setActiveTab('closures')}
+          className={`p-4 rounded-2xl border cursor-pointer transition ${
+            activeTab === 'closures'
+              ? 'bg-indigo-950/20 border-indigo-500/50'
+              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">File Closures</span>
+            <Archive className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div className="mt-2 text-xl font-bold text-slate-100">{pendingClosures.length}</div>
+          <div className="text-[11px] text-indigo-400 mt-0.5">Stage 19 final archive signoffs</div>
+        </div>
       </div>
 
       {/* Tabs & Search Filter */}
@@ -208,6 +224,7 @@ export const ApprovalsWorkspace: React.FC = () => {
             { id: 'documents', label: 'Pleadings & Verifications', count: pendingDocs.length },
             { id: 'settlements', label: 'Settlement Offers', count: pendingSettlements.length },
             { id: 'handoffs', label: 'Matter Handoffs', count: pendingHandoffs.length },
+            { id: 'closures', label: 'File Closures', count: pendingClosures.length },
           ].map((tab) => (
             <button
               key={tab.id}
