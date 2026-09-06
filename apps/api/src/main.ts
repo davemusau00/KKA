@@ -23,19 +23,19 @@ async function bootstrap() {
     bufferLogs: true
   });
 
-  await app.register(fastifyCookie);
-  await app.register(fastifyMultipart, {
+  await app.register(fastifyCookie as any);
+  await app.register(fastifyMultipart as any, {
     limits: { fileSize: cfg.MAX_UPLOAD_BYTES, files: 1 }
   });
-  await app.register(fastifyHelmet, {
+  await app.register(fastifyHelmet as any, {
     contentSecurityPolicy: false
   });
-  await app.register(fastifyRateLimit, {
+  await app.register(fastifyRateLimit as any, {
     max: cfg.RATE_LIMIT_MAX,
     timeWindow: cfg.RATE_LIMIT_WINDOW
   });
 
-  app.getHttpAdapter().getInstance().addHook("onRequest", assignRequestId);
+  (app.getHttpAdapter().getInstance() as any).addHook("onRequest", assignRequestId);
   app.enableCors({
     origin: cfg.WEB_ORIGIN.split(",").map((origin) => origin.trim()),
     credentials: true,

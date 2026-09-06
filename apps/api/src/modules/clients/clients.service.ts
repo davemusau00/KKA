@@ -54,7 +54,7 @@ export class ClientsService {
       pattern: "KKA/CL/{year}/{seq:5}"
     });
     const client = await this.prisma.client.client.create({
-      data: { firmId, clientNumber, ...input }
+      data: { firmId, clientNumber, ...input } as any
     });
     await this.audit.record({
       firmId,
