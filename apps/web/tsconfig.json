@@ -18,6 +18,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@contracts": [
+        "../../packages/contracts/src/index.ts"
+      ],
+      "@contracts/*": [
+        "../../packages/contracts/src/*"
       ]
     },
     "allowImportingTsExtensions": true,

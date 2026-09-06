@@ -35,6 +35,7 @@ import { QuickCreateModal } from '../common/QuickCreateModal';
 import { OfflineSyncCenterModal } from '../common/OfflineSyncCenterModal';
 import { GlobalTimeTracker } from '../common/GlobalTimeTracker';
 import { MobileQuickActionsMenu } from '../common/MobileQuickActionsMenu';
+import { ConnectionStatusBadge } from '../common/ConnectionStatusBadge';
 import { BranchId } from '../../types';
 
 interface Props {
@@ -226,6 +227,9 @@ export const AppShell: React.FC<Props> = ({ children }) => {
             <Plus className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Quick Create</span>
           </button>
+
+          {/* Real Backend Connection Badge */}
+          <ConnectionStatusBadge />
 
           {/* Network & Offline Status Button */}
           <button
