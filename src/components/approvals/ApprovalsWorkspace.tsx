@@ -584,6 +584,8 @@ export const ApprovalsWorkspace: React.FC = () => {
               })}
             </div>
           </div>
+        )}
+
         {/* ─── 5. STAGE 19 FILE CLOSURES ─── */}
         {(activeTab === 'all' || activeTab === 'closures') && pendingClosures.length > 0 && (
           <div className="space-y-3">
