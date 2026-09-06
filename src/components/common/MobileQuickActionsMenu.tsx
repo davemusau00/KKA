@@ -272,10 +272,10 @@ export const MobileQuickActionsMenu: React.FC = () => {
       {/* Action Modals */}
       {activeModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-            <div className="bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto text-xs">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto text-xs">
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2 font-serif font-bold text-slate-100 text-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2 font-serif font-bold text-slate-900 dark:text-slate-100 text-sm">
                   {activeModal === 'court_outcome' && <Gavel className="w-4 h-4 text-amber-500" />}
                   {activeModal === 'case_note' && <FileText className="w-4 h-4 text-blue-500" />}
                   {activeModal === 'task' && <CheckSquare className="w-4 h-4 text-emerald-500" />}
@@ -293,7 +293,7 @@ export const MobileQuickActionsMenu: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="p-1 text-slate-400 hover:text-slate-200"
+                  className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -302,17 +302,17 @@ export const MobileQuickActionsMenu: React.FC = () => {
               {successMsg ? (
                 <div className="p-6 text-center space-y-2">
                   <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto animate-bounce" />
-                  <div className="font-semibold text-slate-100 text-sm">{successMsg}</div>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{successMsg}</div>
                 </div>
               ) : (
                 <>
                   {/* Select Matter */}
                   <div>
-                    <label className="block text-slate-300 font-medium mb-1">Select Matter</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Select Matter</label>
                     <select
                       value={selectedMatterId}
                       onChange={(e) => setSelectedMatterId(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono focus:border-amber-500"
                     >
                       {matterOptions}
                     </select>
@@ -322,11 +322,11 @@ export const MobileQuickActionsMenu: React.FC = () => {
                   {activeModal === 'court_outcome' && (
                     <form onSubmit={handleSaveCourtOutcome} className="space-y-3">
                       <div>
-                        <label className="block text-slate-300 mb-1">Hearing / Event Type</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Hearing / Event Type</label>
                         <select
                           value={courtStatus}
                           onChange={(e) => setCourtStatus(e.target.value as any)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         >
                           <option value="conducted">Hearing Conducted</option>
                           <option value="mention_held">Mention Held</option>
@@ -336,30 +336,30 @@ export const MobileQuickActionsMenu: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1">Court Orders / Attendance Notes</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Court Orders / Attendance Notes</label>
                         <textarea
                           required
                           rows={3}
                           value={courtOutcomeNotes}
                           onChange={(e) => setCourtOutcomeNotes(e.target.value)}
                           placeholder="Record orders issued, judge comments, costs awarded..."
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none resize-none focus:border-amber-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1">Next Date Given by Court</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Next Date Given by Court</label>
                         <input
                           type="date"
                           value={nextHearingDate}
                           onChange={(e) => setNextHearingDate(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono focus:border-amber-500"
                         />
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition"
+                        className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-sm transition"
                       >
                         Save Court Outcome
                       </button>
@@ -370,32 +370,32 @@ export const MobileQuickActionsMenu: React.FC = () => {
                   {activeModal === 'case_note' && (
                     <form onSubmit={handleSaveCaseNote} className="space-y-3">
                       <div>
-                        <label className="block text-slate-300 mb-1">Note Title / Subject</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Note Title / Subject</label>
                         <input
                           type="text"
                           required
                           value={noteTitle}
                           onChange={(e) => setNoteTitle(e.target.value)}
                           placeholder="e.g. Client phone call re medical examination"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1">Note Details</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Note Details</label>
                         <textarea
                           required
                           rows={4}
                           value={noteContent}
                           onChange={(e) => setNoteContent(e.target.value)}
                           placeholder="Detail notes captured during field visit or call..."
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none resize-none focus:border-amber-500"
                         />
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition"
+                        className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-sm transition"
                       >
                         Save Case Note
                       </button>
@@ -406,24 +406,24 @@ export const MobileQuickActionsMenu: React.FC = () => {
                   {activeModal === 'task' && (
                     <form onSubmit={handleSaveTask} className="space-y-3">
                       <div>
-                        <label className="block text-slate-300 mb-1">Task Title</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Task Title</label>
                         <input
                           type="text"
                           required
                           value={taskTitle}
                           onChange={(e) => setTaskTitle(e.target.value)}
                           placeholder="e.g. Collect Police Abstract from Central Station"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-300 mb-1">Priority</label>
+                          <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Priority</label>
                           <select
                             value={taskPriority}
                             onChange={(e) => setTaskPriority(e.target.value as any)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                           >
                             <option value="normal">Normal</option>
                             <option value="high">High</option>
@@ -431,19 +431,19 @@ export const MobileQuickActionsMenu: React.FC = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-slate-300 mb-1">Due Date</label>
+                          <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Due Date</label>
                           <input
                             type="date"
                             value={taskDueDate}
                             onChange={(e) => setTaskDueDate(e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono focus:border-amber-500"
                           />
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition"
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-sm transition"
                       >
                         Create Field Task
                       </button>
@@ -453,39 +453,39 @@ export const MobileQuickActionsMenu: React.FC = () => {
                   {/* 4. Receipt Photo Form */}
                   {activeModal === 'receipt' && (
                     <form onSubmit={handleSaveReceipt} className="space-y-3">
-                      <div className="p-3 bg-slate-950 border border-dashed border-purple-500/50 rounded-xl text-center space-y-2">
-                        <Camera className="w-8 h-8 text-purple-400 mx-auto" />
-                        <div className="text-slate-300 text-xs">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-dashed border-purple-400 dark:border-purple-500/50 rounded-xl text-center space-y-2">
+                        <Camera className="w-8 h-8 text-purple-600 dark:text-purple-400 mx-auto" />
+                        <div className="text-slate-700 dark:text-slate-300 text-xs">
                           {receiptImageCaptured ? '✓ Photo captured (receipt_scan.jpg)' : 'Tap to snap photo of physical receipt'}
                         </div>
                         <button
                           type="button"
                           onClick={() => setReceiptImageCaptured(true)}
-                          className="px-3 py-1 rounded bg-purple-900/60 text-purple-200 border border-purple-700 hover:bg-purple-800"
+                          className="px-3 py-1 rounded bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/60 dark:hover:bg-purple-800 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 transition"
                         >
                           {receiptImageCaptured ? 'Retake Photo' : 'Capture Receipt Photo'}
                         </button>
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1">Vendor / Recipient</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Vendor / Recipient</label>
                         <input
                           type="text"
                           required
                           value={receiptVendor}
                           onChange={(e) => setReceiptVendor(e.target.value)}
                           placeholder="e.g. Judiciary CTS / Kenya Police"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-300 mb-1">Category</label>
+                          <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Category</label>
                           <select
                             value={receiptCategory}
                             onChange={(e) => setReceiptCategory(e.target.value as any)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                           >
                             <option value="court_fee">Court Filing Fee</option>
                             <option value="transport">Transport / Fuel</option>
@@ -495,21 +495,21 @@ export const MobileQuickActionsMenu: React.FC = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-slate-300 mb-1">Amount (KES)</label>
+                          <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Amount (KES)</label>
                           <input
                             type="number"
                             required
                             value={receiptAmount}
                             onChange={(e) => setReceiptAmount(e.target.value)}
                             placeholder="e.g. 2500"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono focus:border-amber-500"
                           />
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold transition"
+                        className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-sm transition"
                       >
                         Submit Receipt &amp; Expense
                       </button>
@@ -520,23 +520,23 @@ export const MobileQuickActionsMenu: React.FC = () => {
                   {activeModal === 'document' && (
                     <form onSubmit={handleSaveDocument} className="space-y-3">
                       <div>
-                        <label className="block text-slate-300 mb-1">Document Title</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Document Title</label>
                         <input
                           type="text"
                           required
                           value={docName}
                           onChange={(e) => setDocName(e.target.value)}
                           placeholder="e.g. Stamped Police Abstract - Nairobi Central"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1">Category</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Category</label>
                         <select
                           value={docCategory}
                           onChange={(e) => setDocCategory(e.target.value as any)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         >
                           <option value="Evidence">Evidence / Scene Photo</option>
                           <option value="Medical">Medical Record / P3</option>
@@ -546,14 +546,14 @@ export const MobileQuickActionsMenu: React.FC = () => {
                         </select>
                       </div>
 
-                      <div className="p-3 bg-slate-950 border border-dashed border-cyan-500/50 rounded-xl text-center space-y-1">
-                        <Upload className="w-6 h-6 text-cyan-400 mx-auto" />
-                        <div className="text-slate-300 text-xs font-mono">Attachment ready (field_doc_scan.pdf)</div>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-dashed border-cyan-400 dark:border-cyan-500/50 rounded-xl text-center space-y-1">
+                        <Upload className="w-6 h-6 text-cyan-600 dark:text-cyan-400 mx-auto" />
+                        <div className="text-slate-700 dark:text-slate-300 text-xs font-mono">Attachment ready (field_doc_scan.pdf)</div>
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition"
+                        className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold shadow-sm transition"
                       >
                         Upload Field Document
                       </button>
@@ -564,24 +564,24 @@ export const MobileQuickActionsMenu: React.FC = () => {
                   {activeModal === 'expense' && (
                     <form onSubmit={handleSaveExpense} className="space-y-3">
                       <div>
-                        <label className="block text-slate-300 mb-1">Expense Purpose</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Expense Purpose</label>
                         <input
                           type="text"
                           required
                           value={expenseDescription}
                           onChange={(e) => setExpenseDescription(e.target.value)}
                           placeholder="e.g. Process server transportation to Thika Law Courts"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-300 mb-1">Category</label>
+                          <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Category</label>
                           <select
                             value={expenseCategory}
                             onChange={(e) => setExpenseCategory(e.target.value as any)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                           >
                             <option value="court_fee">Court Fee Requisition</option>
                             <option value="transport">Transport / Mileage</option>
@@ -590,21 +590,21 @@ export const MobileQuickActionsMenu: React.FC = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-slate-300 mb-1">Amount (KES)</label>
+                          <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Amount (KES)</label>
                           <input
                             type="number"
                             required
                             value={expenseAmount}
                             onChange={(e) => setExpenseAmount(e.target.value)}
                             placeholder="e.g. 5000"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono focus:border-amber-500"
                           />
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold transition"
+                        className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-sm transition"
                       >
                         Submit Expense Request
                       </button>

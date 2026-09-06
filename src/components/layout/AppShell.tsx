@@ -144,12 +144,12 @@ export const AppShell: React.FC<Props> = ({ children }) => {
       )}
 
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-slate-900/95 border-b border-slate-800 backdrop-blur-md px-2.5 sm:px-6 py-2 flex items-center justify-between gap-1.5 sm:gap-4 max-w-full">
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md px-2.5 sm:px-6 py-2 flex items-center justify-between gap-1.5 sm:gap-4 max-w-full">
         {/* Left: Branding & Mobile Menu toggle */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+            className="md:hidden p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
             aria-label="Toggle navigation menu"
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -163,10 +163,10 @@ export const AppShell: React.FC<Props> = ({ children }) => {
               KKC
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs sm:text-sm font-serif font-bold text-slate-100 tracking-wide uppercase leading-tight group-hover:text-amber-300 transition-colors">
+              <div className="text-xs sm:text-sm font-serif font-bold text-slate-900 dark:text-slate-100 tracking-wide uppercase leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
                 Kariuki Kagunda &amp; Co.
               </div>
-              <div className="text-[10px] text-amber-400 font-medium tracking-wider uppercase">
+              <div className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold tracking-wider uppercase">
                 Advocates OS &bull; Kenya
               </div>
             </div>
@@ -177,11 +177,11 @@ export const AppShell: React.FC<Props> = ({ children }) => {
         <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl justify-end md:justify-center min-w-0">
           {/* Branch Filter Selector */}
           <div className="relative hidden lg:flex items-center">
-            <Building2 className="w-3.5 h-3.5 text-amber-500 absolute left-2.5 pointer-events-none" />
+            <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 absolute left-2.5 pointer-events-none" />
             <select
               value={currentBranchFilter}
               onChange={(e) => setCurrentBranchFilter(e.target.value as 'all' | BranchId)}
-              className="bg-slate-800/90 text-xs text-slate-200 border border-slate-700/80 rounded-lg pl-8 pr-7 py-1.5 focus:border-amber-500 outline-none appearance-none cursor-pointer"
+              className="bg-slate-50 dark:bg-slate-800/90 text-xs text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/80 rounded-lg pl-8 pr-7 py-1.5 focus:border-amber-500 outline-none appearance-none cursor-pointer"
             >
               <option value="all">All Branches (HQ &amp; Mombasa)</option>
               <option value="branch-nairobi">Nairobi Branch (HQ)</option>
@@ -193,19 +193,19 @@ export const AppShell: React.FC<Props> = ({ children }) => {
           {/* Global Search Bar (full on sm+, icon button on mobile) */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="hidden sm:flex items-center gap-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition-all flex-1 max-w-xs shadow-inner min-w-0"
+            className="hidden sm:flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all flex-1 max-w-xs shadow-inner min-w-0"
             title="Search matters, court numbers, clients (⌘K)"
           >
-            <Search className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <Search className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
             <span className="truncate">Search matters, court nos...</span>
-            <kbd className="hidden md:inline-block ml-auto text-[10px] bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-slate-400 font-mono">
+            <kbd className="hidden md:inline-block ml-auto text-[10px] bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400 font-mono">
               ⌘K
             </kbd>
           </button>
 
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="sm:hidden p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-amber-400 shrink-0"
+            className="sm:hidden p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700/80 text-amber-600 dark:text-amber-400 shrink-0"
             title="Search matters, clients, court nos"
           >
             <Search className="w-4 h-4" />
@@ -233,8 +233,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
             title={isOnline ? 'Online (Click to open Sync Center)' : 'Offline mode active'}
             className={`p-1.5 rounded-lg border flex items-center gap-1 text-xs transition shrink-0 ${
               isOnline
-                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-400 hover:bg-emerald-900/50'
-                : 'bg-amber-950/90 border-amber-700 text-amber-300 animate-pulse'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+                : 'bg-amber-50 dark:bg-amber-950/90 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 animate-pulse'
             }`}
           >
             {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
@@ -248,7 +248,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
           {/* Theme Switcher Toggle (Light / Dark) */}
           <button
             onClick={toggleTheme}
-            className="p-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-slate-100 transition shrink-0"
+            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition shrink-0"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             aria-label="Toggle Theme Mode"
           >
@@ -263,7 +263,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
           <div className="relative z-50">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="p-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-slate-100 transition relative shrink-0"
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition relative shrink-0"
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -276,23 +276,23 @@ export const AppShell: React.FC<Props> = ({ children }) => {
 
             {/* Notification Center Popover */}
             {isNotifOpen && (
-              <div className="fixed inset-x-2 top-14 max-w-sm mx-auto sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-none bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
-                <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-                  <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+              <div className="fixed inset-x-2 top-14 max-w-sm mx-auto sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/90">
+                  <div className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
                     <Bell className="w-3.5 h-3.5 text-amber-500" /> Notifications
                   </div>
                   {unreadNotifCount > 0 && (
                     <button
                       onClick={clearAllNotifications}
-                      className="text-[11px] text-amber-400 hover:underline"
+                      className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline"
                     >
                       Mark all read
                     </button>
                   )}
                 </div>
-                <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800/60">
                   {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-slate-500">No notifications</div>
+                    <div className="p-6 text-center text-slate-500 dark:text-slate-400">No notifications</div>
                   ) : (
                     notifications.map((n) => (
                       <div
@@ -307,8 +307,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                           }
                           setIsNotifOpen(false);
                         }}
-                        className={`p-3 hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-2.5 ${
-                          !n.isRead ? 'bg-slate-800/30' : 'opacity-75'
+                        className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition flex items-start gap-2.5 ${
+                          !n.isRead ? 'bg-amber-50/50 dark:bg-slate-800/30' : 'opacity-75'
                         }`}
                       >
                         <div
@@ -321,8 +321,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                           }`}
                         />
                         <div className="flex-1">
-                          <div className="font-medium text-slate-200">{n.title}</div>
-                          <div className="text-slate-400 text-[11px] mt-0.5">{n.message}</div>
+                          <div className="font-medium text-slate-900 dark:text-slate-200">{n.title}</div>
+                          <div className="text-slate-600 dark:text-slate-400 text-[11px] mt-0.5">{n.message}</div>
                           <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                             <Clock className="w-3 h-3" /> {new Date(n.createdAt).toLocaleTimeString()}
                           </div>
@@ -339,7 +339,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
           <div className="relative z-50">
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 transition"
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700/80 transition"
               title="Switch user role / persona for testing"
             >
               <img
@@ -348,24 +348,24 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                 className="w-6 h-6 rounded-lg object-cover border border-amber-500/50"
               />
               <div className="hidden xl:block text-left text-xs leading-tight">
-                <div className="font-semibold text-slate-200 truncate max-w-[120px]">
+                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
                   {currentUser.fullName}
                 </div>
-                <div className="text-[10px] text-amber-400 uppercase font-mono">
+                <div className="text-[10px] text-amber-700 dark:text-amber-400 uppercase font-mono font-medium">
                   {currentUser.jobTitle.split(' ')[0]}
                 </div>
               </div>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-500 dark:text-slate-400" />
             </button>
 
             {/* Persona Switcher Dropdown */}
             {isUserDropdownOpen && (
-              <div className="fixed inset-x-2 top-14 max-w-xs mx-auto sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 sm:max-w-none bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
-                <div className="p-3 border-b border-slate-800 bg-slate-900/90">
-                  <div className="font-semibold text-slate-200">Test Role Personas</div>
-                  <div className="text-[11px] text-slate-400">Switch user context to verify RBAC &amp; workflows</div>
+              <div className="fixed inset-x-2 top-14 max-w-xs mx-auto sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 sm:max-w-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
+                  <div className="font-semibold text-slate-900 dark:text-slate-200">Test Role Personas</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Switch user context to verify RBAC &amp; workflows</div>
                 </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-slate-800/50">
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800/50">
                   {users.map((u) => (
                     <button
                       key={u.id}
@@ -373,24 +373,24 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                         setCurrentUser(u);
                         setIsUserDropdownOpen(false);
                       }}
-                      className={`w-full text-left p-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition ${
-                        u.id === currentUser.id ? 'bg-amber-950/40 text-amber-200' : 'text-slate-300'
+                      className={`w-full text-left p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition ${
+                        u.id === currentUser.id ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200' : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      <img src={u.avatarUrl} alt={u.fullName} className="w-8 h-8 rounded-lg object-cover border border-slate-700" />
+                      <img src={u.avatarUrl} alt={u.fullName} className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                       <div className="truncate flex-1">
                         <div className="font-semibold truncate">{u.fullName}</div>
-                        <div className="text-[11px] text-slate-400 truncate">{u.jobTitle}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{u.jobTitle}</div>
                         <div className="flex flex-wrap gap-1 mt-0.5">
                           {(u.roles && u.roles.length > 0 ? u.roles : [u.role]).map((r) => (
-                            <span key={r} className="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-800 text-amber-400 border border-slate-700 uppercase">
+                            <span key={r} className="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-amber-800 dark:text-amber-400 border border-slate-200 dark:border-slate-700 uppercase">
                               {r.replace('_', ' ')}
                             </span>
                           ))}
                         </div>
                       </div>
                       {u.id === currentUser.id && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold">
                           ACTIVE
                         </span>
                       )}
@@ -406,9 +406,9 @@ export const AppShell: React.FC<Props> = ({ children }) => {
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Left Sidebar */}
-        <aside className="hidden md:flex flex-col w-60 lg:w-64 border-r border-slate-800 bg-slate-900/70 shrink-0 select-none">
+        <aside className="hidden md:flex flex-col w-60 lg:w-64 border-r border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/70 shrink-0 select-none">
           <div className="p-3 flex-1 space-y-1 overflow-y-auto">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1.5">
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-3 py-1.5">
               Law Firm Operations
             </div>
 
@@ -422,11 +422,11 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
                     isActive
                       ? 'bg-amber-600 text-white shadow-md shadow-amber-950/50'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/70'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/70'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
                     <span className="truncate">{item.label}</span>
                   </div>
                   {item.badge !== undefined && (
@@ -434,7 +434,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                       className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                         isActive
                           ? 'bg-amber-900/60 text-white'
-                          : item.badgeColor || 'bg-slate-800 text-slate-300'
+                          : item.badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       {item.badge}
@@ -446,11 +446,11 @@ export const AppShell: React.FC<Props> = ({ children }) => {
           </div>
 
           {/* Sidebar Footer */}
-          <div className="p-3 border-t border-slate-800 bg-slate-900/90 text-xs">
-            <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 text-xs">
+            <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-400 uppercase font-mono">Branch</div>
-                <div className="font-semibold text-slate-200 truncate">
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-mono">Branch</div>
+                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                   {currentBranchFilter === 'all'
                     ? 'Both Branches'
                     : branches.find((b) => b.id === currentBranchFilter)?.name || 'Branch'}
@@ -464,15 +464,15 @@ export const AppShell: React.FC<Props> = ({ children }) => {
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 md:hidden bg-slate-950/80 backdrop-blur-sm">
-            <div className="w-72 bg-slate-900 h-full border-r border-slate-800 p-4 flex flex-col justify-between shadow-2xl">
+            <div className="w-72 bg-white dark:bg-slate-900 h-full border-r border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between shadow-2xl">
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="font-serif font-bold text-amber-400 text-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="font-serif font-bold text-amber-700 dark:text-amber-400 text-sm">
                     Kariuki Kagunda Advocates
                   </div>
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-1 rounded text-slate-400 hover:text-slate-100"
+                    className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-100"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -480,13 +480,13 @@ export const AppShell: React.FC<Props> = ({ children }) => {
 
                 {/* Branch selector on mobile */}
                 <div>
-                  <label className="text-[11px] text-slate-400 uppercase font-mono block mb-1">
+                  <label className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-mono block mb-1">
                     Branch Context:
                   </label>
                   <select
                     value={currentBranchFilter}
                     onChange={(e) => setCurrentBranchFilter(e.target.value as 'all' | BranchId)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none"
                   >
                     <option value="all">All Branches</option>
                     <option value="branch-nairobi">Nairobi Branch (HQ)</option>
@@ -505,7 +505,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium ${
                           isActive
                             ? 'bg-amber-600 text-white'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
@@ -513,7 +513,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                           <span>{item.label}</span>
                         </div>
                         {item.badge !== undefined && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                             {item.badge}
                           </span>
                         )}
@@ -523,21 +523,21 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 text-xs text-slate-400">
-                Logged in as: <strong className="text-slate-200">{currentUser.fullName}</strong>
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                Logged in as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.fullName}</strong>
               </div>
             </div>
           </div>
         )}
 
         {/* Main Workspace Body */}
-        <main className="flex-1 overflow-y-auto bg-slate-950 flex flex-col min-w-0 max-w-full">
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 flex flex-col min-w-0 max-w-full">
           {children}
         </main>
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden sticky bottom-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px] shrink-0">
+      <nav className="md:hidden sticky bottom-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px] shrink-0">
         <button
           onClick={() => handleNavClick('dashboard')}
           className={`flex flex-col items-center gap-1 ${
