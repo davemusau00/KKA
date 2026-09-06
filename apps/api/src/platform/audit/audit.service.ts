@@ -52,7 +52,7 @@ export class AuditService {
         requestId: input.requestId,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
-        metadata,
+        metadata: metadata as any,
         previousHash: previous?.eventHash,
         eventHash
       }
