@@ -1,0 +1,33 @@
+{
+  "name": "kka-lawfirm-os",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev:api": "pnpm --filter @kka/api dev",
+    "dev:worker": "pnpm --filter @kka/worker dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "prisma:generate": "prisma generate",
+    "prisma:format": "prisma format",
+    "prisma:validate": "prisma validate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "prisma db seed",
+    "docker:up": "docker compose -f infra/docker-compose.production.yml up -d --build",
+    "docker:down": "docker compose -f infra/docker-compose.production.yml down",
+    "docker:logs": "docker compose -f infra/docker-compose.production.yml logs -f --tail=200"
+  },
+  "devDependencies": {
+    "dotenv": "17.2.3",
+    "prisma": "7.10.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "argon2": "0.44.0"
+  }
+}

@@ -1,0 +1,19 @@
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { createHash, randomBytes } from "node:crypto";
+import { PrismaService } from "../../platform/prisma/prisma.service";
+import { CryptoService } from "../../platform/crypto/crypto.service";
+import { QueueService } from "../../platform/queue/queue.service";
+import { AuditService } from "../../platform/audit/audit.service";
+
+function assertWebhookUrl(raw:string){const u=new URL(raw);if(!["https:","http:"].includes(u.protocol))throw new BadRequestException("Webhook URL must use HTTP(S)");const h=u.hostname.toLowerCase();if(["localhost","127.0.0.1","::1"].includes(h)||h.endsWith(".local"))throw new BadRequestException("Private/local webhook targets are not allowed");return u.toString();}
+@Injectable() export class DeveloperService{
+ constructor(private readonly prisma:PrismaService,private readonly crypto:CryptoService,private readonly queues:QueueService,private readonly audit:AuditService){}
+ flags(){return this.prisma.client.featureFlag.findMany({orderBy:{key:"asc"}})}
+ async upsertFlag(actorId:string,input:any){return this.prisma.client.featureFlag.upsert({where:{key:input.key},create:{...input,updatedById:actorId},update:{description:input.description,enabled:input.enabled,rules:input.rules,updatedById:actorId}})}
+ clients(firmId:string){return this.prisma.client.apiClient.findMany({where:{firmId},select:{id:true,name:true,clientId:true,permissionKeys:true,allowedCidrs:true,active:true,lastUsedAt:true,createdAt:true},orderBy:{name:"asc"}})}
+ async createClient(firmId:string,actorId:string,input:any){const clientId=`kka_${randomBytes(10).toString("hex")}`;const secret=randomBytes(32).toString("base64url");const secretHash=createHash("sha256").update(secret).digest("hex");const row=await this.prisma.client.apiClient.create({data:{firmId,name:input.name,clientId,secretHash,permissionKeys:input.permissionKeys??[],allowedCidrs:input.allowedCidrs??[],active:true}});await this.audit.record({firmId,actorUserId:actorId,action:"developer.api_client_created",entityType:"api_client",entityId:row.id,metadata:{name:row.name,clientId}});return{...row,secret,warning:"This secret is returned once. Store it securely."};}
+ webhooks(firmId:string){return this.prisma.client.webhookEndpoint.findMany({where:{firmId},include:{deliveries:{orderBy:{createdAt:"desc"},take:10}},orderBy:{name:"asc"}})}
+ async createWebhook(firmId:string,actorId:string,input:any){let secretRefId:string|undefined;if(input.secret){const encrypted=this.crypto.encryptObject({secret:input.secret});const rec=await this.prisma.client.secretRecord.create({data:{purpose:`webhook:${input.name}`,...encrypted}});secretRefId=rec.id;}const row=await this.prisma.client.webhookEndpoint.create({data:{firmId,name:input.name,url:assertWebhookUrl(input.url),secretRefId,eventKeys:input.eventKeys,active:input.active??true}});await this.audit.record({firmId,actorUserId:actorId,action:"developer.webhook_created",entityType:"webhook_endpoint",entityId:row.id,metadata:{name:row.name,url:row.url,eventKeys:row.eventKeys}});return row;}
+ async testWebhook(firmId:string,actorId:string,id:string){const ep=await this.prisma.client.webhookEndpoint.findFirst({where:{id,firmId,active:true}});if(!ep)throw new NotFoundException("Webhook endpoint not found");const eventId=`test_${Date.now()}`;const delivery=await this.prisma.client.webhookDelivery.create({data:{endpointId:id,eventKey:"system.webhook_test",eventId,status:"QUEUED"}});await this.queues.add("webhooks","deliver",{deliveryId:delivery.id,payload:{eventId,eventKey:"system.webhook_test",occurredAt:new Date().toISOString(),data:{message:"KKA webhook connectivity test",actorId}}});return delivery;}
+ jobs(){return this.prisma.client.systemJobRecord.findMany({orderBy:{createdAt:"desc"},take:500})}
+}

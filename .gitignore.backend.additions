@@ -1,0 +1,16 @@
+# Add these entries to the repository .gitignore
+.env
+.env.*
+!.env.example
+!.env.backend.example
+node_modules/
+dist/
+coverage/
+packages/database/generated/
+data/postgres/
+data/redis/
+data/documents/
+data/marks/
+data/backups/
+*.log
+.DS_Store

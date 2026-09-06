@@ -1,0 +1,25 @@
+{$APP_DOMAIN:localhost} {
+    encode zstd gzip
+
+    @api path /api/*
+    reverse_proxy @api api:3000
+
+    @socket path /socket.io/*
+    reverse_proxy @socket api:3000
+
+    root * /srv/web
+    try_files {path} /index.html
+    file_server
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options SAMEORIGIN
+        -Server
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}
