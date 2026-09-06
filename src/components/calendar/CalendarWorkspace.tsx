@@ -582,20 +582,20 @@ export const CalendarWorkspace: React.FC = () => {
       {/* Record Outcome Modal */}
       {selectedEventForOutcome && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleSaveOutcome} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4">
-            <h3 className="font-serif font-bold text-base text-slate-100">
+          <form onSubmit={handleSaveOutcome} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+            <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">
               Record Court Appearance Outcome
             </h3>
-            <p className="text-slate-400 text-xs">
+            <p className="text-slate-500 dark:text-slate-400 text-xs">
               Brief court proceedings, directions, orders given, and automatic next court date diarization.
             </p>
 
             <div>
-              <label className="block text-slate-300 mb-1">Appearance Outcome Status</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1">Appearance Outcome Status</label>
               <select
                 value={courtStatusChoice}
                 onChange={(e) => setCourtStatusChoice(e.target.value as any)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-200 outline-none"
               >
                 <option value="attended">Attended &bull; Proceedings / Hearing Held</option>
                 <option value="adjourned">Adjourned by Court or Adverse Party</option>
@@ -647,27 +647,27 @@ export const CalendarWorkspace: React.FC = () => {
       {/* Diarize Event Modal */}
       {showAddEventModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <form onSubmit={handleCreateEvent} className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4">
-            <h3 className="font-serif font-bold text-base text-slate-100">Diarize Court Hearing or Event</h3>
+          <form onSubmit={handleCreateEvent} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-lg space-y-4 shadow-2xl">
+            <h3 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">Diarize Court Hearing or Event</h3>
 
             <div>
-              <label className="block text-slate-300 mb-1">Event Title / Purpose</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1">Event Title / Purpose</label>
               <input
                 type="text"
                 required
                 value={eventTitle}
                 onChange={(e) => setEventTitle(e.target.value)}
                 placeholder="e.g. Plaint Mention for Directions before Hon. Justice Mwangi"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1">Associated Litigation Matter</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1">Associated Litigation Matter</label>
               <select
                 value={eventMatterId}
                 onChange={(e) => setEventMatterId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-100 outline-none font-mono"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none font-mono"
               >
                 {matters.map((m) => (
                   <option key={m.id} value={m.id}>

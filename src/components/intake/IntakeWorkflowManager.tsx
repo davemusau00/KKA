@@ -727,19 +727,19 @@ export const IntakeWorkflowManager: React.FC = () => {
       {/* Modal 1: New Intake Interview Form */}
       {showNewIntakeModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <span className="text-xs font-mono uppercase text-amber-500 font-bold">
+                <span className="text-xs font-mono uppercase text-amber-700 dark:text-amber-500 font-bold">
                   Stage 1: Intake &amp; Inquiry
                 </span>
-                <h2 className="text-lg font-serif font-bold text-slate-100">
+                <h2 className="text-lg font-serif font-bold text-slate-900 dark:text-slate-100">
                   New Prospective Personal Injury Intake
                 </h2>
               </div>
               <button
                 onClick={() => setShowNewIntakeModal(false)}
-                className="text-slate-400 hover:text-slate-200 text-sm font-mono p-1"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-mono p-1 transition"
               >
                 ✕
               </button>
@@ -980,19 +980,19 @@ export const IntakeWorkflowManager: React.FC = () => {
       {/* Modal 2: Conflict Search & Partner Clearance Modal */}
       {showConflictModal && selectedIntake && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <span className="text-xs font-mono uppercase text-amber-500 font-bold">
+                <span className="text-xs font-mono uppercase text-amber-700 dark:text-amber-500 font-bold">
                   Conflict of Interest Evaluation Engine
                 </span>
-                <h2 className="text-lg font-serif font-bold text-slate-100">
+                <h2 className="text-lg font-serif font-bold text-slate-900 dark:text-slate-100">
                   Search &amp; Audit Results for {selectedIntake.clientName}
                 </h2>
               </div>
               <button
                 onClick={() => setShowConflictModal(false)}
-                className="text-slate-400 hover:text-slate-200 font-mono text-sm"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-mono text-sm transition"
               >
                 ✕
               </button>
@@ -1122,19 +1122,19 @@ export const IntakeWorkflowManager: React.FC = () => {
       {/* Modal 3: KYC & Retainer Checklist Modal */}
       {showKycRetainerModal && selectedIntake && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <span className="text-xs font-mono uppercase text-amber-500 font-bold">
+                <span className="text-xs font-mono uppercase text-amber-700 dark:text-amber-500 font-bold">
                   Eligibility, KYC &amp; Retainer
                 </span>
-                <h2 className="text-lg font-serif font-bold text-slate-100">
+                <h2 className="text-lg font-serif font-bold text-slate-900 dark:text-slate-100">
                   Advocate-Client Retainer Checklist
                 </h2>
               </div>
               <button
                 onClick={() => setShowKycRetainerModal(false)}
-                className="text-slate-400 hover:text-slate-200 font-mono text-sm"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-mono text-sm transition"
               >
                 ✕
               </button>
@@ -1256,19 +1256,19 @@ export const IntakeWorkflowManager: React.FC = () => {
       {/* Modal 4: Convert to Matter & Automated Provisioning */}
       {showConvertModal && selectedIntake && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <span className="text-xs font-mono uppercase text-amber-500 font-bold">
+                <span className="text-xs font-mono uppercase text-amber-700 dark:text-amber-500 font-bold">
                   Stage 2: Matter Formalization
                 </span>
-                <h2 className="text-lg font-serif font-bold text-slate-100">
+                <h2 className="text-lg font-serif font-bold text-slate-900 dark:text-slate-100">
                   Open Matter &amp; Initialize Operational Workflows
                 </h2>
               </div>
               <button
                 onClick={() => setShowConvertModal(false)}
-                className="text-slate-400 hover:text-slate-200 font-mono text-sm"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-mono text-sm transition"
               >
                 ✕
               </button>

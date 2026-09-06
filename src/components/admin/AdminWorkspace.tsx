@@ -799,30 +799,30 @@ export const AdminWorkspace: React.FC = () => {
       {/* ═══ MODAL: INVITE STAFF ═══ */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="font-serif font-bold text-base text-slate-100">Invite New Staff Member</h2>
-              <button onClick={() => setShowInviteModal(false)} className="text-slate-400 hover:text-slate-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h2 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">Invite New Staff Member</h2>
+              <button onClick={() => setShowInviteModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleInviteSubmit} className="space-y-3">
               <div>
-                <label className="block text-slate-300 mb-1">Full Legal Name *</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1">Full Legal Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Grace Wanjiru Advocate"
                   value={newFullName}
                   onChange={(e) => setNewFullName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1">Official Email *</label>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Official Email *</label>
                   <input
                     type="email"
                     required
@@ -920,26 +920,26 @@ export const AdminWorkspace: React.FC = () => {
       {/* ═══ MODAL: BRANCH CREATE/EDIT ═══ */}
       {showBranchModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="font-serif font-bold text-base text-slate-100">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h2 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">
                 {editingBranch ? `Edit ${editingBranch.name}` : 'Create New Firm Branch'}
               </h2>
-              <button onClick={() => setShowBranchModal(false)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setShowBranchModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleBranchSubmit} className="space-y-3">
               <div>
-                <label className="block text-slate-300 mb-1">Branch Name *</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1">Branch Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Kisumu Branch Office"
                   value={branchName}
                   onChange={(e) => setBranchName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -1013,33 +1013,29 @@ export const AdminWorkspace: React.FC = () => {
       {/* ═══ MODAL: EDIT USER ROLES ═══ */}
       {editingUserRoles && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <h2 className="font-serif font-bold text-base text-slate-100">
+                <h2 className="font-serif font-bold text-base text-slate-900 dark:text-slate-100">
                   Configure Roles: {editingUserRoles.fullName}
                 </h2>
-                <span className="text-slate-400 text-xs">{editingUserRoles.jobTitle}</span>
+                <span className="text-slate-500 dark:text-slate-400 text-xs">{editingUserRoles.jobTitle}</span>
               </div>
-              <button onClick={() => setEditingUserRoles(null)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setEditingUserRoles(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveUserRoles} className="space-y-4">
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Primary Role</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Primary Role</label>
                 <select
                   value={editingUserRoles.role}
                   onChange={(e) => {
                     const newPrimary = e.target.value as RoleId;
-                    setEditingUserRoles({
-                      ...editingUserRoles,
-                      role: newPrimary,
-                      roles: Array.from(new Set([newPrimary, ...editingUserRoles.roles])),
-                    });
+                    setEditingUserRoles((prev) => (prev ? { ...prev, role: newPrimary, roles: Array.from(new Set([newPrimary, ...prev.roles])) } : null));
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 outline-none focus:border-amber-500 font-mono text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none text-xs"
                 >
                   {ALL_ROLES_LIST.map((r) => (
                     <option key={r} value={r}>
@@ -1050,10 +1046,10 @@ export const AdminWorkspace: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-2 font-semibold">
+                <label className="block text-slate-700 dark:text-slate-300 mb-2 font-semibold">
                   Secondary Roles (Union of Permissions)
                 </label>
-                <div className="space-y-2 max-h-56 overflow-y-auto p-2 bg-slate-950 border border-slate-800 rounded-xl">
+                <div className="space-y-2 max-h-56 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
                   {ALL_ROLES_LIST.map((r) => {
                     const isChecked = editingUserRoles.roles.includes(r);
                     const isPrimary = editingUserRoles.role === r;

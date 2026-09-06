@@ -997,17 +997,17 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
 
             {/* Court Outcome Modal */}
             {selectedCourtEvent && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-                <form onSubmit={handleSaveCourtOutcome} className="bg-slate-900 border border-slate-700 p-5 rounded-2xl w-full max-w-lg space-y-4 text-xs">
-                  <h3 className="font-bold text-sm text-slate-100">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+                <form onSubmit={handleSaveCourtOutcome} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl w-full max-w-lg space-y-4 text-xs shadow-2xl">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
                     Record Court Hearing Outcome: {selectedCourtEvent.title}
                   </h3>
                   <div>
-                    <label className="block text-slate-300 mb-1">Appearance Result / Status</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Appearance Result / Status</label>
                     <select
                       value={courtStatusChoice}
                       onChange={(e) => setCourtStatusChoice(e.target.value as any)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-200 outline-none focus:border-amber-500"
                     >
                       <option value="attended">Attended &amp; Proceedings Recorded</option>
                       <option value="adjourned">Adjourned by Court / Consent</option>
@@ -1015,25 +1015,25 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-slate-300 mb-1">Judge Orders &amp; Outcome Notes</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Judge Orders &amp; Outcome Notes</label>
                     <textarea
                       rows={3}
                       required
                       placeholder="e.g. Plaintiff cross-examined, court ordered parties to file closing submissions within 14 days..."
                       value={courtOutcomeText}
                       onChange={(e) => setCourtOutcomeText(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none resize-none"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-200 outline-none resize-none focus:border-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 mb-1">Next Court Date (if ordered)</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Next Court Date (if ordered)</label>
                     <input
                       type="date"
                       value={nextCourtDateInput}
                       onChange={(e) => setNextCourtDateInput(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 outline-none"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-200 outline-none focus:border-amber-500"
                     />
-                    <p className="text-slate-500 text-[10px] mt-0.5">
+                    <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
                       Automatically diarizes the next court appearance on the firm calendar.
                     </p>
                   </div>
@@ -1041,13 +1041,13 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
                     <button
                       type="button"
                       onClick={() => setSelectedCourtEvent(null)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                      className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium shadow-sm transition"
                     >
                       Save Outcome
                     </button>

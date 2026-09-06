@@ -685,25 +685,25 @@ export const ApprovalsWorkspace: React.FC = () => {
       {/* ─── DISBURSEMENT MODAL ─── */}
       {disburseModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-400" />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Authorize Disbursement
               </h3>
               <button
                 onClick={() => setDisburseModal(null)}
-                className="text-slate-400 hover:text-slate-200 text-xs"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-300">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <div className="text-slate-400 text-[10px] uppercase font-mono">Amount to Disburse</div>
-                <div className="text-xl font-bold text-slate-100">KES {disburseModal.amount.toLocaleString()}</div>
-                <div className="text-slate-400">{disburseModal.description}</div>
+            <div className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Amount to Disburse</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">KES {disburseModal.amount.toLocaleString()}</div>
+                <div className="text-slate-600 dark:text-slate-400">{disburseModal.description}</div>
               </div>
 
               <div>
@@ -751,23 +751,23 @@ export const ApprovalsWorkspace: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleRejectDocConfirm}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400" />
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                 Request Document Amendments
               </h3>
               <button
                 type="button"
                 onClick={() => setRejectDocModal(null)}
-                className="text-slate-400 hover:text-slate-200 text-xs"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-300">
+            <div className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
               <p className="text-slate-400">
                 Document: <strong className="text-slate-200">{rejectDocModal.docTitle}</strong>
               </p>

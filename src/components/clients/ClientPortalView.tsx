@@ -610,46 +610,46 @@ export const ClientPortalView: React.FC<Props> = ({ initialClientId, onClose }) 
 
           {/* Document Preview Modal */}
           {previewDocument && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-2xl shadow-2xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 w-full max-w-2xl shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div>
-                    <span className="text-[10px] font-mono uppercase text-amber-400 font-bold">
+                    <span className="text-[11px] font-mono uppercase text-amber-600 dark:text-amber-400 font-bold">
                       {previewDocument.category}
                     </span>
-                    <h3 className="text-base font-serif font-bold text-slate-100">
+                    <h3 className="text-base font-serif font-bold text-slate-900 dark:text-slate-100">
                       {previewDocument.title}
                     </h3>
                   </div>
                   <button
                     onClick={() => setPreviewDocument(null)}
-                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100"
+                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition"
                   >
                     &times;
                   </button>
                 </div>
 
-                <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 font-serif text-slate-300 space-y-4 text-xs leading-relaxed max-h-96 overflow-y-auto">
-                  <div className="text-center border-b border-slate-800 pb-3 font-sans">
-                    <div className="font-bold text-slate-100 uppercase tracking-widest text-xs">
+                <div className="p-6 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-serif text-slate-800 dark:text-slate-300 space-y-4 text-xs leading-relaxed max-h-96 overflow-y-auto">
+                  <div className="text-center border-b border-slate-200 dark:border-slate-800 pb-3 font-sans">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-widest text-xs">
                       Republic of Kenya &bull; In the High Court of Kenya
                     </div>
-                    <div className="text-amber-400 text-[11px] mt-0.5">
+                    <div className="text-amber-700 dark:text-amber-400 text-[11px] mt-0.5">
                       Milimani Commercial &amp; Admiralty Division &bull; Case No. {activeMatter?.internalReference}
                     </div>
                   </div>
 
-                  <p className="font-bold text-slate-200">BETWEEN:</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-200">BETWEEN:</p>
                   <div className="pl-4">
                     <strong>{client.displayName}</strong> .................................................... PLAINTIFF
                   </div>
-                  <p className="font-bold text-slate-200">- AND -</p>
+                  <p className="font-bold text-slate-900 dark:text-slate-200">- AND -</p>
                   <div className="pl-4">
                     <strong>DIRECTLINE ASSURANCE CO. LTD &amp; ANOR</strong> ................ DEFENDANTS
                   </div>
 
-                  <div className="border-t border-slate-800 pt-3 space-y-2">
-                    <div className="font-bold text-slate-100 text-center uppercase">
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-2">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 text-center uppercase">
                       {previewDocument.documentType}
                     </div>
                     <p>
@@ -663,16 +663,16 @@ export const ClientPortalView: React.FC<Props> = ({ initialClientId, onClose }) 
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] font-sans text-slate-500">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-sans text-slate-500 dark:text-slate-400">
                     <span>E-Filed on: {new Date(previewDocument.createdAt).toLocaleDateString()}</span>
-                    <span className="text-emerald-400 font-mono">Judiciary CTS Barcode: #2026-CTS-8492</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-mono">Judiciary CTS Barcode: #2026-CTS-8492</span>
                   </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     onClick={() => setPreviewDocument(null)}
-                    className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:text-slate-100 text-xs"
+                    className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-medium transition"
                   >
                     Close Preview
                   </button>
