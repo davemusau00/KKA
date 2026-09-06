@@ -24,7 +24,7 @@ export class DirectoryService {
   }
 
   async create(firmId: string, actorId: string, input: Record<string, any>) {
-    const contact = await this.prisma.client.directoryContact.create({ data: { firmId, ...input } });
+    const contact = await this.prisma.client.directoryContact.create({ data: { firmId, ...input } as any });
     await this.audit.record({
       firmId, actorUserId: actorId, action: "directory.contact_created",
       entityType: "directory_contact", entityId: contact.id, metadata: { type: contact.type, displayName: contact.displayName }

@@ -38,8 +38,9 @@ export class DocumentsController {
     if (buffer.length > env().MAX_UPLOAD_BYTES) {
       throw new BadRequestException("File exceeds upload limit");
     }
-    const changeSummary = typeof part.fields?.changeSummary?.value === "string"
-      ? part.fields.changeSummary.value
+    const summaryField = part.fields?.changeSummary as any;
+    const changeSummary = typeof summaryField?.value === "string"
+      ? summaryField.value
       : undefined;
     return this.documents.uploadVersion(user.firmId, user.id, id, {
       filename: part.filename,

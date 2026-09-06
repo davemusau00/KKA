@@ -45,7 +45,7 @@ export class IntakeService {
         intakeNumber,
         ...input,
         incidentDate: input.incidentDate ? new Date(input.incidentDate) : undefined
-      }
+      } as any
     });
     await this.audit.record({
       firmId, actorUserId: actorId, action: "intake.created",
@@ -56,7 +56,7 @@ export class IntakeService {
 
   addParty(firmId: string, actorId: string, intakeId: string, input: Record<string, any>) {
     return this.prisma.client.intakeParty.create({
-      data: { intakeId, ...input }
+      data: { intakeId, ...input } as any
     }).then(async (party) => {
       await this.audit.record({
         firmId, actorUserId: actorId, action: "intake.party_added",
@@ -123,7 +123,7 @@ export class IntakeService {
         checkedByUserId: actorId,
         status,
         partiesSearched: searchTerms,
-        matchesFound: matches
+        matchesFound: matches as any
       }
     });
     await this.prisma.client.intake.update({

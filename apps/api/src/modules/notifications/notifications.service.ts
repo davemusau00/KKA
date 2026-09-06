@@ -41,7 +41,7 @@ export class NotificationsService {
         actionUrl: input.actionUrl,
         urgency: input.urgency ?? "NORMAL",
         deliveries: {
-          create: channels.map((channel) => ({ channel }))
+          create: channels.map((channel) => ({ channel: channel as any }))
         }
       },
       include: { deliveries: true }

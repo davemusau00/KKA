@@ -41,7 +41,7 @@ export class IntegrationsService {
           iv: encrypted.iv,
           authTag: encrypted.authTag,
           keyVersion: encrypted.keyVersion
-        }
+        } as any
       });
       secretRefId = secret.id;
     }
