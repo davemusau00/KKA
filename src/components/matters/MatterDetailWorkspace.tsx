@@ -1279,11 +1279,62 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
               </div>
             </div>
 
+            {/* Matter Fee Notes & Bills */}
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="font-bold text-slate-200 uppercase tracking-wider">
+                  Advocate-Client Fee Notes &amp; Bills ({matterFeeNotes.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setActiveWorkspace('finance')}
+                  className="text-amber-400 hover:text-amber-300 font-semibold text-[11px] flex items-center gap-1"
+                >
+                  <span>Open Matter Ledger &amp; Statements &rarr;</span>
+                </button>
+              </div>
+              <div className="space-y-2">
+                {matterFeeNotes.length === 0 ? (
+                  <div className="py-4 text-center text-slate-500">No fee notes generated for this matter yet.</div>
+                ) : (
+                  matterFeeNotes.map((fn) => (
+                    <div
+                      key={fn.id}
+                      className="p-3 rounded-lg border border-slate-800 bg-slate-950/50 flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-amber-400">{fn.feeNoteNumber}</span>
+                          <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-bold ${
+                            fn.status === 'paid'
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                              : fn.status === 'settled_from_trust'
+                              ? 'bg-blue-950 text-blue-300 border border-blue-800'
+                              : 'bg-amber-950 text-amber-300 border border-amber-800'
+                          }`}>
+                            {fn.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div className="text-slate-400 text-[11px] mt-0.5">
+                          Issued: {new Date(fn.issuedDate).toLocaleDateString()} &bull; Gross: KES {fn.grossTotal.toLocaleString()}
+                          {fn.trustFundsApplied > 0 && ` (Trust Applied: KES ${fn.trustFundsApplied.toLocaleString()})`}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-slate-400">Balance Due</div>
+                        <div className="font-mono font-bold text-slate-100">KES {fn.netBalanceDue.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
             {/* Matter Expenses Table */}
             <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <h4 className="font-bold text-slate-200 uppercase tracking-wider">
-                  Disbursements &amp; Requisitions Log
+                  Disbursements &amp; Requisitions Log ({matterExpenses.length})
                 </h4>
               </div>
               <div className="space-y-2">

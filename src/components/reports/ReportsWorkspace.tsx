@@ -62,19 +62,19 @@ export const ReportsWorkspace: React.FC = () => {
       <div className="p-5 rounded-2xl bg-rose-950/20 border border-rose-800/60 shadow-lg space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-rose-900/60 text-rose-300">
+            <div className="p-2 rounded-xl bg-rose-950/50 text-rose-400">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-rose-100 uppercase tracking-wider">
+              <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
                 Stalled Litigation Matters Requiring Partner Review
               </h2>
-              <p className="text-rose-300/80 text-xs">
+              <p className="text-slate-400 text-xs">
                 Cases with zero recorded activity for &gt;30 days or exceeding workflow stage target duration.
               </p>
             </div>
           </div>
-          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-rose-900 text-rose-200">
+          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-rose-950/50 text-rose-400 border border-rose-800/60">
             {stalledMatters.length} Stalled Files
           </span>
         </div>
@@ -85,23 +85,23 @@ export const ReportsWorkspace: React.FC = () => {
             return (
               <div
                 key={m.id}
-                className="p-4 rounded-xl bg-slate-950/70 border border-rose-900/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
+                className="p-4 rounded-xl bg-slate-900 border border-rose-900/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
               >
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono font-bold text-amber-400 text-sm">
                       {m.internalReference}
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-bold uppercase">
-                      {m.daysInactive} days inactive
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/50 text-rose-400 border border-rose-800/60 font-bold uppercase">
+                      {m.daysInactive} Days Inactive
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                       Stage {m.currentStageId}: {m.stageName} (Target: {m.stageTarget}d)
                     </span>
                   </div>
-                  <div className="text-sm font-semibold text-slate-200 mt-1">{m.title}</div>
+                  <div className="text-sm font-semibold text-slate-100 mt-1">{m.title}</div>
                   <div className="text-slate-400 text-xs mt-0.5">
-                    Supervisor: <strong className="text-slate-300">{supervisor?.fullName}</strong> &bull; Next Action: {m.nextAction}
+                    Supervisor: <strong className="text-slate-300">{supervisor?.fullName}</strong> &bull; Next Action: <span className="text-rose-400 font-medium">{m.nextAction}</span>
                   </div>
                 </div>
 
@@ -110,7 +110,7 @@ export const ReportsWorkspace: React.FC = () => {
                     setSelectedMatterId(m.id);
                     setActiveWorkspace('matters');
                   }}
-                  className="px-3.5 py-1.5 rounded-lg bg-rose-800 hover:bg-rose-700 text-white font-medium transition flex items-center gap-1.5 text-xs shrink-0"
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-medium transition flex items-center gap-1.5 text-xs shrink-0"
                 >
                   <span>Open Matter File</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -160,7 +160,7 @@ export const ReportsWorkspace: React.FC = () => {
           </h3>
 
           <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-between">
               <div>
                 <div className="font-semibold text-slate-200">Nairobi Branch (HQ)</div>
                 <div className="text-slate-400 text-[11px]">Milimani Law Courts / High Court Commercial</div>
@@ -173,7 +173,7 @@ export const ReportsWorkspace: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-between">
               <div>
                 <div className="font-semibold text-slate-200">Mombasa Branch</div>
                 <div className="text-slate-400 text-[11px]">Mombasa Law Courts / Admiralty &amp; Commercial</div>

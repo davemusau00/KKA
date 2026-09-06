@@ -147,54 +147,54 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
   const criticalCount = alertItems.filter((i) => i.urgency === 'critical').length;
 
   return (
-    <div className="rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl overflow-hidden">
+    <div className="rounded-2xl bg-white dark:bg-gradient-to-b dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 shadow-md dark:shadow-xl overflow-hidden">
       {/* Header Banner */}
-      <div className="p-4 sm:p-5 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">
           <div
             className={`p-2.5 rounded-xl shrink-0 ${
               criticalCount > 0
-                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
-                : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-500/30 animate-pulse'
+                : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-500/30'
             }`}
           >
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
+              <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
                 Litigation Operations
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent font-mono">
                 Real-time Calendar Sync
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-serif font-bold text-slate-100 flex flex-wrap items-center gap-2 mt-0.5">
+            <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-2 mt-0.5">
               <span>Upcoming Court Deadlines &amp; Filing Requirements</span>
               <span
                 className={`text-xs px-2.5 py-0.5 rounded-full font-sans font-semibold ${
                   criticalCount > 0
-                    ? 'bg-rose-950 text-rose-300 border border-rose-800'
-                    : 'bg-amber-950 text-amber-300 border border-amber-800'
+                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                    : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
                 }`}
               >
                 {alertItems.length} within 48h
               </span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               Continuous monitoring of statutory limitation dates, pleadings filings, and scheduled mentions across Nairobi and Mombasa registries.
             </p>
           </div>
         </div>
 
         {/* Filter Chips */}
-        <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 p-1 rounded-xl self-start md:self-auto text-xs">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl self-start md:self-auto text-xs">
           <button
             onClick={() => setFilterType('all')}
             className={`px-3 py-1.5 rounded-lg font-medium transition ${
               filterType === 'all'
                 ? 'bg-amber-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             All ({alertItems.length})
@@ -204,7 +204,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg font-medium transition ${
               filterType === 'court'
                 ? 'bg-amber-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             Court Dates ({upcomingEvents48h.length})
@@ -214,7 +214,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg font-medium transition ${
               filterType === 'filing'
                 ? 'bg-amber-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             Filings ({upcomingDeadlines48h.length + filingTasks48h.length})
@@ -225,12 +225,12 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
       {/* Alert Items List */}
       <div className="p-4 sm:p-5">
         {filteredItems.length === 0 ? (
-          <div className="text-center py-8 px-4 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-2 opacity-80" />
-            <h4 className="text-sm font-semibold text-slate-200">
+          <div className="text-center py-8 px-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950/40">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mx-auto mb-2 opacity-80" />
+            <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               No Pending Deadlines in the Next 48 Hours
             </h4>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto mt-1">
               All court appearances, pleading submissions, and statutory filing requisitions within the 48-hour window are up to date.
             </p>
           </div>
@@ -246,10 +246,10 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                   key={item.id}
                   className={`p-4 rounded-xl border transition-all flex flex-col justify-between gap-3 ${
                     item.urgency === 'critical'
-                      ? 'bg-rose-950/20 border-rose-800/80 hover:border-rose-700 shadow-sm'
+                      ? 'bg-white dark:bg-rose-950/20 border-l-4 border-l-rose-500 border-slate-200 dark:border-rose-800/80 hover:border-slate-300 dark:hover:border-rose-700 shadow-sm'
                       : item.urgency === 'high'
-                      ? 'bg-amber-950/20 border-amber-800/70 hover:border-amber-700'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                      ? 'bg-white dark:bg-amber-950/20 border-l-4 border-l-amber-500 border-slate-200 dark:border-amber-800/70 hover:border-slate-300 dark:hover:border-amber-700 shadow-sm'
+                      : 'bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm'
                   }`}
                 >
                   <div className="space-y-2">
@@ -259,10 +259,10 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                         <span
                           className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${
                             item.urgency === 'critical'
-                              ? 'bg-rose-900/80 text-rose-200 border border-rose-700'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-900/80 dark:text-rose-200 dark:border-rose-700'
                               : item.urgency === 'high'
-                              ? 'bg-amber-900/80 text-amber-200 border border-amber-700'
-                              : 'bg-slate-800 text-slate-300'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/80 dark:text-amber-200 dark:border-amber-700'
+                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                           }`}
                         >
                           <Clock className="w-3 h-3" />
@@ -273,13 +273,13 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                             : `IN ${item.hoursLeft} HOURS`}
                         </span>
 
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 flex items-center gap-1">
-                          {isHearing ? <Gavel className="w-3 h-3 text-amber-400" /> : <Scale className="w-3 h-3 text-sky-400" />}
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-transparent flex items-center gap-1">
+                          {isHearing ? <Gavel className="w-3 h-3 text-amber-600 dark:text-amber-400" /> : <Scale className="w-3 h-3 text-sky-600 dark:text-sky-400" />}
                           {isHearing ? 'Court Appearance' : 'Filing Deadline'}
                         </span>
                       </div>
 
-                      <span className="text-[11px] text-slate-400 font-mono">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                         {new Date(item.timestamp).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -294,25 +294,25 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
 
                     {/* Title and Details */}
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-100 group-hover:text-amber-300 transition-colors">
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:text-amber-600 dark:hover:text-amber-300 transition-colors">
                         {item.title}
                       </h4>
                       {item.details && (
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">
                           {item.details}
                         </p>
                       )}
                     </div>
 
                     {/* Court / Station / Matter Meta */}
-                    <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800/80 space-y-1 text-xs">
-                      <div className="flex items-center gap-1.5 text-slate-300">
-                        <Building2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 space-y-1 text-xs">
+                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                         <span className="truncate font-medium">{item.station}</span>
                       </div>
                       {matter && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono truncate">
-                          <span className="text-amber-400 font-semibold">{matter.internalReference}</span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-mono truncate">
+                          <span className="text-amber-700 dark:text-amber-400 font-semibold">{matter.internalReference}</span>
                           <span>&bull;</span>
                           <span className="truncate">{matter.title}</span>
                         </div>
@@ -321,7 +321,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                   </div>
 
                   {/* Actions Bar */}
-                  <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {matter && (
                         <button
@@ -329,7 +329,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                             setSelectedMatterId(matter.id);
                             setActiveWorkspace('matters');
                           }}
-                          className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium transition"
+                          className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 flex items-center gap-1 font-medium transition"
                         >
                           <span>Open Matter File</span>
                           <ArrowRight className="w-3 h-3" />
@@ -337,7 +337,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                       )}
                       <button
                         onClick={() => setActiveWorkspace('calendar')}
-                        className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 transition"
+                        className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1 transition"
                       >
                         <Calendar className="w-3 h-3" />
                         <span>Court Diary</span>
@@ -350,8 +350,8 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                         disabled={isReminderSent}
                         className={`text-xs px-2.5 py-1 rounded-lg border flex items-center gap-1 transition ${
                           isReminderSent
-                            ? 'bg-emerald-950/60 border-emerald-800 text-emerald-400'
-                            : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-400'
+                            : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border-slate-700 dark:text-slate-300'
                         }`}
                         title="Dispatches WhatsApp & SMS with court directions to client"
                       >
@@ -362,7 +362,7 @@ export const CourtDeadlinesAlertDashboard: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            <Send className="w-3 h-3 text-emerald-400" />
+                            <Send className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             <span>Notify Client</span>
                           </>
                         )}

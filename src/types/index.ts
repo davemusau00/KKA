@@ -650,7 +650,7 @@ export interface FeeNoteItem {
   expenseId?: string;
 }
 
-export type FeeNoteStatus = 'draft' | 'issued' | 'settled_from_trust' | 'paid' | 'cancelled';
+export type FeeNoteStatus = 'draft' | 'issued' | 'partially_paid' | 'settled_from_trust' | 'paid' | 'cancelled';
 
 export interface FeeNote {
   id: string;
