@@ -54,4 +54,7 @@ export class StorageService {
   readMark(path: string) {
     return this.markDriver.readBuffer(path);
   }
+
+  deleteMark(path: string) { return this.markDriver.delete(path); }
+  deleteDocument(path: string) { return this.documentDriver.delete(path); }
 }

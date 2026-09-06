@@ -24,7 +24,7 @@ export const authApi = {
   logout: () => apiClient.post<{ ok: boolean }>('/auth/logout'),
 
   elevate: (password: string) =>
-    apiClient.post<{ token: string; expiresAt: string }>('/auth/elevate', { password }),
+    apiClient.post<{ elevationToken: string; expiresInSeconds: number }>('/auth/elevate', { password }),
 
   acceptInvite: (token: string, password: string) =>
     apiClient.post<{ user: BackendUser }>('/auth/accept-invite', { token, password }),

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, promises as fs } from "node:fs";
-import { dirname, extname, join, normalize, resolve } from "node:path";
+import { dirname, extname, join, normalize, resolve, relative as relativePath, isAbsolute } from "node:path";
 import { Readable } from "node:stream";
 import type { PrivateStorageDriver, PutObjectInput, StoredObject } from "./storage.types";
 
@@ -12,7 +12,8 @@ export class LocalPrivateStorageDriver implements PrivateStorageDriver {
   private safePath(relative: string): string {
     const absoluteRoot = resolve(this.root);
     const absolute = resolve(absoluteRoot, normalize(relative));
-    if (!absolute.startsWith(absoluteRoot + "/") && absolute !== absoluteRoot) {
+    const rel = relativePath(absoluteRoot, absolute);
+    if (rel.startsWith("..") || isAbsolute(rel)) {
       throw new Error("Unsafe storage path");
     }
     return absolute;

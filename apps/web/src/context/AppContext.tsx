@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
   BranchId,
+  DirectoryCategory,
   UserProfile,
   Client,
   IntakeLead,
@@ -995,6 +996,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const loginWithBackend = useCallback(
     async (email: string, password: string) => {
       const res = await authApi.login(email, password);
+      window.dispatchEvent(new Event('kka:auth-changed'));
       if (res?.user) {
         setIsAuthenticatedLive(true);
         const u = res.user;
@@ -1024,6 +1026,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logoutWithBackend = useCallback(async () => {
     try {
       await authApi.logout();
+      window.dispatchEvent(new Event('kka:auth-changed'));
     } catch (err) {
       console.warn('Backend logout error or offline:', err);
     }
@@ -1445,16 +1448,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
 
     intakeApi.create({
-      clientName: intakeData.clientName,
-      phone: intakeData.phone,
-      email: intakeData.email || undefined,
       practiceArea: 'PERSONAL_INJURY',
-      briefDescription: intakeData.briefDescription,
-      incidentDate: intakeData.incidentDate || undefined,
-      source: intakeData.source || 'Direct Walk-in',
-      assignedToId: intakeData.assignedToId || undefined,
-    }).then((created) => {
+      incidentSummary: leadData.briefDescription,
+      incidentDate: leadData.incidentDate || undefined,
+    }).then(async (created) => {
       if (created?.id) {
+        await intakeApi.addParty(created.id, { role: 'CLAIMANT', name: leadData.clientName, phone: leadData.phone, email: leadData.email || undefined });
         setIntakes((prev) =>
           prev.map((i) => (i.id === newIntake.id ? { ...i, id: created.id } : i))
         );
@@ -2394,14 +2393,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAudit('client.created', 'client', newClient.id, undefined, { name: newClient.displayName });
 
     clientsApi.create({
-      type: clientData.clientType === 'corporate' ? 'CORPORATE' : 'INDIVIDUAL',
+      type: clientData.clientType === 'organization' ? 'CORPORATE' : 'INDIVIDUAL',
       displayName: clientData.displayName,
       primaryPhone: clientData.phone,
       primaryEmail: clientData.email || undefined,
       idNumber: clientData.idNumber || undefined,
       kraPin: clientData.kraPin || undefined,
       postalAddress: clientData.postalAddress || undefined,
-      county: clientData.county || undefined,
     }).then((created) => {
       if (created?.id) {
         setClients((prev) =>
@@ -2427,7 +2425,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       idNumber: updates.idNumber,
       kraPin: updates.kraPin,
       postalAddress: updates.postalAddress,
-      county: updates.county,
     }).catch((err) => {
       console.warn('Backend client update offline/queued:', err);
     });
@@ -2527,7 +2524,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       priority: taskData.priority ? (taskData.priority.toUpperCase() as any) : 'MEDIUM',
       assignedToId: taskData.assignedTo,
       matterId: taskData.matterId,
-      dueDate: taskData.dueDate,
+      dueDate: taskData.dueAt,
     }).then((created) => {
       if (created?.id) {
         setTasks((prev) =>

@@ -123,6 +123,7 @@ export class SettingsService {
       changeReason?: string;
     }
   ) {
+    if (key === 'firm.branding.logo') throw new BadRequestException('Use the branding endpoint to change the firm logo');
     const definition = await this.prisma.client.settingDefinition.findUnique({ where: { key } });
     if (!definition) throw new NotFoundException(`Setting ${key} is not registered`);
     if (!definition.allowedScopes.includes(input.scopeType)) {

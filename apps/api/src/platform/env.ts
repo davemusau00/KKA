@@ -8,6 +8,7 @@ const boolish = z.preprocess(
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_NAME: z.string().default("KKA Lawfirm OS"),
+  PUBLIC_BRANDING_FIRM_ID: z.string().optional(),
   APP_URL: z.string().url().default("http://localhost:8080"),
   API_HOST: z.string().default("0.0.0.0"),
   API_PORT: z.coerce.number().int().positive().default(3000),

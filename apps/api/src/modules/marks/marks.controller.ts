@@ -1,15 +1,16 @@
-import { Body, Controller, Get, Param, Post, Req, BadRequestException } from "@nestjs/common";
-import type { FastifyRequest } from "fastify";
+import { Body, Controller, Get, Param, Post, Req, BadRequestException, Patch, Res } from "@nestjs/common";
+import type { FastifyRequest, FastifyReply } from "fastify";
 import { ApplyMarkSchema, CreateMarkAssetSchema } from "@kka/contracts";
 import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { MarksService } from "./marks.service";
+import { RegistryService, MarkUpdateSchema } from './registry.service';
 import { env } from "../../platform/env";
 
 @Controller("marks")
 export class MarksController {
-  constructor(private readonly marks: MarksService) {}
+  constructor(private readonly marks: MarksService, private readonly registry: RegistryService) {}
 
   @Get()
   @RequirePermissions("document.view")
@@ -30,16 +31,21 @@ export class MarksController {
     @Param("id") id: string,
     @Req() request: FastifyRequest
   ) {
-    const part = await request.file();
+    const part = await request.file({ limits: { fileSize: 5 * 1024 * 1024 } });
     if (!part) throw new BadRequestException("No mark image uploaded");
     const buffer = await part.toBuffer();
     if (buffer.length > env().MAX_UPLOAD_BYTES) throw new BadRequestException("File exceeds upload limit");
-    return this.marks.uploadAssetVersion(user.firmId, user.id, id, {
-      filename: part.filename,
-      mimetype: part.mimetype,
-      buffer
-    });
+    return this.registry.upload(user, id, false, { mimetype: part.mimetype, buffer });
   }
+
+  @Patch(':id') @RequirePermissions('admin.settings_manage')
+  update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) { return this.registry.update(user, id, MarkUpdateSchema.parse(body)); }
+  @Get('signature-profiles')
+  signatures(@CurrentUser() user: RequestUser) { return this.registry.signatures(user); }
+  @Get('versions/:id/preview') @RequirePermissions('document.view')
+  async preview(@CurrentUser() user: RequestUser, @Param('id') id: string, @Res() reply: FastifyReply) { const v = await this.registry.preview(user, id, false); return reply.header('Cache-Control','no-store').type(v.mimeType).send(v.stream); }
+  @Get('signature-versions/:id/preview')
+  async signaturePreview(@CurrentUser() user: RequestUser, @Param('id') id: string, @Res() reply: FastifyReply) { const v = await this.registry.preview(user, id, true); return reply.header('Cache-Control','no-store').type(v.mimeType).send(v.stream); }
 
   @Post("placements")
   @RequirePermissions("admin.settings_manage")
@@ -102,7 +108,7 @@ export class MarksController {
 
   @Post("signature-profiles/:id/assets")
   @RequirePermissions("admin.settings_manage")
-  async signatureAsset(@CurrentUser()user:RequestUser,@Param("id")id:string,@Req()request:FastifyRequest){const part=await request.file();if(!part)throw new BadRequestException("No signature image uploaded");const buffer=await part.toBuffer();if(buffer.length>env().MAX_UPLOAD_BYTES)throw new BadRequestException("File exceeds upload limit");return this.marks.uploadSignatureAsset(user.firmId,user.id,id,{filename:part.filename,mimetype:part.mimetype,buffer});}
+  async signatureAsset(@CurrentUser()user:RequestUser,@Param("id")id:string,@Req()request:FastifyRequest){const part=await request.file({ limits: { fileSize: 5 * 1024 * 1024 } });if(!part)throw new BadRequestException("No signature image uploaded");const buffer=await part.toBuffer();if(buffer.length>env().MAX_UPLOAD_BYTES)throw new BadRequestException("File exceeds upload limit");return this.registry.upload(user,id,true,{mimetype:part.mimetype,buffer});}
 
   @Post("signature-delegations")
   @RequirePermissions("admin.settings_manage")

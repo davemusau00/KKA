@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import type { Prisma } from '@kka/database';
 
 export interface AuditInput {
   firmId?: string;
@@ -20,8 +21,9 @@ export interface AuditInput {
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async record(input: AuditInput) {
-    const previous = await this.prisma.client.auditEvent.findFirst({
+  async record(input: AuditInput, transaction?: Prisma.TransactionClient) {
+    const db = transaction ?? this.prisma.client;
+    const previous = await db.auditEvent.findFirst({
       where: { firmId: input.firmId ?? null },
       orderBy: { occurredAt: "desc" },
       select: { eventHash: true }
@@ -40,7 +42,7 @@ export class AuditService {
     });
     const eventHash = createHash("sha256").update(material).digest("hex");
 
-    return this.prisma.client.auditEvent.create({
+    return db.auditEvent.create({
       data: {
         firmId: input.firmId,
         actorUserId: input.actorUserId,

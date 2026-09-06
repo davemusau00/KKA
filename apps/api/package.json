@@ -17,6 +17,7 @@
     "@fastify/rate-limit": "10.3.0",
     "@kka/contracts": "workspace:*",
     "@kka/database": "workspace:*",
+    "@kka/document-engine": "workspace:*",
     "@nestjs/common": "11.1.6",
     "@nestjs/config": "4.0.2",
     "@nestjs/core": "11.1.6",

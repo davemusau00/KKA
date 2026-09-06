@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrandingProvider } from './context/BrandingContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { AppShell } from './components/layout/AppShell';
 import { HomeDashboard } from './components/dashboard/HomeDashboard';
@@ -39,8 +40,8 @@ const MainWorkspaceRouter: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
+    <BrandingProvider><AppProvider>
       <MainWorkspaceRouter />
-    </AppProvider>
+    </AppProvider></BrandingProvider>
   );
 }

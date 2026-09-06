@@ -1440,6 +1440,7 @@ model SignatureAssetVersion {
   profile SignatureProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, version])
+  applications DocumentMarkApplication[]
 }
 
 model ExecutionBlockTemplate {
@@ -1516,8 +1517,10 @@ model DocumentMarkApplication {
   documentId               String
   inputVersionId           String
   outputVersionId          String?
-  markAssetId              String
-  markAssetVersionId       String
+  markAssetId              String?
+  markAssetVersionId       String?
+  signatureAssetVersionId  String?
+  operationId              String?
   placementPresetId        String?
   executionBlockVersionId  String?
   requestedById            String
@@ -1535,10 +1538,12 @@ model DocumentMarkApplication {
   document             Document                      @relation(fields: [documentId], references: [id], onDelete: Cascade)
   inputVersion         DocumentVersion               @relation("MarkInputVersion", fields: [inputVersionId], references: [id], onDelete: Restrict)
   outputVersion        DocumentVersion?              @relation("MarkOutputVersion", fields: [outputVersionId], references: [id], onDelete: SetNull)
-  markAsset            FirmMarkAsset                 @relation(fields: [markAssetId], references: [id], onDelete: Restrict)
-  markAssetVersion     FirmMarkAssetVersion          @relation(fields: [markAssetVersionId], references: [id], onDelete: Restrict)
+  markAsset            FirmMarkAsset?                @relation(fields: [markAssetId], references: [id], onDelete: Restrict)
+  markAssetVersion     FirmMarkAssetVersion?         @relation(fields: [markAssetVersionId], references: [id], onDelete: Restrict)
   placementPreset      DocumentPlacementPreset?      @relation(fields: [placementPresetId], references: [id], onDelete: SetNull)
   executionBlockVersion ExecutionBlockTemplateVersion? @relation(fields: [executionBlockVersionId], references: [id], onDelete: SetNull)
+
+  signatureAssetVersion SignatureAssetVersion? @relation(fields: [signatureAssetVersionId], references: [id], onDelete: Restrict)
 
   @@index([documentId, createdAt])
 }
@@ -2901,4 +2906,26 @@ model SystemJobRecord {
   createdAt   DateTime            @default(now())
 
   @@index([queue, status, createdAt])
+}
+
+// Durable, idempotent document rendering/application request. Payload is a pinned snapshot.
+model DocumentOperation {
+  id String @id @default(cuid())
+  firmId String
+  actorId String
+  documentId String
+  kind String
+  idempotencyKey String
+  payloadHash String
+  payload Json
+  status String @default("QUEUED")
+  approvalRequestId String? @unique
+  outputVersionId String?
+  outputDocxVersionId String?
+  error String?
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([firmId, idempotencyKey])
+  @@index([firmId, documentId, createdAt])
 }
