@@ -8,6 +8,8 @@
   },
   "scripts": {
     "postinstall": "prisma generate",
+    "dev": "pnpm --filter @kka/web dev",
+    "dev:web": "pnpm --filter @kka/web dev",
     "dev:api": "pnpm --filter @kka/api dev",
     "dev:worker": "pnpm --filter @kka/worker dev",
     "build": "pnpm -r build",

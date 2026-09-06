@@ -81,22 +81,37 @@ Before migrating any UI component, the frontend requires its HTTP transport and 
 
 ## 3. The 9-Tier Integration Roadmap (Easiest to Most Complex)
 
+### Integration Progress Summary
+
+| Tier | Focus Area | Status | Verification Notes |
+|---|---|---|---|
+| **Tier 0** | API Client & Dev Proxy Foundation | **COMPLETED** | Vite proxy to `http://127.0.0.1:3000`, typed client with cookie credentials, `ConnectionStatusBadge` |
+| **Tier 1** | Pure Read-Only Catalogs & Lookups | **COMPLETED** | `/health/live`, `/directory`, `/organization/branches`, `/users`, `/notifications` |
+| **Tier 2** | Basic CRUD, Real Auth & Settings | **COMPLETED** | `/auth/login`, `/auth/me`, `/auth/logout`, `/search`, `/settings`, `/integrations/test` |
+| **Tier 3** | Operational Workspaces (Clients, Tasks, Intake) | **COMPLETED** | `/clients`, `/tasks`, `/tasks/:id/status`, `/intake` lead capture & conversion |
+| **Tier 4** | Calendar, Court Operations & Approvals | **NEXT UP** | `/calendar`, `/court`, `/approvals` |
+| **Tier 5** | Communications & Real-Time Events | Roadmap | Message threads, SMS/WhatsApp outbox, Socket.IO live events |
+| **Tier 6** | Document Management & Digital Seals | Roadmap | Private VPS storage adapter, versioning, official firm stamps/signatures |
+| **Tier 7** | Matters Spine & 16-Stage PI Engine | Roadmap | Authoritative matter lifecycle, stage gates, SLA calculation |
+| **Tier 8** | Ledger-Grade Finance & Client Trust | Roadmap | Double-entry trust funds, fee notes, disbursements, statement reconciliation |
+| **Tier 9** | PWA/Offline Sync & Legacy Teardown | Roadmap | IndexedDB outbox replay, deprecation of localStorage seed state |
+
 ```mermaid
 graph TD
-    T0[Tier 0: API Client & Dev Proxy Foundation] --> T1[Tier 1: Read-Only Lookups & Catalogs]
-    T1 --> T2[Tier 2: Basic CRUD, Auth & Settings]
-    T2 --> T3[Tier 3: Operational Workspaces - Clients, Tasks, Intake]
-    T3 --> T4[Tier 4: Calendar, Court Operations & Approvals]
+    T0[Tier 0: API Client & Dev Proxy Foundation - COMPLETED] --> T1[Tier 1: Read-Only Lookups & Catalogs - COMPLETED]
+    T1 --> T2[Tier 2: Basic CRUD, Auth & Settings - COMPLETED]
+    T2 --> T3[Tier 3: Operational Workspaces - Clients, Tasks, Intake - COMPLETED]
+    T3 --> T4[Tier 4: Calendar, Court Operations & Approvals - NEXT UP]
     T4 --> T5[Tier 5: Communications & Real-Time Events]
     T5 --> T6[Tier 6: Document Management & Digital Seals]
     T6 --> T7[Tier 7: Matters Spine & 16-Stage PI Engine]
     T7 --> T8[Tier 8: Ledger-Grade Finance & Client Trust]
     T8 --> T9[Tier 9: PWA/Offline Sync & Legacy Teardown]
 
-    style T0 fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style T0 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T1 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T2 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
-    style T3 fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style T3 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T4 fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff
     style T5 fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#fff
     style T6 fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#fff
@@ -107,7 +122,7 @@ graph TD
 
 ---
 
-### Tier 1: Pure Read-Only Catalogs & Independent Lookups (Easiest)
+### Tier 1: Pure Read-Only Catalogs & Independent Lookups [STATUS: COMPLETED]
 *Complexity: 1/5 | Risk: Minimal | Zero business logic interdependencies*
 
 These endpoints only perform HTTP `GET`, have no complex state cascades, and serve reference data consumed throughout the app.
@@ -151,7 +166,7 @@ These endpoints only perform HTTP `GET`, have no complex state cascades, and ser
 
 ---
 
-### Tier 2: Basic CRUD, Real Auth & Admin Configuration (Low Complexity)
+### Tier 2: Basic CRUD, Real Auth & Admin Configuration [STATUS: COMPLETED]
 *Complexity: 2/5 | Risk: Low | Standard REST models, self-contained forms*
 
 #### 2.1 Real Authentication & Session Verification
@@ -194,7 +209,7 @@ These endpoints only perform HTTP `GET`, have no complex state cascades, and ser
 
 ---
 
-### Tier 3: Core Operational Workspaces (Clients, Intake Leads, Tasks)
+### Tier 3: Core Operational Workspaces (Clients, Intake Leads, Tasks) [STATUS: COMPLETED]
 *Complexity: 3/5 | Risk: Medium | Relational forms, list-detail navigation, validation rules*
 
 #### 3.1 Clients Workspace (Full Lifecycle)
@@ -232,7 +247,7 @@ These endpoints only perform HTTP `GET`, have no complex state cascades, and ser
 
 ---
 
-### Tier 4: Calendar, Court Operations & Approvals (Moderate-High)
+### Tier 4: Calendar, Court Operations & Approvals [STATUS: NEXT UP]
 *Complexity: 3.5/5 | Risk: Medium-High | Temporal coordination, court registry workflows, role gating*
 
 #### 4.1 Temporal Calendar Command Centre

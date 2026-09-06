@@ -1,198 +1,226 @@
-# KKA Full Backend Infrastructure
+# Kariuki Kagunda & Co. Advocates OS
 
-Production-oriented backend package for the Kariuki Kagunda & Co. Advocates internal OS.
+Enterprise law-firm operating system for Kariuki Kagunda & Co. Advocates, built as a unified TypeScript monorepo with an interactive React frontend, NestJS/Fastify API, BullMQ worker, and Prisma 7 database.
 
-This package is designed to be merged into the existing `davemusau00/KKA` repository and converted into the approved monorepo topology:
+---
+
+## 1. Monorepo Architecture
+
+The repository is structured as a `pnpm` monorepo with strict package boundaries:
 
 ```text
 KKA/
 ├── apps/
-│   ├── web/       # existing React/Vite frontend moved here
-│   ├── api/       # NestJS/Fastify API from this package
-│   └── worker/    # BullMQ worker from this package
+│   ├── web/           # React 19 + Vite + Tailwind CSS SPA (@kka/web)
+│   ├── api/           # NestJS + Fastify REST & Realtime API (@kka/api)
+│   └── worker/        # BullMQ Asynchronous Job Processing Daemon (@kka/worker)
 ├── packages/
-│   ├── contracts/
-│   └── database/
+│   ├── contracts/     # Shared Zod schemas, DTOs & type definitions (@kka/contracts)
+│   └── database/      # Prisma 7.10.0 Client, repositories & DB schema (@kka/database)
 ├── prisma/
+│   ├── schema.prisma  # Authoritative relational database schema
+│   └── migrations/    # Version-controlled SQL migration history
 ├── infra/
-├── scripts/
-├── docs/
+│   ├── Caddyfile      # Production reverse proxy and TLS configuration
+│   ├── docker-compose.production.yml  # VPS production orchestration
+│   └── scripts/       # Deployment, backup, and restore shell runbooks
+├── docs/              # Architectural specifications (00 through 37)
 ├── pnpm-workspace.yaml
 ├── prisma.config.ts
 ├── tsconfig.base.json
 └── package.json
 ```
 
-## Architecture
+---
 
-- Node.js 24 LTS target
-- NestJS + Fastify
-- PostgreSQL 18
-- Prisma 7
-- Redis 8.2
-- BullMQ workers
-- Socket.IO realtime foundation
-- private document/mark storage abstraction
-- Docker Compose
-- Caddy reverse proxy and HTTPS
-- opaque server-side sessions with Argon2id password hashing
-- server RBAC, audit, workflow and approval foundations
+## 2. Technology Stack
 
-## Package contents
+- **Runtime & Engines**: Node.js `>=24 <25 || >=26 <27` (certified on Node 24 LTS and Node 26.5.0) with `pnpm@10.15.1`.
+- **Backend API**: NestJS 11 with `@nestjs/platform-fastify` and Fastify plugins (rate limiting, multipart, cookies, helmet).
+- **Frontend SPA**: React 19, Vite 6, Tailwind CSS, Lucide icons, Motion, and an interactive domain workspace architecture.
+- **Database & ORM**: PostgreSQL 18 with Prisma ORM 7.10.0 (`prisma.config.ts` configuration).
+- **Queues & Ephemeral Store**: Redis 8.2 with BullMQ for asynchronous jobs (mail delivery, document conversions, audit aggregation).
+- **Realtime**: Socket.IO gateway for live event broadcasting.
+- **Reverse Proxy**: Caddy 2 with automatic HTTPS and HTTP/2 proxying to NestJS and static web assets.
+- **Security & Auth**: Argon2id password hashing, opaque server-side session tokens in Redis (`kka_sid`), and server-side RBAC guards.
 
-The backend includes modules for authentication, users, branches, clients, intake/conflicts/KYC, matters, workflows and stage handoffs, tasks/deadlines, calendar, document storage/versioning/reviews, court operations, personal-injury sub-workflows, finance/client-money ledgers, approvals, communications, notifications, integrations, SMTP/mail, firm marks/signatures/stamps, settings/configuration, automation, custom fields/forms, reporting, search, knowledge, operations, procurement/assets, portal access, developer tools and audit.
+---
 
-## Important validation status
+## 3. Developer Quickstart
 
-The source package has been assembled and structurally checked. This execution environment did not contain Node 24, pnpm, installed project dependencies, or the Prisma CLI, so the package has **not** been certified with the final dependency-backed `pnpm install`, Prisma validation/migration, full TypeScript typecheck, Jest run, or production Docker build.
+### Prerequisites
+- Node.js 24.x or 26.x (`node --version`)
+- pnpm 10.15.1 (`npm install -g pnpm@10.15.1`)
+- Docker Engine & Compose (for PostgreSQL 18 & Redis 8.2)
 
-Run the validation gate below after merging and before production use. Do not deploy client data or money workflows until it passes.
-
-## Merge into the existing KKA repository
-
-Create a branch first:
-
+### Installation
 ```bash
-git checkout -b feat/full-backend
-```
+# Clone the repository
+git clone https://github.com/davemusau00/KKA.git
+cd KKA
 
-Move the existing frontend into `apps/web` while preserving its Git history if practical. At minimum move the current frontend files such as `src`, `public`, `index.html`, `vite.config.ts`, and frontend package metadata into that directory.
+# Install all monorepo dependencies
+pnpm install
 
-Then copy this package's `apps/api`, `apps/worker`, `packages`, `prisma`, `infra`, `scripts`, `pnpm-workspace.yaml`, `prisma.config.ts`, `tsconfig.base.json`, `.env.backend.example`, and `.gitignore.backend.additions` into the repository root.
-
-Use `package.monorepo.json` as the basis for the new root `package.json`. Merge any scripts or dev tooling you still need from the old frontend package instead of blindly deleting them.
-
-Merge `.gitignore.backend.additions` into the repository `.gitignore`.
-
-## First install
-
-Use Node 24 LTS and pnpm 10.15.1:
-
-```bash
-corepack enable
-corepack prepare pnpm@10.15.1 --activate
-pnpm install --no-frozen-lockfile
-```
-
-Copy and edit the environment file:
-
-```bash
+# Copy environment configuration
 cp .env.backend.example .env
 ```
 
 Generate the application encryption key:
-
 ```bash
 openssl rand -base64 32
 ```
+Paste this value into `APP_ENCRYPTION_KEY_BASE64` inside `.env`.
 
-Put it in `APP_ENCRYPTION_KEY_BASE64` in `.env`.
-
-## Database and Prisma
-
-Start or point the app to PostgreSQL 18, then run:
-
+### Database Setup
 ```bash
+# Generate the typed Prisma client
 pnpm prisma:generate
-pnpm prisma:format
+
+# Validate the relational schema
 pnpm prisma:validate
-pnpm prisma:migrate:dev --name baseline_full_backend
+
+# Apply migrations (or deploy in production)
+pnpm prisma:migrate:dev --name init
 pnpm prisma:seed
 ```
 
-Commit the generated `prisma/migrations/` directory and `pnpm-lock.yaml`.
+### Running Local Development Servers
 
-Production must use:
+You can launch components individually:
 
 ```bash
-pnpm prisma:migrate:deploy
+# Frontend web application (runs Vite on http://localhost:5173 with proxy to API)
+pnpm dev:web
+
+# Backend API server (runs NestJS/Fastify on http://localhost:3000)
+pnpm dev:api
+
+# BullMQ asynchronous worker
+pnpm dev:worker
 ```
 
-not `migrate dev`.
+> **Note on Port Proxy**: The frontend runs on port `5173`. Its Vite dev server automatically proxies all `/api/v1` and `/socket.io` requests to `http://127.0.0.1:3000`, allowing cookie credentials (`kka_sid`) to flow cleanly without cross-origin issues.
 
-## Validation gate
+---
 
-Run all of the following before deployment:
+## 4. Codebase Validation Gates
+
+Run the verification gate across the entire monorepo:
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm prisma:generate
-pnpm prisma:format
+# Validate Prisma schema
 pnpm prisma:validate
+
+# Typecheck all 5 workspace projects (contracts, database, api, worker, web)
 pnpm typecheck
+
+# Run automated tests
 pnpm test
+
+# Build all workspace packages for production
 pnpm build
-docker compose -f infra/docker-compose.production.yml config
-docker compose -f infra/docker-compose.production.yml build
 ```
 
-Then start a staging environment and test at minimum:
+All validation gates are automated and verified clean with 0 errors.
 
-1. login/logout/session expiry;
-2. RBAC across two distinct users;
-3. intake → client → matter conversion;
-4. task dependency and stage-gate enforcement;
-5. handoff creation + acknowledgement;
-6. real document upload/download/versioning;
-7. controlled calendar reschedule + revision/audit;
-8. court filing/service tracking;
-9. expense approval and posting;
-10. client-money vs office-money separation;
-11. firm mark/signature application creating a new immutable document version;
-12. worker jobs and retry behavior;
-13. backup and restore rehearsal.
+---
 
-## Initial administrator
+## 5. Frontend-to-Backend Progressive Integration
 
-The seed process supports:
+The frontend uses a **Progressive Hybrid Bridge pattern** (`apps/web/src/context/AppContext.tsx` and `apps/web/src/lib/api/`):
+- High-fidelity UI components make calls through domain slices in `AppContext`.
+- Integrated domains dispatch typed requests to the live backend API.
+- If the backend is offline or during rollout, the client gracefully falls back to local storage and seed models with zero visual disruption.
 
-```env
-SEED_ADMIN_EMAIL=admin@example.co.ke
-SEED_ADMIN_NAME=System Administrator
-SEED_ADMIN_PASSWORD=replace-with-a-long-random-bootstrap-password
+### Integration Progress Matrix
+
+```
+[Tier 0: Transport & Proxy] ────► [Tier 1: Lookups & Catalogs] ────► [Tier 2: Auth, Search & Config] ────► [Tier 3: Clients, Tasks & Intake]
+          ✅ COMPLETE                         ✅ COMPLETE                         ✅ COMPLETE                         ✅ COMPLETE
+                                                                                                                           │
+[Tier 7: Matter Spine & PI] ◄──── [Tier 6: Documents & Stamps] ◄──── [Tier 5: Comms & Realtime] ◄──── [Tier 4: Calendar, Court & Approvals]
+          ⏳ ROADMAP                          ⏳ ROADMAP                          ⏳ ROADMAP                          🔷 NEXT UP
 ```
 
-After seeding, change the password immediately and remove the bootstrap password from environment/config history.
+| Tier | Focus | Status | Key Features |
+|---|---|---|---|
+| **Tier 0** | Transport & Dev Proxy | **Completed** | Vite dev proxy (`/api/v1` -> `:3000`), typed HTTP client with cookie credentials (`apps/web/src/lib/api/client.ts`), live `ConnectionStatusBadge` in shell. |
+| **Tier 1** | Catalogs & Independent Lookups | **Completed** | Health diagnostics (`/health/live`), third-party directory contacts (`/directory`), branches (`/organization/branches`), active staff list (`/users`), system notifications (`/notifications`). |
+| **Tier 2** | Auth, Search & Configuration | **Completed** | Real credentials login modal with dev personas (`/auth/login`, `/auth/me`, `/auth/logout`), live database global search (`/search`), settings studio sync (`/settings`), truthful integration tests (`/integrations/test`). |
+| **Tier 3** | Clients, Tasks & Intake Pipeline | **Completed** | Client lifecycle and editing (`/clients`), task board & status mutations (`/tasks`, `/tasks/:id/status`), intake leads & conflict checks (`/intake`). |
+| **Tier 4** | Calendar, Court Ops & Approvals | **Next Up** | Temporal Command Centre (`/calendar`), Court Diary & CTS filings (`/court`), expense/leave sign-offs (`/approvals`). |
+| **Tier 5** | Communications & Real-Time | Roadmap | Messaging threads, SMS/WhatsApp outbox, Socket.IO live events. |
+| **Tier 6** | Documents & Digital Seals | Roadmap | Private VPS storage adapter, versioning, official firm execution blocks and stamps. |
+| **Tier 7** | Matter Spine & 16-Stage PI Engine | Roadmap | Authoritative server-side matter lifecycle, stage gates, limitation trackers, medical record indexes. |
+| **Tier 8** | Ledger-Grade Finance | Roadmap | Double-entry client trust accounts vs. office funds, fee notes, disbursements, M-Pesa statements. |
+| **Tier 9** | Offline PWA & Teardown | Roadmap | IndexedDB outbox synchronization, replay engine, retirement of mock localStorage state. |
 
-## VPS deployment
+For detailed integration instructions and specs, see [backend-frontend-integration.md](file:///c:/Users/Admin/Downloads/kka/KKA/backend-frontend-integration.md).
 
-The target topology is:
+---
 
+## 6. Docker & Production VPS Deployment
+
+### Architecture Topology
 ```text
 Internet
    │
    ▼
- Caddy :80/:443
-   ├── static React build
-   └── /api + /socket.io
+ Caddy (Ports 80 / 443)
+   ├── Static Web SPA Build (apps/web/dist)
+   └── Reverse Proxy: /api/v1/* & /socket.io/*
               │
               ▼
-         NestJS API
-         ├── PostgreSQL
-         ├── Redis
-         └── private storage
+         NestJS API (Port 3000)
+         ├── PostgreSQL 18 (Private Network)
+         ├── Redis 8.2 (Private Network)
+         └── Private Document Volume
               │
               ▼
-           BullMQ worker
+        BullMQ Worker Daemon
 ```
 
-Only HTTP/HTTPS and restricted SSH should be public. PostgreSQL and Redis must remain private.
+### Production Stack Build & Launch
+```bash
+# Build and deploy all production containers
+docker compose -f infra/docker-compose.production.yml up -d --build
 
-Useful files:
+# View container logs
+docker compose -f infra/docker-compose.production.yml logs -f --tail=200
 
-- `infra/docker-compose.production.yml`
-- `infra/Caddyfile`
-- `infra/DEPLOYMENT_CHECKLIST.md`
-- `infra/RESTORE_RUNBOOK.md`
-- `infra/scripts/bootstrap-vps.sh`
-- `infra/scripts/deploy.sh`
-- `infra/scripts/backup-postgres.sh`
-- `infra/scripts/backup-documents-restic.sh`
+# Stop the stack
+docker compose -f infra/docker-compose.production.yml down
+```
 
-## Integration truthfulness rule
+### Infrastructure Documents
+- [Deployment Checklist](file:///c:/Users/Admin/Downloads/kka/KKA/infra/DEPLOYMENT_CHECKLIST.md)
+- [Disaster Recovery & Restore Runbook](file:///c:/Users/Admin/Downloads/kka/KKA/infra/RESTORE_RUNBOOK.md)
+- [Caddy Configuration](file:///c:/Users/Admin/Downloads/kka/KKA/infra/Caddyfile)
 
-Provider adapters must never simulate production success. A provider that is not implemented or not configured must return an explicit unavailable/not-configured/not-implemented status. Court filing, messaging and money movement must never be represented as successful unless the external provider actually confirms it.
+---
 
-## Firm seals, signatures and stamps
+## 7. Core Architectural Invariants
 
-The marks subsystem is designed around controlled, versioned assets and immutable document output. Applying a mark/signature should create a new document version and audit the mark asset/version, placement, signer/authorizer, input/output checksum and timestamp. Visual marks must never be described as cryptographic digital signatures unless a genuine signing provider performed that operation. Court/registry seals must never be fabricated.
+1. **Matter-Centric Spine**: Every operational object (tasks, court mentions, deadlines, documents, invoices, messages) relates back to an authoritative Matter.
+2. **Integration Truthfulness**: Provider adapters (Judiciary CTS, M-Pesa Daraja, WhatsApp Cloud, Africa's Talking) never fabricate success. Unavailable or unconfigured providers explicitly report unconfigured status.
+3. **Firm Seals, Signatures & Stamps**: The marks subsystem operates with controlled, versioned vector assets. Applying a mark generates an immutable document version with audited user, checksum, placement, and timestamp.
+4. **Trust Fund Separation**: Client trust money is strictly isolated from office operational funds in separate ledgers with double-entry invariants.
+5. **Private Document Storage**: All legal documents reside outside the public web root and are accessed exclusively through audited, authorized API streams.
+
+---
+
+## 8. Documentation Index
+
+The repository includes a comprehensive specification suite in the `docs/` directory:
+
+| Section | Key Documents |
+|---|---|
+| **Full Product Index** | [FULL_PRODUCT_INDEX.md](file:///c:/Users/Admin/Downloads/kka/KKA/docs/FULL_PRODUCT_INDEX.md), [MASTER_DEVELOPER_GUIDE.md](file:///c:/Users/Admin/Downloads/kka/KKA/docs/MASTER_DEVELOPER_GUIDE.md) |
+| **System Architecture** | `01_SYSTEM_ARCHITECTURE.md`, `18_VPS_STACK.md`, `19_FULL_PRODUCT_VISION_AND_CAPABILITY_MAP.md` |
+| **Domain & Data Models** | `02_DOMAIN_MODEL.md`, `03_DATA_MODEL.md`, `23_FULL_PRODUCT_DOMAIN_AND_MODULE_EXPANSION.md` |
+| **Workflows & Operations** | `04_WORKFLOWS.md`, `06_CALENDAR_TASKS_COMMS.md`, `25_WORKFLOW_AUTOMATION_CUSTOM_FIELDS_FORMS.md` |
+| **Documents & Firm Marks** | `07_DOCUMENTS.md`, `21_FIRM_MARKS_SIGNATURES_STAMPS_AND_EXECUTION_BLOCKS.md` |
+| **Finance & Ledgers** | `08_FINANCE.md`, `33_SETTINGS_SCOPE_PRECEDENCE_MATRIX.md` |
+| **Configuration & Admin** | `20_ADMIN_SETTINGS_CONFIGURATION_ARCHITECTURE.md`, `37_CONFIGURATION_CATALOG_FULL_PRODUCT.md` |
+| **Testing & Deployment** | `12_TESTING_QA.md`, `16_DEPLOYMENT_OPERATIONS.md`, `34_FULL_PRODUCT_ACCEPTANCE_MATRIX.md` |

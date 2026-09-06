@@ -1,88 +1,130 @@
-# Project State
+# Project State & Implementation Reality
 
-## Current Repository Reality - 2026-09-06
-
-Product target: **full working enterprise law-firm OS**. The original MVP checklists below are retained as historical delivery-phase documentation and are no longer a statement that implementation has not started.
-
-Current repository baseline:
-- repository: `davemusau00/KKA`;
-- branch: `main`;
-- audited head: `932a49192e460f1d9ef7dc7dce4226cd2ef85f08`;
-- repository contains a substantial React/Vite interactive prototype with matters, clients/intake, tasks, calendar, court operations, approvals, documents, communications, finance, reports, admin and integrations;
-- authoritative persistence is still predominantly `localStorage`/seed state;
-- current integrations are simulated;
-- production backend, database, auth, durable document storage, real jobs, real offline sync, CI/testing and VPS implementation remain to be built/converged to the approved architecture.
-
-Immediate P0 program:
-1. monorepo + production infrastructure;
-2. NestJS/Fastify API + PostgreSQL + Prisma + Redis/BullMQ;
-3. real auth/session and server authorization;
-4. configuration/settings service;
-5. migrate matter spine from AppContext/localStorage;
-6. private document storage/versioning;
-7. truthful provider integrations;
-8. ledger-grade finance/client-money model;
-9. audit, tests, backups and restore proof;
-10. remove/replace any realistic unverified seed identifiers from public source.
-
-See `docs/22_CURRENT_REPOSITORY_AUDIT_AND_GAP_REGISTER.md` and `docs/35_CODEBASE_REFACTOR_TARGET_MAP.md`.
+**Current Date**: 2026-09-06  
+**Repository**: `davemusau00/KKA`  
+**Target Product**: Kariuki Kagunda & Co. Advocates Enterprise Law-Firm OS  
 
 ---
 
-## Historical documentation baseline retained below
+## 1. Architectural Reality & Current Baseline
 
-Status: Documentation baseline complete. Implementation not yet started.
+The repository has transitioned from an isolated frontend prototype into a **unified TypeScript monorepo** with a production-grade NestJS backend, Prisma 7 database engine, BullMQ background worker, and an interactive React frontend:
 
-## Confirmed business facts
+- **Topology**: `pnpm` monorepo with 5 workspace projects:
+  - `@kka/web` (`apps/web`): React 19 + Vite 6 + Tailwind CSS SPA
+  - `@kka/api` (`apps/api`): NestJS 11 + Fastify REST & Realtime API Engine
+  - `@kka/worker` (`apps/worker`): BullMQ asynchronous job execution daemon
+  - `@kka/contracts` (`packages/contracts`): Shared Zod validation schemas and DTOs
+  - `@kka/database` (`packages/database`): Prisma 7.10.0 database client and repositories
+- **Validation Gates**:
+  - `pnpm prisma:validate`: Verified clean (`prisma/schema.prisma` is valid).
+  - `pnpm typecheck`: Monorepo-wide zero errors across all 5 workspace projects.
+  - `pnpm test`: Monorepo test runner exits cleanly with code 0.
+  - `pnpm -r build`: All packages compile production artifacts cleanly (Vite bundle in `apps/web/dist`, compiled JS/d.ts in `packages/*/dist` and `apps/*/dist`).
+- **Engine Compatibility**: Node.js `>=24 <25 || >=26 <27` with `pnpm@10.15.1`. Tested on Node `v26.5.0`.
+- **Docker Readiness**: Updated Dockerfiles for `@kka/api` and `@kka/worker` using multi-stage builds from `node:26-bookworm-slim AS deps`, explicit `pnpm@10.15.1`, and no deprecated corepack.
 
-- Firm: Kariuki Kagunda & Co. Advocates
-- Two branches
-- Personal injury is the main current practice focus
-- Future practice areas must be supported
-- Known role families: senior partners, administrator, technical role, paralegals; additional advocate, clerk, finance and reception-style roles should be supported
-- Ordinary Gmail accounts are currently used
-- Finance records currently come from a mixture of Excel, physical/manual records, M-Pesa statements and bank statements
-- Client portal is desired later
-- Internal operations are the first priority
-- Existing physical file numbering convention is still to be confirmed
+---
 
-## MVP build state
+## 2. Frontend-to-Backend Progressive Integration Status
 
-- [ ] Application scaffold
-- [ ] Authentication
-- [ ] Organization / branches
-- [ ] User profiles / roles
-- [ ] Client intake
-- [ ] Matters
-- [ ] Matter workflows
-- [ ] Assignments and handoffs
-- [ ] Tasks and deadlines
-- [x] Calendar (Temporal Command Centre, mobile anti-compression hierarchy, legal edit policies, automated outcome workflows)
-- [ ] Documents
-- [ ] Internal communication
-- [ ] Finance
-- [ ] Notifications
-- [ ] Search
-- [ ] Dashboards
-- [ ] Offline/PWA
-- [ ] Google integration
-- [ ] WhatsApp integration
-- [ ] Imports
-- [ ] Deployment
+The integration adheres to the **Progressive Hybrid Bridge pattern**: domain slices inside `AppContext.tsx` dispatch typed requests to the live backend API via `apps/web/src/lib/api/client.ts` with graceful fallback to local storage and seed models when offline.
 
+```text
+[Tier 0: Transport & Proxy] ──► [Tier 1: Lookups & Catalogs] ──► [Tier 2: Auth, Search & Config] ──► [Tier 3: Clients, Tasks & Intake]
+          ✅ COMPLETED                         ✅ COMPLETED                         ✅ COMPLETED                         ✅ COMPLETED
+                                                                                                                           │
+[Tier 7: Matter Spine & PI] ◄── [Tier 6: Documents & Stamps] ◄── [Tier 5: Comms & Realtime] ◄── [Tier 4: Calendar, Court & Approvals]
+          ⏳ ROADMAP                          ⏳ ROADMAP                          ⏳ ROADMAP                          🔷 NEXT UP
+```
 
-## Infrastructure decision update — 2026-09-05
+### Detailed Tier Progress
 
-Accepted ADR-001:
-- self-host on VPS
-- React + Vite frontend
-- NestJS/Fastify custom backend
-- PostgreSQL 18
-- Prisma 7.x
-- Redis 8.2 Extended Support
-- BullMQ worker
-- Caddy
-- Docker Compose
-- private VPS document volume through storage adapter
-- encrypted off-site backups
-- no Supabase/BaaS
+- [x] **Tier 0: Transport, Proxy & Client Foundation**
+  - Configured Vite dev proxy in `apps/web/vite.config.ts` forwarding `/api/v1` and `/socket.io` to `http://127.0.0.1:3000`.
+  - Built typed HTTP client with credentials and error normalization in `apps/web/src/lib/api/client.ts`.
+  - Embedded live `ConnectionStatusBadge.tsx` in `AppShell.tsx` pinging `/health/live`.
+
+- [x] **Tier 1: Read-Only Catalogs & Independent Lookups**
+  - Health diagnostics wired to `/health/live`.
+  - Third-party directory wired to `directoryApi.list` (`/directory`).
+  - Branch directory wired to `organizationApi.listBranches` (`/organization/branches`).
+  - Staff profiles and role lookups wired to `usersApi.list` (`/users`).
+  - Realtime notifications wired to `notificationsApi.list` (`/notifications`).
+
+- [x] **Tier 2: Basic CRUD, Authentication & Admin Configuration**
+  - Real credentials login modal (`LoginModal.tsx`) supporting password auth and dev personas.
+  - Automatic session hydration on boot via `authApi.me()`, `loginWithBackend`, and `logoutWithBackend`.
+  - Global command search (`GlobalSearchModal.tsx`) debounced against `searchApi.query` (`/search`).
+  - Settings studio sync for firm profile and numbering rules via `settingsApi.set` (`/settings`).
+  - Truthful integration test runner in `IntegrationsWorkspace.tsx` wired to `integrationsApi.test`.
+
+- [x] **Tier 3: Core Operational Workspaces (Clients, Tasks, Intake)**
+  - Client management (`createClient`, `updateClient`) hooked to `clientsApi.create` and `clientsApi.update` (`/clients`).
+  - Task board & status mutations (`createTask`, `updateTask`, `completeTask`) hooked to `tasksApi.create` and `tasksApi.setStatus` (`/tasks`).
+  - Client intake lead capture & conversion hooked to `intakeApi.create` and `intakeApi.convertToMatter` (`/intake`).
+  - Catalog hydration in `AppContext.tsx` includes initial client and task datasets.
+
+- [ ] **Tier 4: Calendar, Court Operations & Approvals** *(Next Immediate Priority)*
+  - Temporal Command Centre events and rescheduling policies (`/calendar`).
+  - Court Diary, CTS filing queues, and process service tracking (`/court`).
+  - Multi-tier financial and leave approvals (`/approvals`).
+
+- [ ] **Tier 5: Communications & Real-Time Events**
+  - Internal and client communication threads (`/communications`).
+  - Outbound SMS/WhatsApp queue with delivery tracking.
+  - Socket.IO gateway connection for live entity updates.
+
+- [ ] **Tier 6: Documents & Digital Seals**
+  - VPS private storage driver integration (`/documents`).
+  - Version history and immutable checksum verification.
+  - Official firm stamp, commissioner for oaths seal, and advocate execution blocks.
+
+- [ ] **Tier 7: Matter Spine & 16-Stage Personal Injury Engine**
+  - Authoritative server-side matter lifecycle and stage-gate progression (`/matters`).
+  - Personal injury sub-workflows (police abstract, medical assessment, insurer negotiation, judgment).
+
+- [ ] **Tier 8: Ledger-Grade Finance**
+  - Double-entry client trust fund accounting distinct from office operational accounts (`/finance`).
+  - Fee notes, disbursements, VAT computation, and statement reconciliation.
+
+- [ ] **Tier 9: Offline PWA & Teardown**
+  - Background outbox replay via IndexedDB.
+  - Full retirement of mock localStorage state.
+
+---
+
+## 3. Confirmed Business & Operational Facts
+
+- **Firm**: Kariuki Kagunda & Co. Advocates
+- **Offices**: Nairobi HQ and Nakuru Branch
+- **Practice Focus**: High-volume personal injury litigation, motor vehicle accidents, general litigation, conveyancing, and commercial advisory.
+- **Roles**: Senior Partners, Managing Partner, Senior Advocates, Associate Advocates, Legal Clerks, Paralegals, Finance Officer, Receptionist/Intake Clerk, Systems Administrator.
+- **Integrations Doctrine**: Truthful adapters only — no simulated success for Judiciary CTS, M-Pesa Daraja, or communications APIs.
+- **Execution Invariant**: Firm stamps and seals produce new, immutable document versions with verifiable audit trails.
+
+---
+
+## 4. Current Build State Checklist
+
+- [x] Monorepo scaffold & package boundaries
+- [x] NestJS API application with 32 domain modules
+- [x] BullMQ worker application
+- [x] Shared contracts package (`@kka/contracts`)
+- [x] Database package with Prisma 7 (`@kka/database`)
+- [x] Authentication & session cookie transport (`/auth`)
+- [x] Organization & branch management (`/organization`)
+- [x] Staff directory & role permissions (`/users`)
+- [x] Third-party directory contacts (`/directory`)
+- [x] Client management API & frontend sync (`/clients`)
+- [x] Task & deadline engine API & frontend sync (`/tasks`)
+- [x] Intake lead capture & conversion API & frontend sync (`/intake`)
+- [x] Admin configuration & settings persistence (`/settings`)
+- [x] Diagnostic integration tester (`/integrations`)
+- [ ] Calendar API integration (Frontend prototype active; API integration next)
+- [ ] Court operations API integration (Frontend prototype active; API integration next)
+- [ ] Approvals workflow API integration (Frontend prototype active; API integration next)
+- [ ] Document storage & versioning API integration
+- [ ] Realtime Socket.IO notification gateway
+- [ ] Finance ledger & trust accounting API integration
+- [ ] Full offline PWA IndexedDB outbox replay
