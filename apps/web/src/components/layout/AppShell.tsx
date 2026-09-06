@@ -38,6 +38,7 @@ import { OfflineSyncCenterModal } from '../common/OfflineSyncCenterModal';
 import { GlobalTimeTracker } from '../common/GlobalTimeTracker';
 import { MobileQuickActionsMenu } from '../common/MobileQuickActionsMenu';
 import { ConnectionStatusBadge } from '../common/ConnectionStatusBadge';
+import { FirmLogo } from '../common/FirmLogo';
 import { LoginModal } from '../auth/LoginModal';
 import { BranchId } from '../../types';
 
@@ -163,22 +164,13 @@ export const AppShell: React.FC<Props> = ({ children }) => {
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <div
+          <FirmLogo
+            variant="badge"
+            size="sm"
+            showText={true}
+            responsive={true}
             onClick={() => handleNavClick('dashboard')}
-            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group select-none"
-          >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-white shadow-md shadow-amber-900/30 font-serif font-bold text-xs sm:text-sm tracking-wider border border-amber-500/40 group-hover:scale-105 transition-transform shrink-0">
-              KKC
-            </div>
-            <div className="hidden sm:block">
-              <div className="text-xs sm:text-sm font-serif font-bold text-slate-900 dark:text-slate-100 tracking-wide uppercase leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                Kariuki Kagunda &amp; Co.
-              </div>
-              <div className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold tracking-wider uppercase">
-                Advocates OS &bull; Kenya
-              </div>
-            </div>
-          </div>
+          />
         </div>
 
         {/* Center: Branch Context Selector & Search Bar */}
@@ -509,9 +501,13 @@ export const AppShell: React.FC<Props> = ({ children }) => {
             <div className="w-72 bg-white dark:bg-slate-900 h-full border-r border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between shadow-2xl">
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                  <div className="font-serif font-bold text-amber-700 dark:text-amber-400 text-sm">
-                    Kariuki Kagunda Advocates
-                  </div>
+                  <FirmLogo
+                    variant="badge"
+                    size="xs"
+                    showText={true}
+                    responsive={false}
+                    textVariant="compact"
+                  />
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-100"

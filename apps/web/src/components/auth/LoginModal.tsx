@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { authApi, CurrentAuthUser } from '../../lib/api/auth.api';
 import { useApp } from '../../context/AppContext';
+import { FirmLogo } from '../common/FirmLogo';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -91,18 +92,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
 
         <div className="p-6 sm:p-8">
           {/* Header Brand */}
-          <div className="flex items-center gap-3.5 mb-6">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-white shadow-lg shadow-amber-900/40 font-serif font-bold text-base border border-amber-500/30 shrink-0">
-              KKA
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-snug">
-                Kariuki Kagunda &amp; Co.
-              </h2>
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                Advocates OS &bull; Secure Authentication
-              </p>
-            </div>
+          <div className="mb-6">
+            <FirmLogo
+              variant="badge"
+              size="md"
+              showText={true}
+              responsive={false}
+              subtext="Advocates OS • Secure Authentication"
+            />
           </div>
 
           {/* Status Banners */}

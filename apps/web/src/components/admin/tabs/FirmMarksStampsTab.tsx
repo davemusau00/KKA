@@ -161,8 +161,12 @@ export const FirmMarksStampsTab: React.FC = () => {
             <div key={mark.id} className={`admin-card border-2 ${COLOR_MAP[mark.colorScheme] || COLOR_MAP.slate}`}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-lg border ${COLOR_MAP[mark.colorScheme]}`}>
-                    <Stamp size={18} />
+                  <div className={`p-1.5 rounded-lg border flex items-center justify-center ${COLOR_MAP[mark.colorScheme]}`}>
+                    {mark.markType === 'firm_seal' || mark.markType === 'logo' ? (
+                      <img src="/firm-favicon.png" alt="Seal" className="w-5 h-5 object-contain" />
+                    ) : (
+                      <Stamp size={18} />
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white leading-tight">{mark.name}</p>
@@ -179,8 +183,11 @@ export const FirmMarksStampsTab: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-black/20 mb-3">
+              <div className="p-3 rounded-lg bg-black/20 mb-3 flex items-center justify-between gap-2">
                 <code className="text-sm font-bold tracking-wider">{mark.textBadge}</code>
+                {(mark.markType === 'firm_seal' || mark.markType === 'logo') && (
+                  <img src="/firm-favicon.png" alt="Emblem" className="w-6 h-6 object-contain opacity-80" />
+                )}
               </div>
 
               <p className="text-xs text-gray-400 mb-3 line-clamp-2">{mark.description}</p>

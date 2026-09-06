@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Building2, MapPin, Phone, Mail, Globe, Save, Edit2, Hash, FileText, Landmark, Clock } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { FirmLogo } from '../../common/FirmLogo';
 
 export const FirmProfileTab: React.FC = () => {
   const { firmSettings, updateFirmSettings } = useApp();
@@ -79,6 +80,20 @@ export const FirmProfileTab: React.FC = () => {
         {/* Identity */}
         <div className="admin-card">
           <h3 className="admin-card-title"><Building2 size={15} /> Firm Identity</h3>
+          <div className="flex items-center gap-4 p-3.5 mb-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
+            <FirmLogo variant="badge" size="md" showText={false} />
+            <div>
+              <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                Official Firm Seal &amp; Digital Logo
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+                  ACTIVE
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Embossed pillar seal configured from root asset (<span className="font-mono text-amber-700 dark:text-amber-400">firm-favicon.png</span>). Applied across UI and pleadings.
+              </div>
+            </div>
+          </div>
           <div className="space-y-4">
             <Field label="Firm Name" value={fp.firmName} field="firmName" />
             <Field label="Tagline" value={fp.firmTagline} field="firmTagline" multiline />

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Client, LegalDocument } from '../../types';
+import { FirmLogo } from '../common/FirmLogo';
 
 interface Props {
   initialClientId?: string;

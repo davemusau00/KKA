@@ -159,10 +159,13 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
 
                 {/* Bottom Sign-off */}
                 <div className="mt-8 pt-4 border-t border-slate-200 flex items-end justify-between font-sans text-xs">
-                  <div>
-                    <div className="text-slate-500 text-[10px]">Drawn &amp; Filed By:</div>
-                    <div className="font-semibold text-slate-900">Kariuki Kagunda &amp; Co. Advocates</div>
-                    <div className="text-slate-600 text-[11px]">View Park Towers, 5th Floor, Nairobi</div>
+                  <div className="flex items-center gap-3">
+                    <img src="/firm-favicon.png" alt="Firm Seal" className="w-9 h-9 object-contain opacity-85 shrink-0" />
+                    <div>
+                      <div className="text-slate-500 text-[10px]">Drawn &amp; Filed By:</div>
+                      <div className="font-semibold text-slate-900">Kariuki Kagunda &amp; Co. Advocates</div>
+                      <div className="text-slate-600 text-[11px]">View Park Towers, 5th Floor, Nairobi</div>
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="font-mono text-[10px] text-slate-400">Digital Seal Verified</div>
