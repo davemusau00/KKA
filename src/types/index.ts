@@ -640,6 +640,42 @@ export interface TimeEntry {
   createdAt: string;
 }
 
+export interface FeeNoteItem {
+  id: string;
+  description: string;
+  category: 'professional_fee' | 'disbursement' | 'vat';
+  amount: number;
+  taxable: boolean;
+  timeEntryId?: string;
+  expenseId?: string;
+}
+
+export type FeeNoteStatus = 'draft' | 'issued' | 'settled_from_trust' | 'paid' | 'cancelled';
+
+export interface FeeNote {
+  id: string;
+  feeNoteNumber: string; // e.g. "KKA/FN/2026/001"
+  matterId: string;
+  clientId: string;
+  issuedDate: string;
+  dueDate: string;
+  status: FeeNoteStatus;
+  items: FeeNoteItem[];
+  professionalFeesSubtotal: number;
+  disbursementsSubtotal: number;
+  vatRate: number; // 0.16 (16% statutory VAT in Kenya)
+  vatAmount: number;
+  grossTotal: number;
+  trustFundsApplied: number; // Retainer deduction from Client Account under Advocates Accounts Rules
+  netBalanceDue: number;
+  notes?: string;
+  aroScaleReference?: string; // e.g. "Advocates Remuneration Order (ARO) Schedule 6 - Party & Party / Advocate-Client"
+  signatoryAdvocateId: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+
 export interface ApiSettingsConfig {
   google: {
     clientId: string;

@@ -53,6 +53,9 @@ import {
   StageHandoffChecklistItem,
   StageHandoffSupervisorSignOff,
   Branch,
+  FeeNote,
+  FeeNoteItem,
+  FeeNoteStatus,
 } from '../types';
 import {
   SEED_BRANCHES,
@@ -76,6 +79,7 @@ import {
   SEED_NOTIFICATIONS,
   SEED_AUDIT_LOGS,
   SEED_TIME_ENTRIES,
+  SEED_FEE_NOTES,
   DEFAULT_API_SETTINGS,
   SEED_DIRECTORY_CONTACTS,
 } from '../data/seedData';
@@ -192,6 +196,7 @@ interface AppContextType {
   notifications: SystemNotification[];
   auditLogs: AuditEvent[];
   timeEntries: TimeEntry[];
+  feeNotes: FeeNote[];
   apiSettings: ApiSettingsConfig;
   firmSettings: FirmSettingsConfig;
   activeTimer: ActiveTimerState | null;
@@ -324,6 +329,9 @@ interface AppContextType {
   approveExpense: (expenseId: string) => void;
   disburseExpense: (expenseId: string, paymentSource: 'Petty Cash' | 'Office Bank Account') => void;
   recordPaymentReceipt: (receipt: Omit<PaymentReceipt, 'id' | 'createdAt'>) => PaymentReceipt;
+  createFeeNote: (data: Omit<FeeNote, 'id' | 'createdAt' | 'feeNoteNumber'>) => FeeNote;
+  updateFeeNoteStatus: (feeNoteId: string, status: FeeNoteStatus, trustFundsApplied?: number) => void;
+  applyTrustFundsToFeeNote: (feeNoteId: string, amount: number) => void;
   recordTimeEntry: (entry: Omit<TimeEntry, 'id' | 'createdAt' | 'isBilled'>) => TimeEntry;
   startTimer: (matterId: string, activityType: TimeEntry['activityType'], hourlyRate?: number) => void;
   pauseTimer: () => void;
@@ -511,6 +519,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_time_entries`);
     return saved ? JSON.parse(saved) : SEED_TIME_ENTRIES;
   });
+
+  const [feeNotes, setFeeNotes] = useState<FeeNote[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_fee_notes`);
+    return saved ? JSON.parse(saved) : SEED_FEE_NOTES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_fee_notes`, JSON.stringify(feeNotes));
+  }, [feeNotes]);
 
   const [apiSettings, setApiSettings] = useState<ApiSettingsConfig>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_api_settings`);
@@ -2799,6 +2816,82 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newReceipt;
   }, [logAudit]);
 
+  const createFeeNote = useCallback((data: Omit<FeeNote, 'id' | 'createdAt' | 'feeNoteNumber'>) => {
+    const year = new Date().getFullYear();
+    const seq = String(feeNotes.length + 1).padStart(3, '0');
+    const feeNoteNumber = `KKA/FN/${year}/${seq}`;
+    const newFeeNote: FeeNote = {
+      ...data,
+      id: `fn-${Date.now()}`,
+      feeNoteNumber,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Mark associated time entries as billed
+    const billedTimeIds = new Set(
+      data.items.map((it) => it.timeEntryId).filter((id): id is string => Boolean(id))
+    );
+    if (billedTimeIds.size > 0) {
+      setTimeEntries((prev) =>
+        prev.map((t) => (billedTimeIds.has(t.id) ? { ...t, isBilled: true } : t))
+      );
+    }
+
+    setFeeNotes((prev) => [newFeeNote, ...prev]);
+    logAudit('finance.fee_note_created', 'matter', newFeeNote.matterId, newFeeNote.matterId, {
+      feeNoteNumber,
+      grossTotal: newFeeNote.grossTotal,
+      netBalanceDue: newFeeNote.netBalanceDue,
+    });
+
+    notify(
+      'usr-partner',
+      'New Fee Note Generated',
+      `${feeNoteNumber} generated for ${newFeeNote.matterId} (KES ${newFeeNote.netBalanceDue.toLocaleString()}).`,
+      'system',
+      newFeeNote.matterId
+    );
+
+    return newFeeNote;
+  }, [feeNotes.length, logAudit, notify]);
+
+  const updateFeeNoteStatus = useCallback((feeNoteId: string, status: FeeNoteStatus, trustFundsApplied?: number) => {
+    setFeeNotes((prev) =>
+      prev.map((fn) => {
+        if (fn.id !== feeNoteId) return fn;
+        const updatedApplied = trustFundsApplied !== undefined ? trustFundsApplied : fn.trustFundsApplied;
+        const netBalanceDue = Math.max(0, fn.grossTotal - updatedApplied);
+        return {
+          ...fn,
+          status,
+          trustFundsApplied: updatedApplied,
+          netBalanceDue,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+    logAudit('finance.fee_note_status_updated', 'expense', feeNoteId, undefined, { status, trustFundsApplied });
+  }, [logAudit]);
+
+  const applyTrustFundsToFeeNote = useCallback((feeNoteId: string, amount: number) => {
+    setFeeNotes((prev) =>
+      prev.map((fn) => {
+        if (fn.id !== feeNoteId) return fn;
+        const newApplied = fn.trustFundsApplied + amount;
+        const newNet = Math.max(0, fn.grossTotal - newApplied);
+        const newStatus: FeeNoteStatus = newNet === 0 ? 'settled_from_trust' : fn.status;
+        return {
+          ...fn,
+          trustFundsApplied: newApplied,
+          netBalanceDue: newNet,
+          status: newStatus,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+    logAudit('finance.trust_funds_applied', 'expense', feeNoteId, undefined, { amount });
+  }, [logAudit]);
+
   // Communications & Messages
   const sendMessage = useCallback((channelId: string, text: string, mentions: string[] = [], attachments: { name: string; size: string }[] = []) => {
     const newMessage: ChannelMessage = {
@@ -3005,6 +3098,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setNotifications(SEED_NOTIFICATIONS);
     setAuditLogs(SEED_AUDIT_LOGS);
     setTimeEntries(SEED_TIME_ENTRIES);
+    setFeeNotes(SEED_FEE_NOTES);
     setApiSettings(DEFAULT_API_SETTINGS);
     setActiveTimer(null);
     setMutationQueue([]);
@@ -3166,6 +3260,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         approveExpense,
         disburseExpense,
         recordPaymentReceipt,
+        feeNotes,
+        createFeeNote,
+        updateFeeNoteStatus,
+        applyTrustFundsToFeeNote,
         sendMessage,
         convertMessageToTask,
         markNotificationRead,

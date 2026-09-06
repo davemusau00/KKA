@@ -88,6 +88,8 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
     isOnline,
     stageHandoffs,
     acknowledgeHandoff,
+    feeNotes,
+    setActiveWorkspace,
   } = useApp();
 
   const [previewDoc, setPreviewDoc] = useState<LegalDocument | null>(null);
@@ -130,9 +132,11 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
   const currentStageDef = workflowStages.find((s) => s.id === matter.currentStageId);
 
   // Financial calculations
+  const matterFeeNotes = feeNotes.filter((fn) => fn.matterId === matter.id);
   const totalExpenses = matterExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalReceived = matterPayments.reduce((sum, p) => sum + p.amount, 0);
-  const trustBalance = totalReceived - totalExpenses;
+  const totalTrustRetainersApplied = matterFeeNotes.reduce((sum, fn) => sum + fn.trustFundsApplied, 0);
+  const trustBalance = Math.max(0, totalReceived - totalExpenses - totalTrustRetainersApplied);
   const matterHandoffs = stageHandoffs.filter((h) => h.matterId === matter.id);
 
   const tabs = [
