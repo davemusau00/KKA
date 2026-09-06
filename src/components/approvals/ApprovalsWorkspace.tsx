@@ -18,11 +18,12 @@ import {
   Eye,
   Check,
   AlertCircle,
+  Archive,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ExpenseRecord, LegalDocument, StageHandoff } from '../../types';
 
-type ApprovalTab = 'all' | 'finance' | 'documents' | 'settlements' | 'handoffs';
+type ApprovalTab = 'all' | 'finance' | 'documents' | 'settlements' | 'handoffs' | 'closures';
 
 export const ApprovalsWorkspace: React.FC = () => {
   const {
@@ -37,6 +38,8 @@ export const ApprovalsWorkspace: React.FC = () => {
     acknowledgeHandoff,
     claimNegotiations,
     approveSettlementOffer,
+    closureAudits,
+    finalizeMatterClosureWizard,
     matters,
     users,
     currentUser,
@@ -69,11 +72,19 @@ export const ApprovalsWorkspace: React.FC = () => {
 
   const pendingHandoffs = stageHandoffs.filter((h) => !h.acknowledgedAt);
 
+  const pendingClosures = matters
+    .filter((m) => m.currentStageId === 19 && m.status === 'active')
+    .map((m) => ({
+      matter: m,
+      audit: closureAudits[m.id],
+    }));
+
   const totalPendingCount =
     pendingExpenses.length +
     pendingDocs.length +
     pendingSettlements.length +
-    pendingHandoffs.length;
+    pendingHandoffs.length +
+    pendingClosures.length;
 
   const totalExpenseAmount = pendingExpenses.reduce((sum, e) => sum + e.amount, 0);
 
