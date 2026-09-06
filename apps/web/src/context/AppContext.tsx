@@ -843,7 +843,82 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     activeTimer,
   ]);
 
-  // Directory Contact Handlers
+  // Initial Tier 1 Backend Hydration Hook
+  useEffect(() => {
+    let isMounted = true;
+    async function hydrateFromBackend() {
+      try {
+        const liveCheck = await healthApi.checkLive();
+        if (liveCheck.status !== 'ok' || !isMounted) return;
+
+        // Backend is online and responsive: hydrate Tier 1 catalogs
+        const [dirRes, branchRes, notifRes] = await Promise.allSettled([
+          directoryApi.list(),
+          organizationApi.listBranches(),
+          notificationsApi.list(false),
+        ]);
+
+        if (isMounted && dirRes.status === 'fulfilled' && Array.isArray(dirRes.value) && dirRes.value.length > 0) {
+          const mapped: DirectoryContact[] = dirRes.value.map((c) => ({
+            id: c.id,
+            name: c.displayName,
+            category: (c.type?.toLowerCase() as DirectoryCategory) || 'vendor',
+            organizationName: c.organizationName || c.displayName,
+            primaryPhone: c.phone || '',
+            secondaryPhone: c.alternatePhone || '',
+            email: c.email || '',
+            physicalAddress: c.address || '',
+            city: c.county || 'Nairobi',
+            notes: c.notes || '',
+            isActive: c.active,
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+            tags: [],
+            mattersCount: 0,
+          }));
+          setDirectoryContacts(mapped);
+        }
+
+        if (isMounted && branchRes.status === 'fulfilled' && Array.isArray(branchRes.value) && branchRes.value.length > 0) {
+          setBranches(branchRes.value.map((b) => ({
+            id: b.id as any,
+            name: b.name,
+            code: b.code,
+            address: b.address || '',
+            postalAddress: b.postalAddress || '',
+            phone: b.phone || '',
+            email: b.email || '',
+            defaultCourtStation: b.defaultCourtStation || '',
+            numberingPrefix: b.numberingPrefix || '',
+            isActive: b.active,
+          })));
+        }
+
+        if (isMounted && notifRes.status === 'fulfilled' && Array.isArray(notifRes.value) && notifRes.value.length > 0) {
+          setNotifications(notifRes.value.map((n) => ({
+            id: n.id,
+            userId: n.userId,
+            title: n.title,
+            message: n.body,
+            type: (n.type as any) || 'system',
+            isRead: n.read,
+            createdAt: n.createdAt,
+            urgency: 'medium',
+          })));
+        }
+      } catch (err) {
+        // Gracefully retain local storage prototype state
+        console.debug('Backend unavailable, using local storage state:', err);
+      }
+    }
+
+    hydrateFromBackend();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Directory Contact Handlers (Live API + Optimistic Local State)
   const addDirectoryContact = useCallback((contactData: Omit<DirectoryContact, 'id' | 'createdAt' | 'updatedAt'>): DirectoryContact => {
     const newContact: DirectoryContact = {
       ...contactData,
@@ -852,6 +927,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updatedAt: new Date().toISOString(),
     };
     setDirectoryContacts((prev) => [newContact, ...prev]);
+
+    // Asynchronously sync to backend API if live
+    directoryApi.create({
+      type: contactData.category || 'other',
+      displayName: contactData.name,
+      organizationName: contactData.organizationName,
+      phone: contactData.primaryPhone,
+      alternatePhone: contactData.secondaryPhone,
+      email: contactData.email,
+      address: contactData.physicalAddress,
+      county: contactData.city,
+      notes: contactData.notes,
+      active: contactData.isActive !== false,
+    }).then((created) => {
+      if (created?.id) {
+        setDirectoryContacts((prev) =>
+          prev.map((c) => (c.id === newContact.id ? { ...c, id: created.id } : c))
+        );
+      }
+    }).catch((err) => {
+      console.warn('Backend directory sync queued/unavailable:', err);
+    });
+
     return newContact;
   }, []);
 
@@ -859,6 +957,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setDirectoryContacts((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c))
     );
+
+    directoryApi.update(id, {
+      displayName: updates.name,
+      organizationName: updates.organizationName,
+      phone: updates.primaryPhone,
+      alternatePhone: updates.secondaryPhone,
+      email: updates.email,
+      address: updates.physicalAddress,
+      county: updates.city,
+      notes: updates.notes,
+      active: updates.isActive,
+    }).catch((err) => {
+      console.warn('Backend directory update error:', err);
+    });
   }, []);
 
   const deleteDirectoryContact = useCallback((id: string) => {
