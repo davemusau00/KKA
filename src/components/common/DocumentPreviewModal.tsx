@@ -75,25 +75,25 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
         {/* Content Body: Left Preview, Right Version Log */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Main Document Canvas or Live Base64 Preview */}
-          <div className="flex-1 bg-slate-950/70 p-4 sm:p-6 overflow-y-auto flex flex-col items-center justify-start">
+          <div className="flex-1 bg-slate-100 dark:bg-slate-950/70 p-4 sm:p-6 overflow-y-auto flex flex-col items-center justify-start">
             {currentVersion?.fileDataUrl ? (
               <div className="w-full max-w-3xl flex-1 flex flex-col items-center justify-center p-2">
                 {currentVersion.fileDataUrl.startsWith('data:image/') ? (
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-2xl max-h-full overflow-auto text-center">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-full overflow-auto text-center">
                     <img
                       src={currentVersion.fileDataUrl}
                       alt={document.title}
                       className="max-h-[65vh] object-contain rounded-lg shadow mx-auto"
                     />
-                    <div className="text-slate-400 text-xs mt-3 flex items-center justify-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-amber-400" />
+                    <div className="text-slate-500 dark:text-slate-400 text-xs mt-3 flex items-center justify-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       <span>{currentVersion.originalFilename}</span>
                       <span>&bull;</span>
                       <span>{((currentVersion.fileSizeBytes || 0) / 1024).toFixed(1)} KB</span>
                     </div>
                   </div>
                 ) : currentVersion.fileDataUrl.startsWith('data:application/pdf') ? (
-                  <div className="w-full h-full min-h-[550px] bg-slate-900 rounded-xl border border-slate-800 p-2 shadow-2xl flex flex-col">
+                  <div className="w-full h-full min-h-[550px] bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-2 shadow-2xl flex flex-col">
                     <iframe
                       src={currentVersion.fileDataUrl}
                       className="w-full flex-1 rounded-lg border-0 min-h-[500px]"
@@ -101,8 +101,8 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
                     />
                   </div>
                 ) : (
-                  <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-xl p-6 text-slate-200 font-mono text-xs overflow-auto max-h-[65vh]">
-                    <div className="text-slate-400 text-[10px] mb-2 font-bold uppercase">{currentVersion.originalFilename}</div>
+                  <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 text-slate-900 dark:text-slate-200 font-mono text-xs overflow-auto max-h-[65vh]">
+                    <div className="text-slate-500 dark:text-slate-400 text-[10px] mb-2 font-bold uppercase">{currentVersion.originalFilename}</div>
                     <pre className="whitespace-pre-wrap">{currentVersion.contentSnippet || 'Uploaded file content'}</pre>
                   </div>
                 )}
@@ -174,10 +174,10 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
           </div>
 
           {/* Right Version Sidebar */}
-          <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-slate-800 bg-slate-900 p-5 flex flex-col justify-between overflow-y-auto">
+          <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 flex flex-col justify-between overflow-y-auto">
             <div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
-                <Clock className="w-3.5 h-3.5 text-amber-500" /> Version History ({document.versions.length})
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">
+                <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" /> Version History ({document.versions.length})
               </div>
 
               <div className="space-y-2">
@@ -187,18 +187,18 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
                     onClick={() => setSelectedVersionId(v.id)}
                     className={`w-full text-left p-3 rounded-lg border text-xs transition ${
                       v.id === selectedVersionId
-                        ? 'bg-amber-950/40 border-amber-600/70 text-amber-200'
-                        : 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800'
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600/70 text-amber-900 dark:text-amber-200'
+                        : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-amber-400">Version {v.versionNumber}.0</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold bg-slate-900 text-slate-400">
+                      <span className="font-mono font-bold text-amber-700 dark:text-amber-400">Version {v.versionNumber}.0</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400">
                         {v.status}
                       </span>
                     </div>
-                    <div className="text-slate-400 text-[11px] mt-1 truncate">{v.originalFilename}</div>
-                    <div className="text-slate-500 text-[10px] mt-0.5">
+                    <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-1 truncate">{v.originalFilename}</div>
+                    <div className="text-slate-400 dark:text-slate-500 text-[10px] mt-0.5">
                       {new Date(v.createdAt).toLocaleDateString()} | {(v.fileSizeBytes / 1024).toFixed(0)} KB
                     </div>
                     {v.notes && <div className="text-slate-400 text-[11px] mt-1 italic">&ldquo;{v.notes}&rdquo;</div>}
@@ -207,13 +207,13 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
               </div>
 
               {/* Version Controls */}
-              <div className="mt-6 space-y-3 pt-4 border-t border-slate-800 text-xs">
+              <div className="mt-6 space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs">
                 {currentVersion?.status === 'review' && (
                   <button
                     onClick={handleApprove}
                     className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition flex items-center justify-center gap-1.5 shadow"
                   >
-                    <CheckCircle className="w-4 h-4" /> Approve for Signing & Filing
+                    <CheckCircle className="w-4 h-4" /> Approve for Signing &amp; Filing
                   </button>
                 )}
 
@@ -227,8 +227,8 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
                 )}
 
                 {showFilingPrompt && (
-                  <form onSubmit={handleMarkFiled} className="p-3 bg-slate-800/80 rounded-lg border border-purple-700/50 space-y-2">
-                    <label className="block text-[11px] font-medium text-slate-300">
+                  <form onSubmit={handleMarkFiled} className="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-purple-300 dark:border-purple-700/50 space-y-2">
+                    <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300">
                       Enter Judiciary CTS / Portal Barcode Ref:
                     </label>
                     <input
@@ -236,13 +236,13 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
                       required
                       value={courtFilingRef}
                       onChange={(e) => setCourtFilingRef(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 font-mono text-xs focus:border-purple-500 outline-none"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-slate-100 font-mono text-xs focus:border-purple-500 outline-none"
                     />
                     <div className="flex gap-2 justify-end pt-1">
                       <button
                         type="button"
                         onClick={() => setShowFilingPrompt(false)}
-                        className="px-2 py-1 rounded text-slate-400 bg-slate-700 hover:text-slate-200"
+                        className="px-2 py-1 rounded text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:text-slate-200 transition"
                       >
                         Cancel
                       </button>
@@ -258,13 +258,13 @@ export const DocumentPreviewModal: React.FC<Props> = ({ document, onClose }) => 
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-mono text-[10px]">VPS Storage Driver: Local</span>
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-400 font-mono text-[10px]">VPS Storage Driver: Local</span>
               <button
                 onClick={() => alert(`Simulating encrypted download of ${currentVersion?.originalFilename}`)}
-                className="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-200 transition flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5"
               >
-                <Download className="w-3.5 h-3.5 text-amber-500" /> Download
+                <Download className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" /> Download
               </button>
             </div>
           </div>
