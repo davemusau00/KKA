@@ -105,7 +105,12 @@ This is important: do not re-open already-fixed UI gaps simply because they appe
 - atomic numbering service;
 - branch and responsible-branch rules;
 - real deadline engine and immutable official due date;
-- calendar provider integration with conflict handling;
+- **calendar provider integration with conflict handling & Temporal Command Centre** [RESOLVED on Frontend]:
+  - Mobile calendar hierarchy (Agenda/Today default, 14-day swipeable date strip, 3-day column view, density-scanning month view);
+  - Legal edit policies (`free`, `confirm`, `reason_required`, `locked`) with reschedule audit revisions;
+  - Automated court outcome propagation (subsequent hearing diarization, court filing deadline generation, internal drafting task creation);
+  - Context-aware event sliding bottom sheet (mobile) and side drawer (desktop);
+  - Direct document linking to appearances;
 - inbound/outbound email capture;
 - document version storage and preview;
 - approvals service;

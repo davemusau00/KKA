@@ -57,7 +57,7 @@ Status: Documentation baseline complete. Implementation not yet started.
 - [ ] Matter workflows
 - [ ] Assignments and handoffs
 - [ ] Tasks and deadlines
-- [ ] Calendar
+- [x] Calendar (Temporal Command Centre, mobile anti-compression hierarchy, legal edit policies, automated outcome workflows)
 - [ ] Documents
 - [ ] Internal communication
 - [ ] Finance
