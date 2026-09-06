@@ -1,7 +1,8 @@
-FROM node:24-bookworm-slim AS deps
+FROM node:26-bookworm-slim
+RUN npm install -g pnpm@10.15.1
 WORKDIR /app
 RUN corepack enable
-COPY package.monorepo.json package.json
+COPY package.json package.json
 COPY pnpm-workspace.yaml tsconfig.base.json prisma.config.ts ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/worker/package.json apps/worker/package.json
