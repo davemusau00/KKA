@@ -1,3 +1,9 @@
+# Current validation scope (2026-09-07)
+
+The current evidence is recorded in [Document workflows](docs/DOCUMENT_WORKFLOWS.md). The earlier blanket claims below predate the discovery of 13 frontend TypeScript errors and must not be read as whole-product acceptance. Those integration errors have been repaired; explicit frontend checks and non-empty API, browser and rendering suites now exist.
+
+---
+
 # Codebase Validation Status
 
 **Last Verified**: 2026-09-06  

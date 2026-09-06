@@ -1,25 +1,32 @@
 # Project State & Implementation Reality
 
-**Current Date**: 2026-09-06  
+**Current Date**: 2026-09-07
 **Repository**: `davemusau00/KKA`  
 **Target Product**: Kariuki Kagunda & Co. Advocates Enterprise Law-Firm OS  
 
 ---
 
+## Current branding and document milestone
+
+Managed branding, mark/signature management, controlled PDF application, and queued structured/DOCX generation now have persistent workflows. See [the implementation and verification record](DOCUMENT_WORKFLOWS.md) for exact coverage, commands, evidence and deployment limits. This scoped record supersedes older broad validation claims below; the earlier frontend baseline actually had 13 TypeScript errors, which were repaired. The web package now has an explicit typecheck script.
+
+The following sections retain the earlier OS integration inventory and are not evidence that the wider OS is complete.
+
 ## 1. Architectural Reality & Current Baseline
 
 The repository has transitioned from an isolated frontend prototype into a **unified TypeScript monorepo** with a production-grade NestJS backend, Prisma 7 database engine, BullMQ background worker, and an interactive React frontend:
 
-- **Topology**: `pnpm` monorepo with 5 workspace projects:
+- **Topology**: `pnpm` monorepo with 6 application/shared workspace projects:
   - `@kka/web` (`apps/web`): React 19 + Vite 6 + Tailwind CSS SPA
   - `@kka/api` (`apps/api`): NestJS 11 + Fastify REST & Realtime API Engine
   - `@kka/worker` (`apps/worker`): BullMQ asynchronous job execution daemon
   - `@kka/contracts` (`packages/contracts`): Shared Zod validation schemas and DTOs
+  - `@kka/document-engine` (`packages/document-engine`): Shared private storage, image/PDF rendering, template conversion and generation.
   - `@kka/database` (`packages/database`): Prisma 7.10.0 database client and repositories
 - **Validation Gates**:
   - `pnpm prisma:validate`: Verified clean (`prisma/schema.prisma` is valid).
   - `pnpm typecheck`: Monorepo-wide zero errors across all 5 workspace projects.
-  - `pnpm test`: Monorepo test runner exits cleanly with code 0.
+  - Test acceptance: use the non-empty workflow suites and results in `docs/DOCUMENT_WORKFLOWS.md`; an empty runner is not acceptance evidence.
   - `pnpm -r build`: All packages compile production artifacts cleanly (Vite bundle in `apps/web/dist`, compiled JS/d.ts in `packages/*/dist` and `apps/*/dist`).
 - **Engine Compatibility**: Node.js `>=24 <25 || >=26 <27` with `pnpm@10.15.1`. Tested on Node `v26.5.0`.
 - **Docker Readiness**: Updated Dockerfiles for `@kka/api` and `@kka/worker` using multi-stage builds from `node:26-bookworm-slim AS deps`, explicit `pnpm@10.15.1`, and no deprecated corepack.

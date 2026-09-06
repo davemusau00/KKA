@@ -52,5 +52,21 @@ test('wide transparent branding, favicon refresh, keyboard navigation and failed
     await page.route('**/branding/image**',route=>route.abort());await page.reload();
     await page.getByRole('button',{name:/Admin & Staff/}).first().click();await page.getByRole('button',{name:/Firm Profile/}).click();
     await expect.poll(()=>page.getByAltText('Current firm logo').getAttribute('src')).toContain('firm-logo.png');
-  } finally { await page.request.post('/api/v1/branding/default'); }
+  } finally { await page.request.post('/api/v1/branding/restore-default'); }
+});
+
+
+test('structured template authoring, publication, queued generation and reload',async({page})=>{
+  test.setTimeout(120000);
+  await page.getByRole('button',{name:'Documents',exact:true}).first().click();
+  const documents=page.getByLabel('Stored document');await expect(documents.locator('option')).not.toHaveCount(1);const documentId=(await documents.locator('option').nth(1).getAttribute('value'))!;await documents.selectOption(documentId);
+  await page.getByRole('button',{name:'Templates',exact:true}).click();
+  await page.getByLabel('Name',{exact:true}).fill('Synthetic browser letter');await page.getByLabel('Reference (lowercase letters, digits, hyphens)').fill(`browser-${Date.now()}`);
+  await page.getByRole('button',{name:'Save new draft version'}).click();await expect(page.getByText('New template version saved as draft.')).toBeVisible();
+  await page.getByRole('button',{name:'Publish version',exact:true}).click();await expect(page.getByText('Template published.')).toBeVisible();
+  await page.getByLabel('Recipient',{exact:true}).fill('Synthetic Recipient');await page.getByLabel('Subject',{exact:true}).fill('Synthetic browser test');await page.getByLabel('Body',{exact:true}).fill('This generated letter contains synthetic test data.');
+  const response=page.waitForResponse(r=>r.url().endsWith('/document-templates/generate')&&r.request().method()==='POST');await page.getByRole('button',{name:'Generate draft',exact:true}).click();const queued=await response;expect(queued.ok()).toBeTruthy();const operation=await queued.json();
+  await page.getByRole('button',{name:'Documents',exact:true}).last().click();
+  await expect.poll(async()=>{const r=await page.request.get(`/api/v1/document-operations?documentId=${documentId}`);const rows=await r.json();return rows.find((o:{id:string})=>o.id===operation.id)?.status;},{timeout:90000}).toBe('COMPLETED');
+  await page.reload();await page.getByRole('button',{name:'Documents',exact:true}).first().click();await expect(page.getByLabel('Stored document').locator('option')).not.toHaveCount(1);
 });

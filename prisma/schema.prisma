@@ -1434,6 +1434,9 @@ model SignatureAssetVersion {
   storagePath    String
   mimeType       String
   checksumSha256 String
+  widthPx        Int?
+  heightPx       Int?
+  transparentReady Boolean?
   active         Boolean @default(true)
   createdAt      DateTime @default(now())
 

@@ -61,7 +61,7 @@ export class RegistryService {
         if (signature) {
           const latest = await tx.signatureAssetVersion.findFirst({ where: { profileId: id }, orderBy: { version: 'desc' } });
           await tx.signatureAssetVersion.updateMany({ where: { profileId: id }, data: { active: false } });
-          row = await tx.signatureAssetVersion.create({ data: { profileId: id, version: (latest?.version ?? 0) + 1, storagePath: stored.path, mimeType: stored.mimeType, checksumSha256: stored.checksumSha256 } });
+          row = await tx.signatureAssetVersion.create({ data: { profileId: id, version: (latest?.version ?? 0) + 1, storagePath: stored.path, mimeType: stored.mimeType, checksumSha256: stored.checksumSha256, widthPx:image.width, heightPx:image.height, transparentReady:image.transparent } });
           await tx.signatureProfile.update({ where: { id }, data: { approvalStatus: 'PENDING' } });
         } else {
           const latest = await tx.firmMarkAssetVersion.findFirst({ where: { assetId: id }, orderBy: { version: 'desc' } });
