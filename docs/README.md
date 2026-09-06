@@ -70,7 +70,7 @@ Why: the application is an internal operational web app, not an SEO-first websit
 
 ## Backend API
 
-- **Node.js 24 LTS**
+- **Node.js >=24 <25 || >=26 <27 (Node 24 LTS and Node 26 supported)**
 - **NestJS**
 - **Fastify adapter**
 - **TypeScript strict mode**
