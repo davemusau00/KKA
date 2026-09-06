@@ -2,11 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
-    "paths": {
-      "@kka/database": ["../../packages/database/src/index.ts"],
-      "@kka/contracts": ["../../packages/contracts/src/index.ts"]
-    }
+    "rootDir": "src"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts"]
