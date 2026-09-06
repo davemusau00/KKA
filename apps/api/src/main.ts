@@ -39,9 +39,9 @@ async function bootstrap() {
   app.getHttpAdapter().getInstance().addHook('onRequest', async request => { assignRequestId(request); });
   app.getHttpAdapter().getInstance().addHook('onRequest', async request => {
     if (!cfg.CSRF_ENABLED || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
-    const pathname = request.url.split('?')[0];
+    const pathname = request.url.split('?')[0] ?? '';
     if (pathname.endsWith('/auth/login') || pathname.endsWith('/auth/accept-invite') || pathname.endsWith('/auth/csrf')) return;
-    const cookie = request.cookies?.[cfg.CSRF_COOKIE_NAME];
+    const cookie = (request as { cookies?: Record<string, string> }).cookies?.[cfg.CSRF_COOKIE_NAME];
     const header = request.headers['x-csrf-token'];
     if (!cookie || typeof header !== 'string' || cookie !== header) {
       throw new ForbiddenException('CSRF validation failed');

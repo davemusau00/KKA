@@ -14,7 +14,7 @@ import {
   Building2,
   LogOut,
 } from 'lucide-react';
-import { authApi, CurrentAuthUser } from '../../lib/api/auth.api';
+import { CurrentAuthUser } from '../../lib/api/auth.api';
 import { useApp } from '../../context/AppContext';
 import { FirmLogo } from '../common/FirmLogo';
 import { runtimeConfig } from '../../config/runtime';
@@ -26,7 +26,7 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const { currentUser, notify } = useApp();
+  const { currentUser, notify, loginWithBackend } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +48,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
     setSuccessMessage(null);
 
     try {
-      const res = await authApi.login(email.trim(), password);
+      const res = await loginWithBackend(email.trim(), password);
       if (res?.user) {
         setSuccessMessage(`Authenticated as ${res.user.fullName}`);
         notify(res.user.id, 'Session Authenticated', `Logged in via KKA Fastify Engine as ${res.user.fullName}`, 'system');
