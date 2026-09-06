@@ -35,7 +35,7 @@ async function bootstrap() {
     timeWindow: cfg.RATE_LIMIT_WINDOW
   });
 
-  (app.getHttpAdapter().getInstance() as any).addHook("onRequest", assignRequestId);
+  app.getHttpAdapter().getInstance().addHook('onRequest', async (request: import('fastify').FastifyRequest) => { assignRequestId(request); });
   // Prisma file sizes are bigint; JSON transports them as decimal strings.
   app.getHttpAdapter().getInstance().addHook('preSerialization', async (_request: unknown, _reply: unknown, payload: unknown) =>
     JSON.parse(JSON.stringify(payload, (_key, value: unknown) => typeof value === 'bigint' ? value.toString() : value)) as unknown);
