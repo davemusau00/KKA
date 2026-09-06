@@ -38,9 +38,9 @@ export async function processMail(job: Job, prisma: KkaPrismaClient) {
     maxMessages: Number(cfg.maxMessagesPerConnection ?? 100)
   });
 
-  const to = message.recipients.filter((r) => r.type === "TO").map((r) => r.address);
-  const cc = message.recipients.filter((r) => r.type === "CC").map((r) => r.address);
-  const bcc = message.recipients.filter((r) => r.type === "BCC").map((r) => r.address);
+  const to = message.recipients.filter((r: { type: string; address: string }) => r.type === "TO").map((r: { type: string; address: string }) => r.address);
+  const cc = message.recipients.filter((r: { type: string; address: string }) => r.type === "CC").map((r: { type: string; address: string }) => r.address);
+  const bcc = message.recipients.filter((r: { type: string; address: string }) => r.type === "BCC").map((r: { type: string; address: string }) => r.address);
 
   const info = await transporter.sendMail({
     from: `${message.senderIdentity.displayName} <${message.senderIdentity.email}>`,
