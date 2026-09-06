@@ -128,7 +128,7 @@ import {
 } from '../data/adminSeedData';
 import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
 import { generateSequentialMatterReference } from '../utils/matterReference';
-import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi } from '../lib/api';
+import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi } from '../lib/api';
 
 export interface ActiveTimerState {
   matterId: string;
@@ -189,6 +189,11 @@ interface AppContextType {
   setIsQuickCreateOpen: (open: boolean) => void;
   isSyncCenterOpen: boolean;
   setIsSyncCenterOpen: (open: boolean) => void;
+  isLoginModalOpen: boolean;
+  setIsLoginModalOpen: (open: boolean) => void;
+  isAuthenticatedLive: boolean;
+  loginWithBackend: (email: string, password: string) => Promise<any>;
+  logoutWithBackend: () => Promise<void>;
   
   // Data Collections
   branches: Branch[];
@@ -435,6 +440,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isAuthenticatedLive, setIsAuthenticatedLive] = useState(false);
 
   // Network & Sync State
   const [isOnline, setIsOnline] = useState(true);
@@ -851,11 +858,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const liveCheck = await healthApi.checkLive();
         if (liveCheck.status !== 'ok' || !isMounted) return;
 
-        // Backend is online and responsive: hydrate Tier 1 catalogs
-        const [dirRes, branchRes, notifRes] = await Promise.allSettled([
+        // Backend is online and responsive: hydrate Tier 1 catalogs and verify auth session
+        const [dirRes, branchRes, notifRes, meRes] = await Promise.allSettled([
           directoryApi.list(),
           organizationApi.listBranches(),
           notificationsApi.list(false),
+          authApi.me(),
         ]);
 
         if (isMounted && dirRes.status === 'fulfilled' && Array.isArray(dirRes.value) && dirRes.value.length > 0) {
@@ -906,6 +914,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             urgency: 'medium',
           })));
         }
+
+        if (isMounted && meRes.status === 'fulfilled' && meRes.value?.id) {
+          setIsAuthenticatedLive(true);
+          const u = meRes.value;
+          const matched = users.find((x) => x.email.toLowerCase() === u.email.toLowerCase());
+          if (matched) {
+            setCurrentUser(matched);
+          } else {
+            setCurrentUser({
+              id: u.id,
+              fullName: u.fullName,
+              email: u.email,
+              phone: '+254 700 000 000',
+              jobTitle: (u.roleKeys && u.roleKeys[0]) || 'Advocate',
+              role: ((u.roleKeys && u.roleKeys[0]) as any) || 'advocate',
+              roles: (u.roleKeys as any) || ['advocate'],
+              homeBranchId: (u.homeBranchId as any) || 'branch-nairobi',
+              isActive: true,
+              avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+            });
+          }
+        }
       } catch (err) {
         // Gracefully retain local storage prototype state
         console.debug('Backend unavailable, using local storage state:', err);
@@ -916,6 +946,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  // Real Authentication Handlers
+  const loginWithBackend = useCallback(
+    async (email: string, password: string) => {
+      const res = await authApi.login(email, password);
+      if (res?.user) {
+        setIsAuthenticatedLive(true);
+        const u = res.user;
+        const matched = users.find((x) => x.email.toLowerCase() === u.email.toLowerCase());
+        if (matched) {
+          setCurrentUser(matched);
+        } else {
+          setCurrentUser({
+            id: u.id,
+            fullName: u.fullName,
+            email: u.email,
+            phone: '+254 700 000 000',
+            jobTitle: (u.roleKeys && u.roleKeys[0]) || 'Advocate',
+            role: ((u.roleKeys && u.roleKeys[0]) as any) || 'advocate',
+            roles: (u.roleKeys as any) || ['advocate'],
+            homeBranchId: (u.homeBranchId as any) || 'branch-nairobi',
+            isActive: true,
+            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+          });
+        }
+      }
+      return res;
+    },
+    [users]
+  );
+
+  const logoutWithBackend = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.warn('Backend logout error or offline:', err);
+    }
+    setIsAuthenticatedLive(false);
   }, []);
 
   // Directory Contact Handlers (Live API + Optimistic Local State)
@@ -3666,6 +3735,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsQuickCreateOpen,
         isSyncCenterOpen,
         setIsSyncCenterOpen,
+        isLoginModalOpen,
+        setIsLoginModalOpen,
+        isAuthenticatedLive,
+        loginWithBackend,
+        logoutWithBackend,
         branches,
         users,
         stageHandoffs,

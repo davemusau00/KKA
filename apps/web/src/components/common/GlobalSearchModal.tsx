@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, X, Briefcase, User, Calendar, CheckSquare, FileText, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { Search, X, Briefcase, User, Calendar, CheckSquare, FileText, ArrowRight, CornerDownLeft, Loader2, Sparkles, Contact } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { searchApi, SearchResult } from '../../lib/api/search.api';
 
 export const GlobalSearchModal: React.FC = () => {
   const [mounted, setMounted] = useState(false);
@@ -22,6 +23,31 @@ export const GlobalSearchModal: React.FC = () => {
   } = useApp();
 
   const [query, setQuery] = useState('');
+  const [backendResults, setBackendResults] = useState<SearchResult[] | null>(null);
+  const [isSearchingBackend, setIsSearchingBackend] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim() || query.trim().length < 2) {
+      setBackendResults(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearchingBackend(true);
+        const res = await searchApi.query(query.trim());
+        if (res && Array.isArray(res.results)) {
+          setBackendResults(res.results);
+        }
+      } catch {
+        setBackendResults(null);
+      } finally {
+        setIsSearchingBackend(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return null;
@@ -93,6 +119,9 @@ export const GlobalSearchModal: React.FC = () => {
             autoFocus
             className="w-full bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm sm:text-base outline-none focus:ring-0"
           />
+          {isSearchingBackend && (
+            <Loader2 className="w-4 h-4 animate-spin text-amber-500 shrink-0" />
+          )}
           {query && (
             <button
               onClick={() => setQuery('')}
@@ -142,10 +171,55 @@ export const GlobalSearchModal: React.FC = () => {
               <p className="text-xs text-slate-500 mt-1">Check the reference code, phone number, or client name.</p>
             </div>
           ) : (
-            searchResults && (
+            (searchResults || (backendResults && backendResults.length > 0)) && (
               <div className="space-y-5">
+                {/* Live Backend Matches */}
+                {backendResults && backendResults.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 mb-2 px-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Live Database Search ({backendResults.length})
+                    </div>
+                    <div className="space-y-1.5">
+                      {backendResults.map((r) => (
+                        <button
+                          key={`${r.type}-${r.id}`}
+                          onClick={() => {
+                            if (r.type === 'matter') {
+                              setSelectedMatterId(r.id);
+                              setActiveWorkspace('matters');
+                            } else if (r.type === 'client') {
+                              setActiveWorkspace('clients');
+                            } else if (r.type === 'task') {
+                              setActiveWorkspace('tasks');
+                            } else if (r.type === 'document') {
+                              setActiveWorkspace('documents');
+                            } else if (r.type === 'contact') {
+                              setActiveWorkspace('directory');
+                            }
+                            setIsSearchOpen(false);
+                          }}
+                          className="w-full text-left p-3 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 hover:border-emerald-700 transition flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300 uppercase font-semibold">
+                                {r.type}
+                              </span>
+                              <span className="text-xs font-medium text-slate-200">{r.title}</span>
+                            </div>
+                            {r.subtitle && (
+                              <div className="text-[11px] text-slate-400 mt-0.5">{r.subtitle}</div>
+                            )}
+                          </div>
+                          <CornerDownLeft className="w-4 h-4 text-emerald-500/70 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Matters */}
-                {searchResults.matters.length > 0 && (
+                {searchResults && searchResults.matters.length > 0 && (
                   <div>
                     <div className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 mb-2 px-1">
                       <Briefcase className="w-3.5 h-3.5" /> Matters ({searchResults.matters.length})

@@ -28,6 +28,8 @@ import {
   Scale,
   CheckCircle2,
   Moon,
+  KeyRound,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { GlobalSearchModal } from '../common/GlobalSearchModal';
@@ -36,6 +38,7 @@ import { OfflineSyncCenterModal } from '../common/OfflineSyncCenterModal';
 import { GlobalTimeTracker } from '../common/GlobalTimeTracker';
 import { MobileQuickActionsMenu } from '../common/MobileQuickActionsMenu';
 import { ConnectionStatusBadge } from '../common/ConnectionStatusBadge';
+import { LoginModal } from '../auth/LoginModal';
 import { BranchId } from '../../types';
 
 interface Props {
@@ -61,6 +64,10 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     setIsSearchOpen,
     setIsQuickCreateOpen,
     setIsSyncCenterOpen,
+    isLoginModalOpen,
+    setIsLoginModalOpen,
+    isAuthenticatedLive,
+    logoutWithBackend,
     tasks,
     matters,
     expenses,
@@ -365,6 +372,37 @@ export const AppShell: React.FC<Props> = ({ children }) => {
             {/* Persona Switcher Dropdown */}
             {isUserDropdownOpen && (
               <div className="fixed inset-x-2 top-14 max-w-xs mx-auto sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 sm:max-w-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
+                {/* Live Auth Session Section */}
+                <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-amber-500/5">
+                  {isAuthenticatedLive ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium text-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Live Session Active</span>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          await logoutWithBackend();
+                          setIsUserDropdownOpen(false);
+                        }}
+                        className="text-[11px] text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-medium"
+                      >
+                        <LogOut className="w-3 h-3" /> Sign Out
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        setIsLoginModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-medium shadow-sm transition"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" /> Sign In with Live Session
+                    </button>
+                  )}
+                </div>
+
                 <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
                   <div className="font-semibold text-slate-900 dark:text-slate-200">Test Role Personas</div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">Switch user context to verify RBAC &amp; workflows</div>
@@ -597,6 +635,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
       <GlobalSearchModal />
       <QuickCreateModal />
       <OfflineSyncCenterModal />
+      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
       <MobileQuickActionsMenu />
     </div>
   );
