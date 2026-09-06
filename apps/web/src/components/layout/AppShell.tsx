@@ -41,6 +41,7 @@ import { ConnectionStatusBadge } from '../common/ConnectionStatusBadge';
 import { FirmLogo } from '../common/FirmLogo';
 import { LoginModal } from '../auth/LoginModal';
 import { BranchId } from '../../types';
+import { runtimeConfig } from '../../config/runtime';
 
 interface Props {
   children: React.ReactNode;
@@ -83,6 +84,19 @@ export const AppShell: React.FC<Props> = ({ children }) => {
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  if (!runtimeConfig.enableDemoMode && !isAuthenticatedLive) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm text-center space-y-5">
+          <FirmLogo size="xl" showText responsive={false} textVariant="stacked" />
+          <p className="text-sm text-slate-300">Sign in with your firm account to access the operating system.</p>
+          <button className="admin-btn-primary" onClick={() => setIsLoginModalOpen(true)}>Sign in</button>
+        </div>
+        <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      </div>
+    );
+  }
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 

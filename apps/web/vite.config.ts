@@ -16,12 +16,12 @@ export default defineConfig(() => {
       port: 5173,
       proxy: {
         '/api/v1': {
-          target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:3000',
+          target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:3015',
           changeOrigin: true,
           secure: false,
         },
         '/socket.io': {
-          target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:3000',
+          target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:3015',
           ws: true,
           changeOrigin: true,
         },

@@ -21,6 +21,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { runtimeConfig } from '../../config/runtime';
 
 // Import all 12 Admin Studio Tabs
 import { StaffDirectoryTab } from './tabs/StaffDirectoryTab';
@@ -216,7 +217,7 @@ export const AdminWorkspace: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        {runtimeConfig.enableDemoMode && <div className="flex items-center gap-3">
           <button
             onClick={() => {
               if (confirm('Reset all demo state to original Kariuki Kagunda Lawfirm OS seed data?')) {
@@ -228,7 +229,7 @@ export const AdminWorkspace: React.FC = () => {
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Demo Seed Data</span>
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Domain Navigation Groups */}

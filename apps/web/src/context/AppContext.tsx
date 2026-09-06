@@ -130,6 +130,12 @@ import {
 import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
 import { generateSequentialMatterReference } from '../utils/matterReference';
 import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi } from '../lib/api';
+import { runtimeConfig } from '../config/runtime';
+
+const EMPTY_USER: UserProfile = {
+  id: '', fullName: '', email: '', phone: '', jobTitle: '', role: 'advocate', roles: [],
+  homeBranchId: 'branch-nairobi', isActive: false,
+};
 
 export interface ActiveTimerState {
   matterId: string;
@@ -434,7 +440,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedMatterTab, setSelectedMatterTab] = useState<string>('overview');
 
   // Persona & Branch
-  const [currentUser, setCurrentUser] = useState<UserProfile>(SEED_USERS[0]); // Senior Partner
+  const [currentUser, setCurrentUser] = useState<UserProfile>(runtimeConfig.enableDemoMode ? SEED_USERS[0] : EMPTY_USER);
   const [currentBranchFilter, setCurrentBranchFilter] = useState<'all' | BranchId>('all');
 
   // Modals
@@ -445,7 +451,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isAuthenticatedLive, setIsAuthenticatedLive] = useState(false);
 
   // Network & Sync State
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [mutationQueue, setMutationQueue] = useState<OfflineMutation[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -743,6 +749,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : SEED_DIRECTORY_CONTACTS;
   });
 
+  // Production must never render or persist browser seed records. The server is the
+  // source of truth; demo fixtures are available only when explicitly enabled.
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    Object.keys(localStorage).filter((key) => key.startsWith(LOCAL_STORAGE_KEY)).forEach((key) => localStorage.removeItem(key));
+    setCurrentUser(EMPTY_USER);
+    setBranches([]); setUsers([]); setStageHandoffs([]); setClients([]); setIntakes([]); setMatters([]);
+    setParties([]); setProceedings([]); setTasks([]); setDeadlines([]); setCalendarEvents([]); setDocuments([]);
+    setChannels([]); setMessages([]); setExpenses([]); setAccounts([]); setPayments([]); setNotifications([]);
+    setAuditLogs([]); setTimeEntries([]); setFeeNotes([]); setFirmMarks([]); setSignatureProfiles([]);
+    setCustomFields([]); setBackupSnapshots([]); setIncidentEvidence({}); setMedicalCases({}); setLiabilityQuantums({});
+    setClaimNegotiations({}); setPleadingsBundles({}); setCourtFilingPackages([]); setServiceQueue([]);
+    setPreTrialCompliances({}); setHearingBriefs({}); setJudgmentAwards({}); setRecoveryExecutions({});
+    setSettlementDistributions({}); setClosureAudits({}); setDirectoryContacts([]); setMutationQueue([]);
+  }, []);
+
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_theme`);
     if (saved === 'light' || saved === 'dark') return saved;
@@ -981,8 +1003,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           })));
         }
       } catch (err) {
-        // Gracefully retain local storage prototype state
-        console.debug('Backend unavailable, using local storage state:', err);
+        if (runtimeConfig.enableDemoMode) console.debug('Backend unavailable, using local storage demo state:', err);
       }
     }
 
@@ -3795,6 +3816,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Demo state reset
   const resetToDemoData = useCallback(() => {
+    if (!runtimeConfig.enableDemoMode) return;
     localStorage.clear();
     setUsers(SEED_USERS);
     setPracticeWorkflows(SEED_PRACTICE_WORKFLOWS);

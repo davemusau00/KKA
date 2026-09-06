@@ -17,6 +17,7 @@ import {
 import { authApi, CurrentAuthUser } from '../../lib/api/auth.api';
 import { useApp } from '../../context/AppContext';
 import { FirmLogo } from '../common/FirmLogo';
+import { runtimeConfig } from '../../config/runtime';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -187,6 +188,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
             </button>
           </form>
 
+          {runtimeConfig.enableDemoMode && <>
           {/* Quick Fill Demo Credentials */}
           <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2.5">
@@ -242,6 +244,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
               </button>
             </div>
           </div>
+          </>}
         </div>
       </div>
     </div>

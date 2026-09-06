@@ -51,6 +51,9 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 3000
       SESSION_COOKIE_SECURE: "true"
+      WEB_ORIGIN: https://${WEB_DOMAIN:-os.kariukikagunda.com}
+      API_PUBLIC_URL: https://${API_DOMAIN:-api.kariukikagunda.com}
+      PUBLIC_BRANDING_FIRM_ID: ${PUBLIC_BRANDING_FIRM_ID}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -77,6 +80,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://redis:6379/0
+      PUBLIC_BRANDING_FIRM_ID: ${PUBLIC_BRANDING_FIRM_ID}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -93,7 +97,8 @@ services:
     depends_on:
       api: { condition: service_healthy }
     environment:
-      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      WEB_DOMAIN: ${WEB_DOMAIN:-os.kariukikagunda.com}
+      API_DOMAIN: ${API_DOMAIN:-api.kariukikagunda.com}
     ports:
       - "80:80"
       - "443:443"

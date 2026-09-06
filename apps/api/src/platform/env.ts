@@ -10,6 +10,7 @@ const EnvSchema = z.object({
   APP_NAME: z.string().default("KKA Lawfirm OS"),
   PUBLIC_BRANDING_FIRM_ID: z.string().optional(),
   APP_URL: z.string().url().default("http://localhost:8080"),
+  API_PUBLIC_URL: z.string().url().default("https://api.kariukikagunda.com"),
   API_HOST: z.string().default("0.0.0.0"),
   API_PORT: z.coerce.number().int().positive().default(3000),
   API_PREFIX: z.string().default("/api/v1"),

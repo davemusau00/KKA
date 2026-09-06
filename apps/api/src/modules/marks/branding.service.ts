@@ -3,6 +3,7 @@ import { validateImage, visibleBranding } from '@kka/document-engine';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { StorageService } from '../../platform/storage/storage.service';
 import { AuditService } from '../../platform/audit/audit.service';
+import { env } from '../../platform/env';
 export const BRANDING_KEY = 'firm.branding.logo';
 
 @Injectable()
@@ -18,7 +19,7 @@ export class BrandingService {
   async metadata(firmId?: string, publicView = false) {
     const version = await this.current(firmId);
     return { source: version ? 'managed' : 'default', versionId: version?.id ?? null, width: version?.widthPx ?? null, height: version?.heightPx ?? null,
-      imageUrl: version ? `/api/v1/${publicView ? 'branding/public' : 'branding'}/image?v=${version.checksumSha256}` : '/firm-logo.png' };
+      imageUrl: version ? `${env().API_PUBLIC_URL}/api/v1/${publicView ? 'branding/public' : 'branding'}/image?v=${version.checksumSha256}` : '/firm-logo.png' };
   }
   async image(firmId?: string) {
     const version = await this.current(firmId);

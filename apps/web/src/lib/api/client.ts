@@ -1,9 +1,10 @@
 import { ApiError, RequestOptions } from './types';
+import { runtimeConfig } from '../../config/runtime';
 
 export class ApiClient {
   private baseUrl: string;
 
-  constructor(baseUrl = '/api/v1') {
+  constructor(baseUrl = runtimeConfig.apiBaseUrl) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
   }
 
