@@ -108,6 +108,13 @@ test('signature uploads reset approval, raw assets stay private, and expired del
   const advocateCookie=await login('documents.advocate@example.test');const elevate=await ok<{elevationToken:string}>('/auth/elevate',{password},'POST',advocateCookie);
   await db.signatureDelegation.create({data:{delegatorProfileId:profile.id,delegateUserId:advocateId,allowedActions:['APPLY'],allowedMatterTypes:[],allowedDocumentTypes:[],startsAt:new Date(Date.now()-20000),endsAt:new Date(Date.now()-10000),reason:'Synthetic expired delegation'}});
   assert.equal((await request('/document-operations/apply',{...data,idempotencyKey:randomUUID(),elevationToken:elevate.elevationToken},'POST',advocateCookie)).status,403);
+  const grant=await ok<{id:string}>('/marks/signature-delegations',{delegatorProfileId:profile.id,delegateUserId:advocateId,allowedActions:['APPLY'],startsAt:new Date(Date.now()-1000).toISOString(),endsAt:new Date(Date.now()+60000).toISOString(),reason:'Synthetic explicit delegation'});
+  const options=await ok<Array<{id:string}>>('/marks/signature-options',undefined,'GET',advocateCookie);assert.ok(options.some(p=>p.id===profile.id));
+  assert.equal((await request(`/marks/signature-versions/${signatureId}/preview`,undefined,'GET',advocateCookie)).status,404);
+  assert.equal((await ok<{status:string}>('/document-operations/apply',{...data,idempotencyKey:randomUUID(),elevationToken:elevate.elevationToken},'POST',advocateCookie)).status,'COMPLETED');
+  await ok(`/marks/signature-delegations/${grant.id}/revoke`,{});
+  assert.equal((await request('/document-operations/apply',{...data,idempotencyKey:randomUUID(),elevationToken:elevate.elevationToken},'POST',advocateCookie)).status,403);
+
 });
 test('simultaneous distinct applications allocate unique document versions',async()=>{
   const results=await Promise.all([ok<{status:string;outputVersionId:string}>('/document-operations/apply',marks()),ok<{status:string;outputVersionId:string}>('/document-operations/apply',marks())]);
@@ -141,4 +148,11 @@ test('Word template generates editable DOCX and PDF with no controlled signature
   const op=await ok<{id:string}>('/document-templates/generate',{documentId:docId,templateVersionId:version.id,idempotencyKey:randomUUID(),inputs:{'input.recipient':'Synthetic Recipient','input.subject':'Synthetic Word Example','input.body':'Demonstration only.'}});
   const finished=await awaitOperation(op.id);assert.ok(finished.outputDocxVersionId);assert.ok(finished.outputVersionId);
   const word=await request(`/documents/versions/${finished.outputDocxVersionId}/download`);assert.equal(word.status,200);
+});
+
+test('simultaneous identical requests create one output version',async()=>{
+  const input=marks();const before=await db.documentVersion.count({where:{documentId:docId}});
+  const results=await Promise.all([ok<{id:string}>('/document-operations/apply',input),ok<{id:string}>('/document-operations/apply',input)]);
+  assert.equal(results[0].id,results[1].id);await awaitOperation(results[0].id);
+  assert.equal(await db.documentVersion.count({where:{documentId:docId}}),before+1);
 });

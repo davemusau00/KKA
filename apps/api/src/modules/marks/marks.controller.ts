@@ -41,6 +41,10 @@ export class MarksController {
 
   @Patch(':id') @RequirePermissions('admin.settings_manage')
   update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) { return this.registry.update(user, id, MarkUpdateSchema.parse(body)); }
+  @Get('signature-options') @RequirePermissions('document.sign')
+  signatureOptions(@CurrentUser() user: RequestUser) { return this.registry.signatureOptions(user); }
+  @Post('signature-delegations/:id/revoke') @RequirePermissions('admin.settings_manage')
+  revokeDelegation(@CurrentUser() user: RequestUser, @Param('id') id: string) { return this.registry.revokeDelegation(user,id); }
   @Get('signature-profiles')
   signatures(@CurrentUser() user: RequestUser) { return this.registry.signatures(user); }
   @Get('versions/:id/preview') @RequirePermissions('document.view')

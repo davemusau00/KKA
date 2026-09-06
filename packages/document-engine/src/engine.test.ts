@@ -29,12 +29,12 @@ test('merge fields are allowlisted, missing values fail, and content is escaped'
 });
 test('private local storage works on Windows and denies traversal',async()=>{
   const root=await fs.mkdtemp(join(tmpdir(),'kka-storage-test-'));const driver=new LocalPrivateStorageDriver(root);
-  const v=await driver.put({namespace:'marks',filename:'test.png',mimeType:'image/png',buffer:Buffer.from('test')});assert.equal((await driver.readBuffer(v.path)).toString(),'test');
+  const v=await driver.put({namespace:'marks',filename:'test.png',mimeType:'image/png',buffer:Buffer.from('test')});assert.equal((await driver.readBuffer(v.path)).toString(),'test');assert.ok(!v.path.includes('\\'));assert.equal((await driver.readBuffer(v.path.replaceAll('/','\\'))).toString(),'test');
   await assert.rejects(driver.readBuffer('../outside'));await driver.delete(v.path);assert.equal(await driver.exists(v.path),false);
 });
 test('Word templates merge values and embed branding without signature assets',async()=>{
   const image=await sharp({create:{width:100,height:50,channels:4,background:'#b9a48c'}}).png().toBuffer();
   const output=mergeDocx(demonstrationDocx(),Object.fromEntries(MERGE_FIELDS.map(k=>[k,'Synthetic example'])),image);
-  const zip=validateDocx(output);assert.ok(zip.file('word/media/kka-branding.png'));assert.ok(!zip.file('word/document.xml')!.asText().includes('{input.body}'));
+  const zip=validateDocx(output);assert.ok(zip.file('word/media/kka-branding.png'));assert.match(zip.file('word/document.xml')!.asText(), /cx="914400" cy="457200"/);assert.ok(!zip.file('word/document.xml')!.asText().includes('{input.body}'));
   assert.throws(()=>mergeDocx(demonstrationDocx(),{},image));
 });

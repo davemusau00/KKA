@@ -39,3 +39,18 @@ for(const width of [360,768,1440])for(const theme of ['light','dark'])test(`bran
   await page.screenshot({path:`../../.artifacts/branding-${width}-${theme}.png`,fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
 });
+
+test('wide transparent branding, favicon refresh, keyboard navigation and failed-image fallback',async({page})=>{
+  const data=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=800;canvas.height=160;const ctx=canvas.getContext('2d')!;ctx.fillStyle='#92652a';ctx.fillRect(0,50,800,60);return canvas.toDataURL().split(',')[1];});
+  const response=await page.request.post('/api/v1/branding/logo',{multipart:{file:{name:'wide.png',mimeType:'image/png',buffer:Buffer.from(data,'base64')}}});expect(response.ok()).toBeTruthy();
+  try {
+    await page.reload();
+    await expect.poll(()=>page.locator('link[rel="icon"]').first().getAttribute('href')).toMatch(/^data:image\/png/);
+    const dashboard=page.getByRole('button',{name:'Open firm dashboard'}).first();await dashboard.focus();await expect(dashboard).toBeFocused();await page.keyboard.press('Enter');
+    await page.getByRole('button',{name:/Admin & Staff/}).first().click();await page.getByRole('button',{name:/Firm Profile/}).click();
+    const logo=page.getByAltText('Current firm logo');await expect.poll(()=>logo.evaluate((img:HTMLImageElement)=>img.naturalWidth/img.naturalHeight)).toBe(5);
+    await page.route('**/branding/image**',route=>route.abort());await page.reload();
+    await page.getByRole('button',{name:/Admin & Staff/}).first().click();await page.getByRole('button',{name:/Firm Profile/}).click();
+    await expect.poll(()=>page.getByAltText('Current firm logo').getAttribute('src')).toContain('firm-logo.png');
+  } finally { await page.request.post('/api/v1/branding/default'); }
+});

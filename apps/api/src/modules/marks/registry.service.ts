@@ -73,6 +73,19 @@ export class RegistryService {
       });
     } catch (e) { await this.storage.deleteMark(stored.path).catch(() => undefined); throw e; }
   }
+  async signatureOptions(user: RequestUser) {
+    const now = new Date();
+    return this.prisma.client.signatureProfile.findMany({where:{user:{firmId:user.firmId},approvalStatus:'APPROVED',OR:[{userId:user.id},{delegationsFrom:{some:{delegateUserId:user.id,revokedAt:null,startsAt:{lte:now},endsAt:{gt:now},allowedActions:{has:'APPLY'}}}}]},select:{id:true,professionalDisplayName:true,approvalStatus:true,versions:{where:{active:true},select:{id:true,version:true,active:true}}}});
+  }
+  async revokeDelegation(user: RequestUser, id: string) {
+    const grant = await this.prisma.client.signatureDelegation.findFirst({where:{id,delegator:{user:{firmId:user.firmId}}}});
+    if (!grant) throw new NotFoundException('Delegation not found');
+    return this.prisma.client.$transaction(async tx=>{
+      const result=await tx.signatureDelegation.update({where:{id},data:{revokedAt:new Date()}});
+      await this.audit.record({firmId:user.firmId,actorUserId:user.id,action:'signature.delegation_revoked',entityType:'signature_delegation',entityId:id},tx);
+      return result;
+    });
+  }
   async signatures(user: RequestUser) {
     return this.prisma.client.signatureProfile.findMany({ where: { user: { firmId: user.firmId }, ...(user.permissions.includes('admin.settings_manage') ? {} : { userId: user.id }) }, include: { versions: { select: { id: true, version: true, active: true, checksumSha256: true, createdAt: true }, orderBy: { version: 'desc' } }, delegationsFrom: true } });
   }

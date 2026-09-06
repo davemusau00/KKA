@@ -12,8 +12,9 @@ interface Payload { templateVersionId: string; values: Record<string,string>; co
 export async function processGeneration(prisma: KkaPrismaClient, id: string) {
   const op = await prisma.documentOperation.findUniqueOrThrow({ where: { id } });
   if (op.status === 'COMPLETED') return { id, status: op.status };
-  const claimed = await prisma.documentOperation.updateMany({ where: { id, status: { in: ['QUEUED','FAILED'] } }, data: { status: 'PROCESSING', attempts: { increment: 1 }, error: null } });
+  const claimed = await prisma.documentOperation.updateMany({ where: { id, OR: [{ status: { in: ['QUEUED','FAILED'] } }, { status: 'PROCESSING', updatedAt: { lt: new Date(Date.now()-5*60*1000) } }] }, data: { status: 'PROCESSING', attempts: { increment: 1 }, error: null } });
   if (!claimed.count) return { id, status: 'PROCESSING' };
+  const attempt = (await prisma.documentOperation.findUniqueOrThrow({where:{id}})).attempts;
   const store = documentStorage(process.env.LOCAL_STORAGE_ROOT || '/srv/kklaw/data/documents');
   const markStore = documentStorage(process.env.MARK_STORAGE_ROOT || '/srv/kklaw/data/marks');
   const cleanup: string[] = [];
@@ -50,13 +51,16 @@ export async function processGeneration(prisma: KkaPrismaClient, id: string) {
     } else pdf = await renderStructured(StructuredTemplateSchema.parse(JSON.parse(template.content || '{}')),payload.values,logo);
     const pdfStored = await store.put({ namespace:'documents', filename:payload.preview?'template-preview.pdf':'generated.pdf',mimeType:'application/pdf',buffer:pdf }); cleanup.push(pdfStored.path);
     if (payload.preview) {
-      await prisma.documentOperation.update({where:{id},data:{status:'COMPLETED',payload:{...payload,previewPath:pdfStored.path} as unknown as Prisma.InputJsonValue}});
+      const saved = await prisma.documentOperation.updateMany({where:{id,status:'PROCESSING',attempts:attempt},data:{status:'COMPLETED',payload:{...payload,previewPath:pdfStored.path} as unknown as Prisma.InputJsonValue}});
+      if (!saved.count) throw new Error('Generation lease was superseded');
       return { id,status:'COMPLETED' };
     }
     const docxStored = docx ? await store.put({ namespace:'documents',filename:'generated.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:docx }) : null;
     if (docxStored) cleanup.push(docxStored.path);
     await prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${doc.id}))`;
+      const owned = await tx.documentOperation.findFirst({where:{id,status:'PROCESSING',attempts:attempt}});
+      if (!owned) throw new Error('Generation lease was superseded');
       const latest = await tx.documentVersion.findFirst({where:{documentId:doc.id},orderBy:{versionNumber:'desc'}});
       let number = latest?.versionNumber ?? 0;
       const create = (s: typeof pdfStored) => tx.documentVersion.create({data:{documentId:doc.id,versionNumber:++number,storageDriver:s.driver,storagePath:s.path,originalFilename:s.originalFilename,mimeType:s.mimeType,fileSizeBytes:BigInt(s.sizeBytes),checksumSha256:s.checksumSha256,uploadedById:op.actorId,status:'DRAFT',changeSummary:`Generated from template version ${template.version}`}});
@@ -70,7 +74,7 @@ export async function processGeneration(prisma: KkaPrismaClient, id: string) {
     return { id,status:'COMPLETED' };
   } catch (e) {
     await Promise.all(cleanup.map(path=>store.delete(path).catch(()=>undefined)));
-    await prisma.documentOperation.update({where:{id},data:{status:'FAILED',error:e instanceof Error?e.message:'Generation failed'}});
+    await prisma.documentOperation.updateMany({where:{id,status:'PROCESSING',attempts:attempt},data:{status:'FAILED',error:e instanceof Error?e.message:'Generation failed'}});
     throw e;
   }
 }

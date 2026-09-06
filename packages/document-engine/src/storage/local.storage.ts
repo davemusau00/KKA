@@ -11,7 +11,7 @@ export class LocalPrivateStorageDriver implements PrivateStorageDriver {
 
   private safePath(relative: string): string {
     const absoluteRoot = resolve(this.root);
-    const absolute = resolve(absoluteRoot, normalize(relative));
+    const absolute = resolve(absoluteRoot, normalize(relative.replace(/\\/g, '/')));
     const rel = relativePath(absoluteRoot, absolute);
     if (rel.startsWith("..") || isAbsolute(rel)) {
       throw new Error("Unsafe storage path");
@@ -29,7 +29,7 @@ export class LocalPrivateStorageDriver implements PrivateStorageDriver {
     const checksumSha256 = createHash("sha256").update(input.buffer).digest("hex");
     return {
       driver: this.name,
-      path: relative,
+      path: relative.replace(/\\/g, '/'),
       sizeBytes: input.buffer.length,
       checksumSha256,
       mimeType: input.mimeType,

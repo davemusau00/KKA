@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { createHash } from 'node:crypto';
 import { Prisma } from '@kka/database';
 import { StructuredTemplateSchema, TemplateConfigurationSchema, GenerateDocumentSchema } from '@kka/contracts';
-import { MERGE_FIELDS, validateDocx, merge, templateHtml } from '@kka/document-engine';
+import { MERGE_FIELDS, validateDocx, mergeDocx, templateHtml } from '@kka/document-engine';
 import { z } from 'zod';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { StorageService } from '../../platform/storage/storage.service';
@@ -21,7 +21,7 @@ export class TemplateWorkflowService {
     let templateId = id;
     if (id && !await this.prisma.client.documentTemplate.findFirst({ where: { id, firmId: user.firmId } })) throw new NotFoundException('Template not found');
     // Catch unsupported placeholders before publication; required values are checked at generation.
-    templateHtml(body.content, Object.fromEntries(MERGE_FIELDS.map(k => [k, 'Example'])));
+    try { templateHtml(body.content, Object.fromEntries(MERGE_FIELDS.map(k => [k, 'Example']))); } catch(e) { throw new BadRequestException(e instanceof Error ? e.message : 'Invalid template'); }
     return this.prisma.client.$transaction(async tx => {
       if (!templateId) templateId = (await tx.documentTemplate.create({ data: { firmId: user.firmId, key: body.key, name: body.name, category: body.category } })).id;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${templateId}))`;
@@ -34,7 +34,7 @@ export class TemplateWorkflowService {
   async upload(user: RequestUser, id: string, source: Buffer, configuration: z.infer<typeof TemplateConfigurationSchema>) {
     const t = await this.prisma.client.documentTemplate.findFirst({ where: { id, firmId: user.firmId } });
     if (!t) throw new NotFoundException('Template not found');
-    try { validateDocx(source); } catch (e) { throw new BadRequestException(e instanceof Error ? e.message : 'Invalid Word template'); }
+    try { mergeDocx(source,Object.fromEntries(MERGE_FIELDS.map(k => [k, 'Example']))); } catch (e) { throw new BadRequestException(e instanceof Error ? e.message : 'Invalid Word template'); }
     const stored = await this.storage.putDocument({ filename: 'template.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: source });
     return this.prisma.client.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${id}))`;
@@ -60,22 +60,33 @@ export class TemplateWorkflowService {
     const matter = await this.prisma.client.matter.findUniqueOrThrow({ where: { id: doc.matterId }, include: { client: true, firm: true, proceedings: true } });
     const values: Record<string,string> = { 'firm.name': matter.firm.name, 'client.name': matter.client.displayName, 'matter.reference': matter.internalReference, 'matter.title': matter.title, 'court.name': matter.proceedings[0]?.courtName ?? '', 'date.today': new Date().toLocaleDateString('en-KE', { timeZone: 'Africa/Nairobi' }), 'signatory.name': user.fullName };
     for (const [k,value] of Object.entries(input.inputs)) { if (!['input.recipient','input.subject','input.body'].includes(k)) throw new BadRequestException('Unsupported input field'); values[k] = value; }
-    if (v.content) templateHtml(StructuredTemplateSchema.parse(JSON.parse(v.content)), values);
+    try {
+      if (v.content) templateHtml(StructuredTemplateSchema.parse(JSON.parse(v.content)), values);
+      else if(v.sourceStoragePath) mergeDocx(await this.storage.readDocument(v.sourceStoragePath), values);
+    } catch(e) { throw new BadRequestException(e instanceof Error ? e.message : 'Required merge values are missing'); }
     const config = TemplateConfigurationSchema.parse((v.mergeSchema as { configuration?: unknown })?.configuration ?? {});
     const logo = config.logo === 'active' ? await this.branding.current(user.firmId) : null;
     const payload = { templateVersionId: v.id, values, configuration: config, logoVersionId: logo?.id ?? null, logoChecksum: logo?.checksumSha256 ?? null, preview };
     const payloadHash = createHash('sha256').update(JSON.stringify({ ...input, preview })).digest('hex');
     const previous = await this.prisma.client.documentOperation.findUnique({ where: { firmId_idempotencyKey: { firmId: user.firmId, idempotencyKey: input.idempotencyKey } } });
-    if (previous) { if (previous.payloadHash !== payloadHash) throw new ConflictException('Request key already used'); return { id: previous.id, status: previous.status }; }
-    const op = await this.prisma.client.documentOperation.create({ data: { firmId: user.firmId, actorId: user.id, documentId: doc.id, kind: 'GENERATE', idempotencyKey: input.idempotencyKey, payloadHash, payload: json(payload) } });
+    if (previous) { if (previous.actorId !== user.id || previous.payloadHash !== payloadHash) throw new ConflictException('Request key already used'); return { id: previous.id, status: previous.status }; }
+    const op = await this.prisma.client.documentOperation.create({ data: { firmId: user.firmId, actorId: user.id, documentId: doc.id, kind: 'GENERATE', idempotencyKey: input.idempotencyKey, payloadHash, payload: json(payload) } }).catch(async e => {
+      if(e?.code !== 'P2002') throw e;
+      const existing = await this.prisma.client.documentOperation.findUniqueOrThrow({where:{firmId_idempotencyKey:{firmId:user.firmId,idempotencyKey:input.idempotencyKey}}});
+      if(existing.actorId!==user.id || existing.payloadHash!==payloadHash) throw new ConflictException('Request key already used');
+      return existing;
+    });
     try { await this.queues.add(QUEUES.documents,'document.generate',{operationId:op.id},{jobId:op.id}); } catch { await this.prisma.client.documentOperation.update({ where: { id: op.id }, data: { status: 'FAILED', error: 'Queue unavailable; retry generation' } }); }
     return { id: op.id, status: (await this.prisma.client.documentOperation.findUniqueOrThrow({ where: { id: op.id } })).status };
   }
   async retry(user: RequestUser, id: string) {
-    const op = await this.prisma.client.documentOperation.findFirst({ where: { id, firmId: user.firmId, actorId: user.id, kind: 'GENERATE', status: 'FAILED' } });
+    const op = await this.prisma.client.documentOperation.findFirst({ where: { id, firmId: user.firmId, actorId: user.id, kind: 'GENERATE', OR:[{status:'FAILED'},{status:{in:['QUEUED','PROCESSING']},updatedAt:{lt:new Date(Date.now()-5*60*1000)}}] } });
     if (!op) throw new NotFoundException('Failed generation not found'); await this.access.document(user,op.documentId);
     await this.prisma.client.documentOperation.update({ where:{id},data:{status:'QUEUED',error:null} });
-    await this.queues.add(QUEUES.documents,'document.generate',{operationId:id},{jobId:`${id}-retry-${Date.now()}`});
+    try { await this.queues.add(QUEUES.documents,'document.generate',{operationId:id},{jobId:`${id}-retry-${Date.now()}`}); } catch {
+      await this.prisma.client.documentOperation.update({where:{id},data:{status:'FAILED',error:'Queue unavailable; retry generation'}});
+      return {id,status:'FAILED'};
+    }
     return { id, status:'QUEUED' };
   }
 }

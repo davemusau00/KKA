@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, relative, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const execute = promisify(execFile);
 export const MERGE_FIELDS = ['firm.name','client.name','matter.reference','matter.title','court.name','date.today','signatory.name','input.recipient','input.subject','input.body'] as const;
@@ -51,7 +51,11 @@ export function mergeDocx(source: Buffer, values: MergeValues, logo?: Buffer) {
   // A dedicated {firm.logo} paragraph is a stable image anchor in Word templates.
   let xml = zip.file('word/document.xml')!.asText();
   if (xml.includes('{firm.logo}')) {
-    const image = logo ? '<w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="914400" cy="914400"/><wp:docPr id="99001" name="Firm logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="99001" name="Firm logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdKkaBranding"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>' : '';
+    const width = logo?.readUInt32BE(16) || 1;
+    const height = logo?.readUInt32BE(20) || 1;
+    const cx = Math.round(914400 * Math.min(1, width / height));
+    const cy = Math.round(914400 * Math.min(1, height / width));
+    const image = logo ? `<w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="99001" name="Firm logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="99001" name="Firm logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdKkaBranding"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>` : '';
     let found = false;
     xml = xml.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g, paragraph => {
       if (!paragraph.includes('{firm.logo}')) return paragraph;
@@ -80,5 +84,9 @@ export async function convertDocx(source: Buffer) {
     const path = join(directory,'document.docx'); await fs.writeFile(path,source);
     await execute(process.env.LIBREOFFICE_PATH || 'soffice', [`-env:UserInstallation=${pathToFileURL(join(directory,'profile')).href}`,'--headless','--convert-to','pdf:writer_pdf_Export','--outdir',directory,path], { timeout: 90000, maxBuffer: 1024 * 1024, windowsHide: true });
     return await fs.readFile(join(directory,'document.pdf'));
-  } finally { await fs.rm(directory,{recursive:true,force:true}); }
+  } finally {
+    const child = relative(resolve(tmpdir()), resolve(directory));
+    if (!child || child.startsWith('..') || isAbsolute(child)) throw new Error('Invalid converter cleanup path');
+    await fs.rm(directory,{recursive:true,force:true});
+  }
 }
