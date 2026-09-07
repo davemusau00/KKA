@@ -30,6 +30,7 @@ export class ApiError extends Error {
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean | undefined | null>;
   elevationToken?: string;
+  responseType?: 'json' | 'blob';
 }
 
 export interface HealthStatusResponse {

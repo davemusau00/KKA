@@ -6,7 +6,7 @@ import { AuthService } from "./auth.service";
 import { CurrentUser, Public } from "../../platform/auth/decorators";
 import type { AuthenticatedRequest, RequestUser } from "../../platform/auth/auth.types";
 import { env } from "../../platform/env";
-import { randomBytes } from "node:crypto";
+import { issueCsrf } from '../../platform/auth/csrf';
 
 @Controller("auth")
 export class AuthController {
@@ -14,16 +14,8 @@ export class AuthController {
 
   @Public()
   @Get("csrf")
-  csrf(@Res({ passthrough: true }) reply: FastifyReply) {
-    const token = randomBytes(32).toString("base64url");
-    reply.setCookie(env().CSRF_COOKIE_NAME, token, {
-      httpOnly: false,
-      secure: env().SESSION_COOKIE_SECURE,
-      sameSite: env().SESSION_COOKIE_SAME_SITE,
-      path: "/",
-      maxAge: 3600
-    });
-    return { token };
+  csrf(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    return issueCsrf(request, reply, env());
   }
 
   @Public()
@@ -35,7 +27,6 @@ export class AuthController {
       httpOnly: true,
       secure: env().SESSION_COOKIE_SECURE,
       sameSite: env().SESSION_COOKIE_SAME_SITE,
-      domain: env().SESSION_COOKIE_DOMAIN || undefined,
       path: "/",
       maxAge: env().SESSION_TTL_SECONDS
     });

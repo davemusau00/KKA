@@ -4,6 +4,8 @@ import { runtimeConfig } from '../../config/runtime';
 export class ApiClient {
   private baseUrl: string;
   private csrfToken: string | undefined;
+  private csrfExpiresAt = 0;
+  private csrfRequest: Promise<string> | undefined;
 
   constructor(baseUrl = runtimeConfig.apiBaseUrl) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
@@ -11,16 +13,23 @@ export class ApiClient {
 
   public setBaseUrl(url: string) {
     this.baseUrl = url.replace(/\/+$/, '');
+    this.csrfToken = undefined;
+    this.csrfExpiresAt = 0;
   }
 
   private async ensureCsrf() {
-    if (this.csrfToken) return this.csrfToken;
-    const response = await fetch(this.buildUrl('/auth/csrf'), { credentials: 'include', headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new ApiError(response.status, 'Could not establish a secure session');
-    const body = await response.json() as { token?: string };
-    if (!body.token) throw new ApiError(500, 'Secure session token was not returned');
-    this.csrfToken = body.token;
-    return body.token;
+    if (this.csrfToken && Date.now() < this.csrfExpiresAt - 5000) return this.csrfToken;
+    if (this.csrfRequest) return this.csrfRequest;
+    this.csrfRequest = (async () => {
+      const response = await fetch(this.buildUrl('/auth/csrf'), { credentials: 'include', cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new ApiError(response.status, 'Could not establish a secure session');
+      const body = await response.json() as { token?: string; expiresAt?: number };
+      if (!body.token) throw new ApiError(500, 'Secure session token was not returned');
+      this.csrfToken = body.token;
+      this.csrfExpiresAt = body.expiresAt ?? Date.now() + 300000;
+      return body.token;
+    })();
+    try { return await this.csrfRequest; } finally { this.csrfRequest = undefined; }
   }
 
   private buildUrl(path: string, params?: RequestOptions['params']): string {
@@ -51,7 +60,7 @@ export class ApiClient {
         if (isJson) {
           const json = await res.json();
           errorMessage = json.message || json.error || errorMessage;
-          errorCode = json.statusCode?.toString() || json.code;
+          errorCode = json.code || json.statusCode?.toString();
           errorDetails = json.details || json.errors;
         } else {
           const text = await res.text();
@@ -81,7 +90,7 @@ export class ApiClient {
     body?: unknown,
     options: RequestOptions = {}
   ): Promise<T> {
-    const { params, headers = {}, elevationToken, ...customConfig } = options;
+    const { params, headers = {}, elevationToken, responseType, ...customConfig } = options;
     const url = this.buildUrl(path, params);
 
     const reqHeaders: Record<string, string> = {
@@ -115,7 +124,14 @@ export class ApiClient {
     }
 
     try {
-      const res = await fetch(url, init);
+      let res = await fetch(url, init);
+      if (res.status === 403 && (await res.clone().json().catch(() => ({}))).code === 'CSRF_INVALID') {
+        // Only this pre-handler denial is safe to retry automatically.
+        this.csrfToken = undefined;
+        reqHeaders['X-CSRF-Token'] = await this.ensureCsrf();
+        res = await fetch(url, init);
+      }
+      if (res.ok && responseType === 'blob') return await res.blob() as T;
       return await this.handleResponse<T>(res);
     } catch (err) {
       if (ApiError.isApiError(err)) throw err;

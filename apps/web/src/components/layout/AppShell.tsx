@@ -86,6 +86,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
 
   if (!runtimeConfig.enableDemoMode && !isAuthenticatedLive) {
     return (
@@ -388,8 +389,9 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                       </div>
                       <button
                         onClick={async () => {
-                          await logoutWithBackend();
-                          setIsUserDropdownOpen(false);
+                          setLogoutError('');
+                          try { await logoutWithBackend(); setIsUserDropdownOpen(false); }
+                          catch { setLogoutError('Sign out failed. Reconnect and try again.'); }
                         }}
                         className="text-[11px] text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-medium"
                       >
@@ -409,7 +411,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                   )}
                 </div>
 
-                <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
+                {logoutError && <p role="alert" className="p-3 text-rose-600">{logoutError}</p>}
+                {runtimeConfig.enableDemoMode && <><div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
                   <div className="font-semibold text-slate-900 dark:text-slate-200">Test Role Personas</div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">Switch user context to verify RBAC &amp; workflows</div>
                 </div>
@@ -444,7 +447,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                       )}
                     </button>
                   ))}
-                </div>
+                </div></>}
               </div>
             )}
           </div>

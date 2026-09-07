@@ -449,6 +449,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isAuthenticatedLive, setIsAuthenticatedLive] = useState(false);
+  const [serverPermissions, setServerPermissions] = useState<string[]>([]);
 
   // Network & Sync State
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -944,7 +945,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (isMounted && meRes.status === 'fulfilled' && meRes.value?.id) {
           setIsAuthenticatedLive(true);
           const u = meRes.value;
-          const matched = users.find((x) => x.email.toLowerCase() === u.email.toLowerCase());
+          setServerPermissions(u.permissions);
+          const matched = runtimeConfig.enableDemoMode && users.find((x) => x.email.toLowerCase() === u.email.toLowerCase());
           if (matched) {
             setCurrentUser(matched);
           } else {
@@ -1022,7 +1024,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (res?.user) {
         setIsAuthenticatedLive(true);
         const u = res.user;
-        const matched = users.find((x) => x.email.toLowerCase() === u.email.toLowerCase());
+        setServerPermissions(u.permissions);
+        const matched = runtimeConfig.enableDemoMode && users.find((x) => x.email.toLowerCase() === u.email.toLowerCase());
         if (matched) {
           setCurrentUser(matched);
         } else {
@@ -1046,13 +1049,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   );
 
   const logoutWithBackend = useCallback(async () => {
-    try {
-      await authApi.logout();
-      window.dispatchEvent(new Event('kka:auth-changed'));
-    } catch (err) {
-      console.warn('Backend logout error or offline:', err);
-    }
+    await authApi.logout();
+    setServerPermissions([]);
+    setCurrentUser(EMPTY_USER);
     setIsAuthenticatedLive(false);
+    // Discard all in-memory business records before another user signs in.
+    window.location.reload();
   }, []);
 
   // Directory Contact Handlers (Live API + Optimistic Local State)
@@ -3239,19 +3241,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const hasUserPermission = useCallback(
     (permission: PermissionKey): boolean => {
-      return hasPermission(currentUser, permission, rolePermissionsMap);
+      return runtimeConfig.enableDemoMode ? hasPermission(currentUser, permission, rolePermissionsMap) : isAuthenticatedLive && serverPermissions.includes(permission);
     },
-    [currentUser, rolePermissionsMap]
+    [currentUser, rolePermissionsMap, serverPermissions, isAuthenticatedLive]
   );
 
   const hasUserAnyPermission = useCallback(
     (permissions: PermissionKey[]): boolean => {
-      return hasAnyPermission(currentUser, permissions, rolePermissionsMap);
+      return permissions.some(permission => hasUserPermission(permission));
     },
-    [currentUser, rolePermissionsMap]
+    [hasUserPermission]
   );
 
-  const effectivePermissions = getEffectivePermissions(currentUser, rolePermissionsMap);
+  const effectivePermissions = runtimeConfig.enableDemoMode ? getEffectivePermissions(currentUser, rolePermissionsMap) : new Set(serverPermissions as PermissionKey[]);
 
   // Stage Handoff Acknowledgment
   const acknowledgeHandoff = useCallback((handoffId: string) => {
@@ -3874,7 +3876,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         selectedMatterTab,
         setSelectedMatterTab,
         currentUser,
-        setCurrentUser,
+        setCurrentUser: (user) => { if (runtimeConfig.enableDemoMode) setCurrentUser(user); },
         currentBranchFilter,
         setCurrentBranchFilter,
         isOnline,

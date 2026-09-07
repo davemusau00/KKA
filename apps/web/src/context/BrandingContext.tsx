@@ -14,7 +14,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => { void refresh(); window.addEventListener('focus', refresh); window.addEventListener('kka:auth-changed', refresh); return () => { window.removeEventListener('focus', refresh); window.removeEventListener('kka:auth-changed', refresh); }; }, [refresh]);
   useEffect(() => {
-    let active=true; const img=new Image();
+    let active=true; const img=new Image(); img.crossOrigin='use-credentials';
     img.onload=()=>{
       if(!active)return;
       const canvas=document.createElement('canvas');canvas.width=180;canvas.height=180;const ctx=canvas.getContext('2d')!;

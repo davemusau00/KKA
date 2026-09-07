@@ -5,12 +5,12 @@ const boolish = z.preprocess(
   z.boolean()
 );
 
-const EnvSchema = z.object({
+export const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_NAME: z.string().default("KKA Lawfirm OS"),
   PUBLIC_BRANDING_FIRM_ID: z.string().optional(),
   APP_URL: z.string().url().default("http://localhost:8080"),
-  API_PUBLIC_URL: z.string().url().default("https://api.kariukikagunda.com"),
+  API_PUBLIC_URL: z.string().url().default("http://localhost:3015"),
   API_HOST: z.string().default("0.0.0.0"),
   API_PORT: z.coerce.number().int().positive().default(3000),
   API_PREFIX: z.string().default("/api/v1"),
@@ -44,6 +44,22 @@ const EnvSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_WINDOW: z.string().default("1 minute"),
   LOG_LEVEL: z.string().default("info")
+}).superRefine((config, ctx) => {
+  const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+  const origins = config.WEB_ORIGIN.split(',').map(value => value.trim());
+  for (const origin of origins) {
+    try { if (new URL(origin).origin !== origin) issue('WEB_ORIGIN', 'Use exact origins without paths or trailing slashes'); }
+    catch { issue('WEB_ORIGIN', 'Each frontend origin must be a valid URL'); }
+  }
+  if (config.NODE_ENV !== 'production') return;
+  if (!config.SESSION_COOKIE_SECURE) issue('SESSION_COOKIE_SECURE', 'Production session cookies require HTTPS');
+  if (config.SESSION_COOKIE_DOMAIN) issue('SESSION_COOKIE_DOMAIN', 'Session cookies must be host-only; leave Domain unset');
+  if (!config.CSRF_ENABLED) issue('CSRF_ENABLED', 'CSRF protection is required in production');
+  if (!config.PUBLIC_BRANDING_FIRM_ID) issue('PUBLIC_BRANDING_FIRM_ID', 'Explicit production firm is required');
+  if (!config.API_PUBLIC_URL.startsWith('https://')) issue('API_PUBLIC_URL', 'Production API URL must use HTTPS');
+  if (origins.some(origin => !origin.startsWith('https://'))) issue('WEB_ORIGIN', 'Production frontend origins must use HTTPS');
+  const key = Buffer.from(config.APP_ENCRYPTION_KEY_BASE64, 'base64');
+  if (key.length !== 32 || new Set(key).size < 8) issue('APP_ENCRYPTION_KEY_BASE64', 'Provide a random 32-byte encryption key');
 });
 
 export type AppEnv = z.infer<typeof EnvSchema>;

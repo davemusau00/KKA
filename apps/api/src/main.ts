@@ -10,7 +10,7 @@ import { AppModule } from "./app.module";
 import { env } from "./platform/env";
 import { assignRequestId } from "./platform/request-context/request-id.hook";
 import { ZodExceptionFilter } from "./platform/http/zod-exception.filter";
-import { ForbiddenException } from "@nestjs/common";
+import { csrfHook } from './platform/auth/csrf';
 
 async function bootstrap() {
   const cfg = env();
@@ -29,7 +29,8 @@ async function bootstrap() {
     limits: { fileSize: cfg.MAX_UPLOAD_BYTES, files: 1 }
   });
   await app.register(fastifyHelmet as any, {
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-site' }
   });
   await app.register(fastifyRateLimit as any, {
     max: cfg.RATE_LIMIT_MAX,
@@ -37,16 +38,7 @@ async function bootstrap() {
   });
 
   app.getHttpAdapter().getInstance().addHook('onRequest', async request => { assignRequestId(request); });
-  app.getHttpAdapter().getInstance().addHook('onRequest', async request => {
-    if (!cfg.CSRF_ENABLED || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
-    const pathname = request.url.split('?')[0] ?? '';
-    if (pathname.endsWith('/auth/login') || pathname.endsWith('/auth/accept-invite') || pathname.endsWith('/auth/csrf')) return;
-    const cookie = (request as { cookies?: Record<string, string> }).cookies?.[cfg.CSRF_COOKIE_NAME];
-    const header = request.headers['x-csrf-token'];
-    if (!cookie || typeof header !== 'string' || cookie !== header) {
-      throw new ForbiddenException('CSRF validation failed');
-    }
-  });
+  app.getHttpAdapter().getInstance().addHook('onRequest', csrfHook(cfg));
   // Prisma file sizes are bigint; JSON transports them as decimal strings.
   app.getHttpAdapter().getInstance().addHook('preSerialization', async (_request: unknown, _reply: unknown, payload: unknown) =>
     JSON.parse(JSON.stringify(payload, (_key, value: unknown) => typeof value === 'bigint' ? value.toString() : value)) as unknown);

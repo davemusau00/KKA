@@ -6,7 +6,7 @@ export function BrandImage({ src, alt, className = '' }: { src: string; alt: str
   const url=failed===src?'/firm-logo.png':src;
   return <span className={`inline-flex items-center justify-center rounded-lg ${className}`} style={{backgroundColor:dark?'#142333':'#ffffff'}}>
     <svg width="0" height="0" aria-hidden="true" className="absolute"><filter id={filterId} colorInterpolationFilters="sRGB"><feComponentTransfer><feFuncA type="linear" slope={gain} /></feComponentTransfer></filter></svg>
-    <img src={url} alt={alt} className="w-full h-full object-contain" style={{filter:gain>1?`url(#${filterId})`:undefined}} onError={()=>setFailed(src)} onLoad={e=>{
+    <img crossOrigin="use-credentials" src={url} alt={alt} className="w-full h-full object-contain" style={{filter:gain>1?`url(#${filterId})`:undefined}} onError={()=>setFailed(src)} onLoad={e=>{
       try {
         const canvas=document.createElement('canvas');canvas.width=32;canvas.height=32;
         const ctx=canvas.getContext('2d')!;ctx.drawImage(e.currentTarget,0,0,32,32);const pixels=ctx.getImageData(0,0,32,32).data;
