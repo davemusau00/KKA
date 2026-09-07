@@ -1,141 +1,57 @@
-# Project State & Implementation Reality
+# Project state and release evidence
 
-**Current Date**: 2026-09-07
-**Repository**: `davemusau00/KKA`  
-**Target Product**: Kariuki Kagunda & Co. Advocates Enterprise Law-Firm OS  
+Updated 2026-09-07. Repository: `davemusau00/KKA`.
 
----
+## Product and launch authority
 
-## Current branding and document milestone
+The full operating product and its launch gates are defined in [PRODUCTION_CONVERSION.md](PRODUCTION_CONVERSION.md). Staff launch occurs after all agreed phases pass. Frontend: `https://os.kariukikagunda.com`. API: `https://api.kariukikagunda.com/api/v1`. Business writes are online and server-confirmed; offline synchronization and multi-node high availability are deferred.
 
-Managed branding, mark/signature management, controlled PDF application, and queued structured/DOCX generation now have persistent workflows. See [the implementation and verification record](DOCUMENT_WORKFLOWS.md) for exact coverage, commands, evidence and deployment limits. This scoped record supersedes older broad validation claims below; the earlier frontend baseline actually had 13 TypeScript errors, which were repaired. The web package now has an explicit typecheck script.
+This record supersedes the historical tier checklist. Backend module existence, a rendered screen, compilation and empty test runners do not establish a completed workflow. Branch names, deadlines, retention and accounting defaults in synthetic fixtures require firm approval.
 
-The product is now being converted from prototype to production under the [production conversion register](PRODUCTION_CONVERSION.md). The confirmed domains are `https://os.kariukikagunda.com` and `https://api.kariukikagunda.com/api/v1`. The broad OS inventory below remains a roadmap until each vertical slice has server persistence, authorization, audit, tests and documented evidence.
+## Implemented increments and evidence
 
-The production boundary has started: demo persona/reset controls are gated behind `VITE_ENABLE_DEMO_MODE`, unauthenticated production renders only the sign-in surface, browser seed records are cleared in production, business local-storage persistence is disabled outside demo mode, and API/file URLs use the explicit API host. Caddy now serves the web and API domains separately. This is foundation work; remaining domain mutations still require migration from the legacy context.
+| Increment | Implemented behavior | Evidence and limits |
+|---|---|---|
+| Branding/documents | Persistent logo management, private marks/signatures, controlled PDF application, immutable drafts, approvals, queued DOCX/structured generation | [DOCUMENT_WORKFLOWS.md](DOCUMENT_WORKFLOWS.md). Earlier run: 11 API/worker, 9 browser and 6 engine tests; packaged converters and blank/upgrade migrations. |
+| Clean bootstrap | Explicit firm/branch/admin inputs; atomic creation; concurrent request serialization; demo database refusal; no credential/policy reset on repeat | One test passed on fresh migrated `kka_bootstrap_foundation_0907`, including concurrency, empty business tables and one audit record. No new schema. |
+| Browser/API boundary | Signed expiring CSRF tokens on login/invites and writes, exact-origin checks, credentialed images/favicon, common-client PDF preview, host-only cookies and production startup validation | Three foundation tests passed. Full separate-origin regression is tracked below. |
+| Permissions/session UI | Server permissions drive production navigation; persona switching disabled; logout failures visible; successful logout clears in-memory state; inactive/cross-firm roles excluded | Role-context test passed; browser acceptance added. Full record-access policy audit remains open. |
+| Organization profile | First TanStack Query domain hook; existing firm/entity/branch data replaces hard-coded profile; audited conditional writes and explicit record selection | Two additional API tests passed for concurrent/stale edits, permissions, cross-firm targets, validation, inactive entities and second-user reads. Browser save/reload, failure and stale-edit acceptance passed. No new schema. |
+| Repeatable acceptance | Lockfile install, builds/typechecks, non-empty tests, bootstrap, blank/repeat/upgrade migrations, real converters and separate-origin browser/API tests | [CI workflow](../.github/workflows/predeployment.yml) added; remote CI execution remains unverified. |
 
-The following sections retain the earlier OS integration inventory and are not evidence that the wider OS is complete.
+See [PREDEPLOYMENT_FOUNDATION.md](PREDEPLOYMENT_FOUNDATION.md) for commands and implementation details. Local evidence is in ignored `.artifacts/`.
 
-## 1. Architectural Reality & Current Baseline
+## Current verification run
 
-The repository has transitioned from an isolated frontend prototype into a **unified TypeScript monorepo** with a production-grade NestJS backend, Prisma 7 database engine, BullMQ background worker, and an interactive React frontend:
+- Foundation HTTP/configuration/role tests: **3 passed**.
+- Clean bootstrap integration: **1 passed**.
+- Separate-origin API/worker regression with CSRF enabled: **13 passed**, none skipped (`organization-acceptance.log`).
+- Engine regression: **6 passed**, none skipped (`foundation-engine-tests.log`).
+- Separate-origin browser regression: **12 passed**, none skipped (`organization-final-browser.log`), including 360/768/1440 light/dark layouts and keyboard controls. Updated screenshots inspected at all three widths.
+- Full typecheck: **passed** (`organization-final-typecheck.log`). Installing missing React declarations exposed additional legacy field/type mismatches; these were corrected, and the web check now passes with the declarations present.
+- Full build and browser-test typecheck: **passed** (`organization-final-build.log`, `organization-final-browser-typecheck.log`). The frontend retains a large-bundle warning; route-based code splitting remains part of the routing conversion.
+- Caddy two-host configuration: **valid**, checked with the packaged Caddy 2.10 image. This does not test live DNS or certificates.
+- Schema changes: **none**. All three committed migrations deployed to the fresh bootstrap database.
+- The web lint command is currently TypeScript checking; no independent repository lint suite is claimed.
 
-- **Topology**: `pnpm` monorepo with 6 application/shared workspace projects:
-  - `@kka/web` (`apps/web`): React 19 + Vite 6 + Tailwind CSS SPA
-  - `@kka/api` (`apps/api`): NestJS 11 + Fastify REST & Realtime API Engine
-  - `@kka/worker` (`apps/worker`): BullMQ asynchronous job execution daemon
-  - `@kka/contracts` (`packages/contracts`): Shared Zod validation schemas and DTOs
-  - `@kka/document-engine` (`packages/document-engine`): Shared private storage, image/PDF rendering, template conversion and generation.
-  - `@kka/database` (`packages/database`): Prisma 7.10.0 database client and repositories
-- **Validation Gates**:
-  - `pnpm prisma:validate`: Verified clean (`prisma/schema.prisma` is valid).
-  - `pnpm typecheck`: Monorepo-wide zero errors across all 6 checked workspace projects.
-  - Test acceptance: 11 API/worker workflow tests, 9 Playwright browser tests and the non-empty document-engine suite pass against the local production-shaped stack. An empty runner is not acceptance evidence.
-  - `pnpm -r build`: All packages compile production artifacts cleanly (Vite bundle in `apps/web/dist`, compiled JS/d.ts in `packages/*/dist` and `apps/*/dist`).
-- **Engine Compatibility**: Node.js `>=24 <25 || >=26 <27` with `pnpm@10.15.1`. Tested on Node `v26.5.0`.
-- **Docker Readiness**: Updated Dockerfiles for `@kka/api` and `@kka/worker` using multi-stage builds from `node:26-bookworm-slim AS deps`, explicit `pnpm@10.15.1`, and no deprecated corepack.
+## Remaining predeployment work
 
----
+| Phase | Required before acceptance |
+|---|---|
+| 0 | Exhaustive per-action capability register, server-controlled module flags, removal of remaining synthetic business state, verified CI/clean install. |
+| 1 | Remaining domains on TanStack Query; Router and stable detail URLs; account recovery/MFA/session administration; complete organization/settings administration; shared record-access policies. |
+| 2 | Server-confirmed conflict/KYC/consent/engagement, matter lifecycle/gates, assignments/timeline and reviewed imports. |
+| 3 | Tasks/deadlines/calendar propagation, filing/service evidence, hearings/outcomes, PI lifecycle through closure and document integration. |
+| 4 | Communications, delivery states, providers/manual alternatives, authorized attachments, reminders and safe retries. |
+| 5 | Client/office ledgers, allocations/reversals, reconciliation, fees/WIP, settlements, locks and financial reports. |
+| 6 | HR/leave, procurement/vendors/custody, meetings/knowledge and explicit external grants with cross-client denial tests. |
+| 7 | OIDC, OCR/search, reporting/exports, versioned automation, API clients/webhooks, retention/holds and cryptographic signing. |
+| 8 | Staging provider isolation, identified release artifact, imports, cross-role acceptance, outage/performance tests, monitoring and measured off-site restore. |
 
-## 2. Frontend-to-Backend Progressive Integration Status
+`AppContext.tsx` still contains local business mutations and seed imports. Disabling persistence does not make those workflows server-confirmed. Those domains remain incomplete and unsuitable for routine staff launch.
 
-The integration is in transition: existing domain slices inside `AppContext.tsx` dispatch typed requests to the live backend API via `apps/web/src/lib/api/client.ts`, while the remaining legacy collections are being moved to domain-specific server queries. Production mode disables business local-storage persistence and seed/reset controls; demo fixtures are development-only.
+The legacy matter filing/service editors now use the declared field names and empty initial records. Fabricated receipt/case generation was removed; their local save controls are disabled outside explicit development demo mode, with an explanation. This is prototype removal, not completion of filing/service evidence workflows.
 
-```text
-[Tier 0: Transport & Proxy] ──► [Tier 1: Lookups & Catalogs] ──► [Tier 2: Auth, Search & Config] ──► [Tier 3: Clients, Tasks & Intake]
-          ✅ COMPLETED                         ✅ COMPLETED                         ✅ COMPLETED                         ✅ COMPLETED
-                                                                                                                           │
-[Tier 7: Matter Spine & PI] ◄── [Tier 6: Documents & Stamps] ◄── [Tier 5: Comms & Realtime] ◄── [Tier 4: Calendar, Court & Approvals]
-          ⏳ ROADMAP                          ⏳ ROADMAP                          ⏳ ROADMAP                          🔷 NEXT UP
-```
+## Deployment-dependent gates
 
-### Detailed Tier Progress
-
-- [x] **Tier 0: Transport, Proxy & Client Foundation**
-  - Configured Vite dev proxy in `apps/web/vite.config.ts` forwarding `/api/v1` and `/socket.io` to the local API (`3015`); production uses `https://api.kariukikagunda.com/api/v1`.
-  - Built typed HTTP client with credentials and error normalization in `apps/web/src/lib/api/client.ts`.
-  - Embedded live `ConnectionStatusBadge.tsx` in `AppShell.tsx` pinging `/health/live`.
-
-- [x] **Tier 1: Read-Only Catalogs & Independent Lookups**
-  - Health diagnostics wired to `/health/live`.
-  - Third-party directory wired to `directoryApi.list` (`/directory`).
-  - Branch directory wired to `organizationApi.listBranches` (`/organization/branches`).
-  - Staff profiles and role lookups wired to `usersApi.list` (`/users`).
-  - Realtime notifications wired to `notificationsApi.list` (`/notifications`).
-
-- [x] **Tier 2: Basic CRUD, Authentication & Admin Configuration**
-  - Real credentials login modal (`LoginModal.tsx`) with the development persona panel gated behind `VITE_ENABLE_DEMO_MODE`; production uses server-confirmed sessions and RBAC.
-  - Automatic session hydration on boot via `authApi.me()`, `loginWithBackend`, and `logoutWithBackend`.
-  - Global command search (`GlobalSearchModal.tsx`) debounced against `searchApi.query` (`/search`).
-  - Settings studio sync for firm profile and numbering rules via `settingsApi.set` (`/settings`).
-  - Truthful integration test runner in `IntegrationsWorkspace.tsx` wired to `integrationsApi.test`.
-
-- [x] **Tier 3: Core Operational Workspaces (Clients, Tasks, Intake)**
-  - Client management (`createClient`, `updateClient`) hooked to `clientsApi.create` and `clientsApi.update` (`/clients`).
-  - Task board & status mutations (`createTask`, `updateTask`, `completeTask`) hooked to `tasksApi.create` and `tasksApi.setStatus` (`/tasks`).
-  - Client intake lead capture & conversion hooked to `intakeApi.create` and `intakeApi.convertToMatter` (`/intake`).
-  - Catalog hydration in `AppContext.tsx` includes initial client and task datasets.
-
-- [ ] **Tier 4: Calendar, Court Operations & Approvals** *(Next Immediate Priority)*
-  - Temporal Command Centre events and rescheduling policies (`/calendar`).
-  - Court Diary, CTS filing queues, and process service tracking (`/court`).
-  - Multi-tier financial and leave approvals (`/approvals`).
-
-- [ ] **Tier 5: Communications & Real-Time Events**
-  - Internal and client communication threads (`/communications`).
-  - Outbound SMS/WhatsApp queue with delivery tracking.
-  - Socket.IO gateway connection for live entity updates.
-
-- [ ] **Tier 6: Documents & Digital Seals**
-  - VPS private storage driver integration (`/documents`).
-  - Version history and immutable checksum verification.
-  - Official firm stamp, commissioner for oaths seal, and advocate execution blocks.
-
-- [ ] **Tier 7: Matter Spine & 16-Stage Personal Injury Engine**
-  - Authoritative server-side matter lifecycle and stage-gate progression (`/matters`).
-  - Personal injury sub-workflows (police abstract, medical assessment, insurer negotiation, judgment).
-
-- [ ] **Tier 8: Ledger-Grade Finance**
-  - Double-entry client trust fund accounting distinct from office operational accounts (`/finance`).
-  - Fee notes, disbursements, VAT computation, and statement reconciliation.
-
-- [ ] **Tier 9: Offline PWA & Teardown**
-  - Background outbox replay via IndexedDB.
-  - Full retirement of mock localStorage state.
-
----
-
-## 3. Confirmed Business & Operational Facts
-
-- **Firm**: Kariuki Kagunda & Co. Advocates
-- **Offices**: Nairobi HQ and Nakuru Branch
-- **Practice Focus**: High-volume personal injury litigation, motor vehicle accidents, general litigation, conveyancing, and commercial advisory.
-- **Roles**: Senior Partners, Managing Partner, Senior Advocates, Associate Advocates, Legal Clerks, Paralegals, Finance Officer, Receptionist/Intake Clerk, Systems Administrator.
-- **Integrations Doctrine**: Truthful adapters only — no simulated success for Judiciary CTS, M-Pesa Daraja, or communications APIs.
-- **Execution Invariant**: Firm stamps and seals produce new, immutable document versions with verifiable audit trails.
-
----
-
-## 4. Current Build State Checklist
-
-- [x] Monorepo scaffold & package boundaries
-- [x] NestJS API application with 32 domain modules
-- [x] BullMQ worker application
-- [x] Shared contracts package (`@kka/contracts`)
-- [x] Database package with Prisma 7 (`@kka/database`)
-- [x] Authentication & session cookie transport (`/auth`)
-- [x] Organization & branch management (`/organization`)
-- [x] Staff directory & role permissions (`/users`)
-- [x] Third-party directory contacts (`/directory`)
-- [x] Client management API & frontend sync (`/clients`)
-- [x] Task & deadline engine API & frontend sync (`/tasks`)
-- [x] Intake lead capture & conversion API & frontend sync (`/intake`)
-- [x] Admin configuration & settings persistence (`/settings`)
-- [x] Diagnostic integration tester (`/integrations`)
-- [ ] Calendar API integration (Frontend prototype active; API integration next)
-- [ ] Court operations API integration (Frontend prototype active; API integration next)
-- [ ] Approvals workflow API integration (Frontend prototype active; API integration next)
-- [x] Document storage, versioning, branding, controlled marks and queued template generation API integration (see `DOCUMENT_WORKFLOWS.md`)
-- [ ] Realtime Socket.IO notification gateway
-- [ ] Finance ledger & trust accounting API integration
-- [ ] Full offline PWA IndexedDB outbox replay
+Separate staging/production provisioning, real-domain DNS/TLS/cookies/CORS/WebSockets/files, approved imports and firm policy, accountable staff acceptance, and replacement-VPS restoration remain open. Demonstrate at most one hour of data loss and restoration within four hours. Local tests do not establish these operational results.

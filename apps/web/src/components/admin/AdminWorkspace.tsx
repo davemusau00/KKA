@@ -213,7 +213,7 @@ export const AdminWorkspace: React.FC = () => {
             System Administration, RBAC &amp; Statutory Configuration
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Active Persona: <span className="text-amber-400 font-medium">{currentUser.fullName}</span> ({currentUser.jobTitle})
+            Signed in: <span className="text-amber-400 font-medium">{currentUser.fullName}</span> ({currentUser.jobTitle})
           </p>
         </div>
 

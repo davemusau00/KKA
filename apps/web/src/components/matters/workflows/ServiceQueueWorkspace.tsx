@@ -12,6 +12,7 @@ import {
   FileCheck,
   Calendar,
 } from 'lucide-react';
+import { runtimeConfig } from '../../../config/runtime';
 import { useApp } from '../../../context/AppContext';
 import { ServiceQueueItem, Matter } from '../../../types';
 
@@ -28,22 +29,17 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
     existingItem || {
       id: `sq-${matter.id}`,
       matterId: matter.id,
-      documentType: 'Summons to Enter Appearance & Plaint Bundle',
-      targetPartyName: 'Swift Shuttle SACCO Limited & Directline Assurance Ltd',
-      targetAddress: 'Directline Towers, Harambee Avenue, Nairobi',
-      processServerUserId: 'Harrison Mutiso (Licensed Process Server PS/291)',
-      deadlineDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-      attempts: [
-        {
-          attemptNo: 1,
-          date: matter.openedAt.slice(0, 10),
-          outcome: 'Served Company Secretary',
-          notes: 'Received and stamped by Legal Department, Directline Assurance.',
-        },
-      ],
-      servedDate: matter.openedAt.slice(0, 10),
-      status: 'filed',
-      ctsFilingRef: 'CTS-SRV-2026-081',
+      matterRef: matter.internalReference,
+      documentTitle: '',
+      partyToServe: '',
+      partyAddress: '',
+      processServerName: '',
+      assignedDate: '',
+      dueDate: '',
+      attempts: [],
+      serviceMethod: 'Personal Service',
+      affidavitOfServiceStatus: 'awaited',
+      status: 'requested',
     }
   );
 
@@ -56,6 +52,7 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
   });
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     if (existingItem) {
       updateServiceQueueItem(localItem.id, localItem);
     } else {
@@ -66,7 +63,7 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
   };
 
   const handleAddAttempt = () => {
-    if (!newAttempt.outcome.trim()) return;
+    if (!runtimeConfig.enableDemoMode || !newAttempt.outcome.trim()) return;
     const nextNo = (localItem.attempts?.length || 0) + 1;
     const attemptObj = { attemptNo: nextNo, ...newAttempt };
     const updatedAttempts = [
@@ -77,7 +74,7 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
       ...prev,
       attempts: updatedAttempts,
       status: newAttempt.outcome.toLowerCase().includes('served') ? 'served' : prev.status,
-      servedDate: newAttempt.outcome.toLowerCase().includes('served') ? newAttempt.date : prev.servedDate,
+      serviceDate: newAttempt.outcome.toLowerCase().includes('served') ? newAttempt.date : prev.serviceDate,
     }));
     if (existingItem) {
       addServiceAttempt(localItem.id, attemptObj);
@@ -92,6 +89,7 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status">Service record changes are unavailable until this workspace is connected to the server. Retain service and affidavit evidence through the authorized manual process.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -112,11 +110,13 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
           {savedSuccess && (
             <span className="text-emerald-400 text-xs font-mono flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Service Synced
+              Demo service updated
             </span>
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
+            title="This service editor is awaiting server-backed persistence."
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
@@ -160,13 +160,13 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
                 <label className="block text-slate-400 mb-1">Service Method</label>
                 <select
                   value={localItem.serviceMethod}
-                  onChange={(e) => setLocalItem({ ...localItem, serviceMethod: e.target.value })}
+                  onChange={(e) => setLocalItem({ ...localItem, serviceMethod: e.target.value as ServiceQueueItem['serviceMethod'] })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100"
                 >
                   <option value="Personal Service">Personal Service on Company / Driver</option>
-                  <option value="Registered Post">Registered Post (Section 10 Notice)</option>
+                  <option value="Registered Mail">Registered Mail</option>
                   <option value="Substituted Service">Substituted Service (Newspaper / WhatsApp)</option>
-                  <option value="Affixed on Premises">Affixed on Known Residence</option>
+                  <option value="Advocate on Record">Advocate on Record</option>
                 </select>
               </div>
 
@@ -269,7 +269,7 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
           </h3>
 
           <button
-            onClick={() => setShowAttemptForm(true)}
+            onClick={() => setShowAttemptForm(true)} disabled={!runtimeConfig.enableDemoMode}
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold rounded-lg border border-slate-700 flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -353,7 +353,7 @@ export const ServiceQueueWorkspace: React.FC<ServiceQueueWorkspaceProps> = ({ ma
               </button>
               <button
                 type="button"
-                onClick={handleAddAttempt}
+                onClick={handleAddAttempt} disabled={!runtimeConfig.enableDemoMode}
                 className="px-4 py-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded"
               >
                 Save Attempt

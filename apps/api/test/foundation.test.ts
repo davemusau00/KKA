@@ -5,14 +5,20 @@ import cookie from '@fastify/cookie';
 import { randomBytes } from 'node:crypto';
 import { csrfHook, issueCsrf, validCsrf, CSRF_TTL_SECONDS } from '../src/platform/auth/csrf';
 import { EnvSchema } from '../src/platform/env';
+import { roleContext } from '../src/platform/auth/role-context';
 
 const config = EnvSchema.parse({ DATABASE_URL: 'postgresql://localhost/test', REDIS_URL: 'redis://localhost',
   APP_ENCRYPTION_KEY_BASE64: randomBytes(32).toString('base64'), CSRF_ENABLED: true,
   SESSION_COOKIE_SECURE: true, WEB_ORIGIN: 'https://os.kariukikagunda.com' });
 
+test('inactive and cross-firm roles cannot grant permissions', () => {
+  const role = (firmId: string, active: boolean, key: string) => ({ role: { firmId, active, key, permissions: [{ permission: { key: 'document.view' } }] } });
+  assert.deepEqual(roleContext('a', [role('a', true, 'reader'), role('b', true, 'admin'), role('a', false, 'retired')]), { roleKeys: ['reader'], permissions: ['document.view'] });
+});
+
 test('CSRF protects login, invite and mutations before handlers; valid tokens work across tabs', async () => {
   const app = Fastify(); await app.register(cookie);
-  app.addHook('onRequest', csrfHook(config));
+  app.addHook('preHandler', csrfHook(config));
   app.get('/auth/csrf', (request, reply) => issueCsrf(request, reply, config));
   let changes = 0;
   for (const path of ['/auth/login', '/auth/accept-invite', '/document-operations/preview', '/write']) app.post(path, () => ({ changes: ++changes }));

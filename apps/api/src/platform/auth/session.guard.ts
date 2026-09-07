@@ -10,6 +10,7 @@ import { RedisService } from "../redis/redis.service";
 import { env } from "../env";
 import { PUBLIC_ROUTE } from "./decorators";
 import type { AuthenticatedRequest, RequestUser } from "./auth.types";
+import { roleContext } from './role-context';
 
 interface StoredSession {
   userId: string;
@@ -56,25 +57,18 @@ export class SessionGuard implements CanActivate {
       }
     });
 
-    if (!user || user.status !== "ACTIVE") {
+    if (!user || user.status !== "ACTIVE" || user.firmId !== session.firmId) {
       await this.redis.client.del(`session:${sid}`);
       throw new UnauthorizedException("User is not active");
     }
 
-    const permissions = Array.from(
-      new Set(
-        user.roles.flatMap((ur) =>
-          ur.role.permissions.map((rp) => rp.permission.key)
-        )
-      )
-    );
     const authUser: RequestUser = {
       id: user.id,
       firmId: user.firmId,
       email: user.email,
       fullName: user.fullName,
-      roleKeys: user.roles.map((ur) => ur.role.key),
-      permissions
+      homeBranchId: user.homeBranchId,
+      ...roleContext(user.firmId, user.roles)
     };
     request.authUser = authUser;
 

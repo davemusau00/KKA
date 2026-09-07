@@ -14,6 +14,8 @@ Updated 2026-09-07. This is the working delivery register for converting the Rea
 
 ## Current conversion status
 
+The next predeployment increment is documented in [PREDEPLOYMENT_FOUNDATION.md](PREDEPLOYMENT_FOUNDATION.md): clean production bootstrap, development-only business storage, server permission display, host-only cookies, CSRF enforcement and separate-origin document/branding acceptance. Use [PROJECT_STATE.md](PROJECT_STATE.md) for the latest verified counts and remaining phase gates; older broad completion claims are superseded.
+
 The first foundation increment is implemented and verified locally against a production-shaped split-domain configuration. `apps/web/src/config/runtime.ts` centralizes API and web origins; the production shell requires a live authenticated session; demo persona/reset controls and business local-storage persistence are development-only; login returns server RBAC context; mutating API requests support CSRF when enabled; Caddy has separate web/API host blocks; and the bootstrap seed replaces stale roles on its controlled administrator account. This is a transition boundary while the remaining domain collections leave `AppContext.tsx`, not a claim that all phases below are complete.
 
 | Area | Current state | Production action | Acceptance proof |

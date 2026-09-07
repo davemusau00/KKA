@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import type { FirmIdentityWrite, LegalEntityWrite, BranchContactWrite } from '@kka/contracts';
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 
@@ -8,6 +9,66 @@ export class OrganizationService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  async profile(firmId: string) {
+    const firm = await this.prisma.client.firm.findUnique({
+      where: { id: firmId },
+      select: {
+        id: true, name: true, shortName: true, timezone: true, locale: true, currency: true, updatedAt: true,
+        legalEntities: { orderBy: { name: 'asc' }, select: {
+          id: true, name: true, registrationNo: true, kraPin: true, vatRegistration: true, active: true, updatedAt: true,
+        } },
+        branches: { orderBy: { code: 'asc' }, select: {
+          id: true, name: true, code: true, address: true, postalAddress: true, phone: true, email: true, active: true, updatedAt: true,
+        } },
+      },
+    });
+    if (!firm) throw new NotFoundException('Firm not found');
+    return firm;
+  }
+
+  private conflict() {
+    return new ConflictException({ code: 'VERSION_CONFLICT', message: 'This record changed. Cancel editing, reload the profile and review the latest values before saving.' });
+  }
+
+  private nextTimestamp(previous: string) {
+    return new Date(Math.max(Date.now(), new Date(previous).getTime() + 1));
+  }
+
+  async updateIdentity(firmId: string, actorId: string, input: FirmIdentityWrite) {
+    const { expectedUpdatedAt, ...data } = input;
+    return this.prisma.client.$transaction(async tx => {
+      const result = await tx.firm.updateMany({ where: { id: firmId, updatedAt: new Date(expectedUpdatedAt) }, data: { ...data, updatedAt: this.nextTimestamp(expectedUpdatedAt) } });
+      if (!result.count) throw this.conflict();
+      await this.audit.record({ firmId, actorUserId: actorId, action: 'firm.identity_updated', entityType: 'firm', entityId: firmId,
+        metadata: { changedKeys: Object.keys(data), previousUpdatedAt: expectedUpdatedAt } }, tx);
+      return tx.firm.findUniqueOrThrow({ where: { id: firmId } });
+    });
+  }
+
+  async updateLegalEntity(firmId: string, actorId: string, id: string, input: LegalEntityWrite) {
+    const { expectedUpdatedAt, ...data } = input;
+    return this.prisma.client.$transaction(async tx => {
+      if (!await tx.legalEntity.findFirst({ where: { id, firmId, active: true }, select: { id: true } })) throw new NotFoundException('Active legal entity not found');
+      const result = await tx.legalEntity.updateMany({ where: { id, firmId, active: true, updatedAt: new Date(expectedUpdatedAt) }, data: { ...data, updatedAt: this.nextTimestamp(expectedUpdatedAt) } });
+      if (!result.count) throw this.conflict();
+      await this.audit.record({ firmId, actorUserId: actorId, action: 'legal_entity.profile_updated', entityType: 'legal_entity', entityId: id,
+        metadata: { changedKeys: Object.keys(data), previousUpdatedAt: expectedUpdatedAt } }, tx);
+      return tx.legalEntity.findUniqueOrThrow({ where: { id } });
+    });
+  }
+
+  async updateBranchContact(firmId: string, actorId: string, id: string, input: BranchContactWrite) {
+    const { expectedUpdatedAt, ...data } = input;
+    return this.prisma.client.$transaction(async tx => {
+      if (!await tx.branch.findFirst({ where: { id, firmId, active: true }, select: { id: true } })) throw new NotFoundException('Active branch not found');
+      const result = await tx.branch.updateMany({ where: { id, firmId, active: true, updatedAt: new Date(expectedUpdatedAt) }, data: { ...data, updatedAt: this.nextTimestamp(expectedUpdatedAt) } });
+      if (!result.count) throw this.conflict();
+      await this.audit.record({ firmId, actorUserId: actorId, action: 'branch.contact_updated', entityType: 'branch', entityId: id,
+        metadata: { changedKeys: Object.keys(data), previousUpdatedAt: expectedUpdatedAt } }, tx);
+      return tx.branch.findUniqueOrThrow({ where: { id } });
+    });
+  }
 
   getFirm(firmId: string) {
     return this.prisma.client.firm.findUnique({

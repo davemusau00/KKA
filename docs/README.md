@@ -1,4 +1,6 @@
 # Kariuki Kagunda & Co. Advocates OS
+
+> Current delivery authority: [PRODUCTION_CONVERSION.md](PRODUCTION_CONVERSION.md), [PROJECT_STATE.md](PROJECT_STATE.md), and [PREDEPLOYMENT_FOUNDATION.md](PREDEPLOYMENT_FOUNDATION.md). The approved product launches after all agreed phases pass. Online, server-confirmed business writes are required; offline synchronization is deferred. The frontend is `https://os.kariukikagunda.com` and the API is `https://api.kariukikagunda.com/api/v1`. Older MVP, same-host proxy and seed instructions below are historical specifications and do not override these decisions.
 ## Full-Scale Modern MVP Developer Documentation
 ### VPS / Self-Hosted Backend Edition
 

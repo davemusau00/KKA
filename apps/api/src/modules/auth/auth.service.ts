@@ -9,6 +9,7 @@ import { PrismaService } from "../../platform/prisma/prisma.service";
 import { RedisService } from "../../platform/redis/redis.service";
 import { env } from "../../platform/env";
 import type { LoginInput } from "@kka/contracts";
+import { roleContext } from '../../platform/auth/role-context';
 
 @Injectable()
 export class AuthService {
@@ -64,8 +65,7 @@ export class AuthService {
         fullName: user.fullName,
         firmId: user.firmId,
         homeBranchId: user.homeBranchId,
-        roleKeys: user.roles.map((ur) => ur.role.key),
-        permissions: Array.from(new Set(user.roles.flatMap((ur) => ur.role.permissions.map((rp) => rp.permission.key))))
+        ...roleContext(user.firmId, user.roles)
       }
     };
   }

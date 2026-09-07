@@ -55,7 +55,7 @@ export const MobileQuickActionsMenu: React.FC = () => {
   // 3. Task
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDueDate, setTaskDueDate] = useState('');
-  const [taskPriority, setTaskPriority] = useState<'normal' | 'high' | 'urgent'>('high');
+  const [taskPriority, setTaskPriority] = useState<'medium' | 'high' | 'critical'>('high');
 
   // 4. Receipt Photo
   const [receiptVendor, setReceiptVendor] = useState('');
@@ -425,9 +425,9 @@ export const MobileQuickActionsMenu: React.FC = () => {
                             onChange={(e) => setTaskPriority(e.target.value as any)}
                             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
                           >
-                            <option value="normal">Normal</option>
+                            <option value="medium">Medium</option>
                             <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
+                            <option value="critical">Critical</option>
                           </select>
                         </div>
                         <div>

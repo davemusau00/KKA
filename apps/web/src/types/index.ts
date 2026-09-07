@@ -99,7 +99,7 @@ export type PermissionKey =
   | 'reports.firm.read';
 
 export type ClientType = 'person' | 'organization';
-export type ClientStatus = 'active' | 'former' | 'prospect' | 'blacklisted';
+export type ClientStatus = 'active' | 'inactive' | 'former' | 'prospect' | 'blacklisted';
 
 export interface Client {
   id: string;
@@ -635,7 +635,7 @@ export interface AuditEvent {
   id: string;
   actorUserId: string;
   action: string;
-  entityType: 'matter' | 'task' | 'document' | 'court_event' | 'expense' | 'handoff' | 'client';
+  entityType: 'matter' | 'task' | 'document' | 'court_event' | 'expense' | 'handoff' | 'client' | 'system';
   entityId: string;
   matterId?: string;
   timestamp: string;

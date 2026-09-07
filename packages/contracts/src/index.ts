@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from './document-workflows';
+export * from './organization';
 
 export const SettingScopeSchema = z.enum([
   "SYSTEM", "FIRM", "LEGAL_ENTITY", "BRANCH", "DEPARTMENT", "PRACTICE_AREA",

@@ -2,14 +2,13 @@ import { apiClient } from './client';
 
 export interface BackendNotification {
   id: string;
-  firmId: string;
-  userId: string;
+  recipientUserId: string;
   title: string;
-  body: string;
-  type: string;
+  message: string;
+  category: string;
+  urgency: string;
   entityType?: string | null;
   entityId?: string | null;
-  read: boolean;
   readAt?: string | null;
   createdAt: string;
 }

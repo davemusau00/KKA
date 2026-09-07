@@ -13,6 +13,7 @@ import {
   Calendar,
   Layers,
 } from 'lucide-react';
+import { runtimeConfig } from '../../../config/runtime';
 import { useApp } from '../../../context/AppContext';
 import { CourtFilingPackage, Matter } from '../../../types';
 
@@ -29,28 +30,26 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
     existingFiling || {
       id: `cfp-${matter.id}`,
       matterId: matter.id,
-      courtStation: "Milimani Chief Magistrate's Commercial Court",
-      division: 'Civil & Accident Division',
-      feeAmountKes: 14750,
-      paymentRef: 'CTS-PAY-2026-9921',
-      ctsInvoiceNumber: 'INV-JUD-2026-0819',
-      ctsReceiptNumber: 'REC-JUD-2026-0819',
-      ctsTrackingNumber: 'CTS/MIL/2026/84912',
-      allocatedCaseNumber: 'MCCC E482/2026',
-      filedAt: new Date().toISOString(),
-      filingStatus: 'sealed_assigned',
-      assignedClerkUserId: 'usr-clerk',
-      documentsIncluded: [
-        'Plaint & Verifying Affidavit',
-        'Summons to Enter Appearance',
-        'List of Documents & Trial Bundle',
-      ],
+      matterRef: matter.internalReference,
+      courtStation: '',
+      division: '',
+      caseType: '',
+      plaintiff: '',
+      defendants: [],
+      documents: [],
+      courtAssessmentKes: 0,
+      feeRequisitionApproved: false,
+      receiptUploaded: false,
+      stampedDocsUploaded: false,
+      assignedClerkId: '',
+      status: 'ready_to_file',
     }
   );
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     if (existingFiling) {
       updateCourtFilingPackage(localFiling.id, localFiling);
     } else {
@@ -60,29 +59,10 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handleSimulateCTSFile = () => {
-    const caseNum = `MCCC E${Math.floor(Math.random() * 800 + 200)}/2026`;
-    const ctsRef = `CTS/MIL/2026/${Math.floor(Math.random() * 80000 + 10000)}`;
-    const updated: CourtFilingPackage = {
-      ...localFiling,
-      allocatedCaseNumber: caseNum,
-      ctsTrackingNumber: ctsRef,
-      ctsReceiptNumber: `CTS-REV-${Date.now().toString().slice(-6)}`,
-      filingStatus: 'sealed_assigned',
-      filedAt: new Date().toISOString(),
-    };
-    setLocalFiling(updated);
-    if (existingFiling) {
-      updateCourtFilingPackage(updated.id, updated);
-    } else {
-      createCourtFilingPackage(updated);
-    }
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
-  };
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status">Filing record changes are unavailable until this workspace is connected to the server. No court submission is made here.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -103,11 +83,13 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
           {savedSuccess && (
             <span className="text-emerald-400 text-xs font-mono flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Filing Synced
+              Demo filing updated
             </span>
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
+            title="This filing editor is awaiting server-backed persistence."
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
@@ -121,7 +103,7 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase">Official Court Case Number</span>
           <div className="text-lg font-bold font-mono text-amber-400">
-            {localFiling.allocatedCaseNumber || 'Pending E-Filing'}
+            {localFiling.courtCaseNumber || 'Pending E-Filing'}
           </div>
           <span className="text-[10px] text-slate-500">Judiciary Registry assigned number</span>
         </div>
@@ -129,7 +111,7 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase">CTS Tracking Ref</span>
           <div className="text-lg font-bold font-mono text-slate-100">
-            {localFiling.ctsTrackingNumber || 'Not Generated'}
+            {localFiling.ctsReference || 'Not Generated'}
           </div>
           <span className="text-[10px] text-slate-500">Judiciary portal e-filing reference</span>
         </div>
@@ -137,9 +119,9 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase">Filing Package Status</span>
           <div className="text-lg font-bold font-mono text-emerald-400 uppercase">
-            {localFiling.filingStatus.replace(/_/g, ' ')}
+            {existingFiling ? localFiling.status.replace(/_/g, ' ') : 'Not recorded'}
           </div>
-          <span className="text-[10px] text-slate-500">Assigned Clerk: {localFiling.assignedClerkUserId}</span>
+          <span className="text-[10px] text-slate-500">Assigned Clerk: {localFiling.assignedClerkId}</span>
         </div>
       </div>
 
@@ -182,8 +164,8 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
               <div>
                 <label className="block text-slate-400 mb-1">Assigned Court Clerk</label>
                 <select
-                  value={localFiling.assignedClerkUserId || 'usr-clerk'}
-                  onChange={(e) => setLocalFiling({ ...localFiling, assignedClerkUserId: e.target.value })}
+                  value={localFiling.assignedClerkId}
+                  onChange={(e) => setLocalFiling({ ...localFiling, assignedClerkId: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100"
                 >
                   {users.map((u) => (
@@ -210,9 +192,9 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
                 <label className="block text-slate-400 mb-1">Assessment Amount (KES)</label>
                 <input
                   type="number"
-                  value={localFiling.feeAmountKes}
+                  value={localFiling.courtAssessmentKes}
                   onChange={(e) =>
-                    setLocalFiling({ ...localFiling, feeAmountKes: Number(e.target.value) })
+                    setLocalFiling({ ...localFiling, courtAssessmentKes: Number(e.target.value) })
                   }
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-mono font-bold"
                 />
@@ -221,8 +203,8 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
                 <label className="block text-slate-400 mb-1">Revenue Receipt Number</label>
                 <input
                   type="text"
-                  value={localFiling.ctsReceiptNumber || ''}
-                  onChange={(e) => setLocalFiling({ ...localFiling, ctsReceiptNumber: e.target.value })}
+                  value={localFiling.receiptNumber || ''}
+                  onChange={(e) => setLocalFiling({ ...localFiling, receiptNumber: e.target.value })}
                   placeholder="e.g. CTS-REV-2026-88194"
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-mono"
                 />
@@ -233,11 +215,11 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
               <div>
                 <span className="font-semibold text-slate-200 block">Payment Reference</span>
                 <span className="text-[10px] text-slate-500 font-mono">
-                  {localFiling.paymentRef || 'Payment pending'}
+                  {localFiling.receiptNumber || 'Payment pending'}
                 </span>
               </div>
               <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono text-[10px] uppercase font-bold">
-                {localFiling.filingStatus}
+                {localFiling.status}
               </span>
             </div>
           </div>
@@ -249,16 +231,16 @@ export const CourtFilingWorkspace: React.FC<CourtFilingWorkspaceProps> = ({ matt
         <div>
           <span className="font-mono text-slate-300 font-bold block">Execute Judiciary Portal E-Filing</span>
           <span className="text-slate-500 text-[11px]">
-            Submits bundled documents, generates CTS tracking number, and issues Summons to Enter Appearance.
+            Electronic submission is unavailable. File through the authorized registry process and retain its receipt and documents.
           </span>
         </div>
 
         <button
-          onClick={handleSimulateCTSFile}
+          disabled title="Judiciary provider is unavailable; no submission will be sent."
           className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow flex items-center gap-2 transition"
         >
           <Send className="w-4 h-4" />
-          <span>Upload Package &amp; Generate Case Number</span>
+          <span>Electronic filing unavailable</span>
         </button>
       </div>
     </div>

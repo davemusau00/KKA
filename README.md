@@ -16,7 +16,8 @@ KKA/
 │   └── worker/        # BullMQ Asynchronous Job Processing Daemon (@kka/worker)
 ├── packages/
 │   ├── contracts/     # Shared Zod schemas, DTOs & type definitions (@kka/contracts)
-│   └── database/      # Prisma 7.10.0 Client, repositories & DB schema (@kka/database)
+│   ├── database/      # Prisma 7.10.0 Client, repositories & DB schema (@kka/database)
+│   └── document-engine/ # Shared API/worker rendering and application logic
 ├── prisma/
 │   ├── schema.prisma  # Authoritative relational database schema
 │   └── migrations/    # Version-controlled SQL migration history
@@ -35,7 +36,7 @@ KKA/
 
 ## 2. Technology Stack
 
-- **Runtime & Engines**: Node.js `>=24 <25 || >=26 <27` (certified on Node 24 LTS and Node 26.5.0) with `pnpm@10.15.1`.
+- **Runtime & Engines**: Node.js `>=24 <25 || >=26 <27` with `pnpm@10.15.1`. Current verification versions are recorded with acceptance evidence.
 - **Backend API**: NestJS 11 with `@nestjs/platform-fastify` and Fastify plugins (rate limiting, multipart, cookies, helmet).
 - **Frontend SPA**: React 19, Vite 6, Tailwind CSS, Lucide icons, Motion, and an interactive domain workspace architecture.
 - **Database & ORM**: PostgreSQL 18 with Prisma ORM 7.10.0 (`prisma.config.ts` configuration).
@@ -80,9 +81,14 @@ pnpm prisma:generate
 # Validate the relational schema
 pnpm prisma:validate
 
-# Apply migrations (or deploy in production)
-pnpm prisma:migrate:dev --name init
-pnpm prisma:seed
+# Apply the committed migrations to a clean database
+pnpm prisma:migrate:deploy
+
+# Production only, after reviewing BOOTSTRAP_* settings
+pnpm bootstrap:production
+
+# Alternative for an isolated synthetic development/test database only
+# pnpm seed:fixtures
 ```
 
 ### Running Local Development Servers
@@ -93,14 +99,14 @@ You can launch components individually:
 # Frontend web application (runs Vite on http://localhost:5173 with proxy to API)
 pnpm dev:web
 
-# Backend API server (runs NestJS/Fastify on http://localhost:3000)
+# Backend API server (set API_PORT=3015 for the default Vite proxy)
 pnpm dev:api
 
 # BullMQ asynchronous worker
 pnpm dev:worker
 ```
 
-> **Note on Port Proxy**: The frontend runs on port `5173`. Its Vite dev server automatically proxies all `/api/v1` and `/socket.io` requests to `http://127.0.0.1:3000`, allowing cookie credentials (`kka_sid`) to flow cleanly without cross-origin issues.
+> Local development uses web port `5173` and API port `3015` (override `VITE_BACKEND_URL` when needed). Use local `WEB_ORIGIN`, `API_PUBLIC_URL` and cookie settings. Production uses separate HTTPS hosts: `os.kariukikagunda.com` and `api.kariukikagunda.com`. The separate-origin acceptance runner is described in [PREDEPLOYMENT_FOUNDATION.md](docs/PREDEPLOYMENT_FOUNDATION.md).
 
 ---
 
@@ -112,8 +118,9 @@ Run the verification gate across the entire monorepo:
 # Validate Prisma schema
 pnpm prisma:validate
 
-# Typecheck all 5 workspace projects (contracts, database, api, worker, web)
+# Typecheck all six workspace projects, plus browser tests
 pnpm typecheck
+pnpm --filter @kka/web typecheck:tests
 
 # Run automated tests
 pnpm test
@@ -122,41 +129,15 @@ pnpm test
 pnpm build
 ```
 
-All validation gates are automated and verified clean with 0 errors.
+See [PROJECT_STATE.md](docs/PROJECT_STATE.md) for current results and gaps. Browser and API integration tests require isolated dependencies; no blanket full-product acceptance is claimed.
 
 ---
 
-## 5. Frontend-to-Backend Progressive Integration
+## 5. Production conversion status
 
-The frontend uses a **Progressive Hybrid Bridge pattern** (`apps/web/src/context/AppContext.tsx` and `apps/web/src/lib/api/`):
-- High-fidelity UI components make calls through domain slices in `AppContext`.
-- Integrated domains dispatch typed requests to the live backend API.
-- If the backend is offline or during rollout, the client gracefully falls back to local storage and seed models with zero visual disruption.
+The approved phased plan is [PRODUCTION_CONVERSION.md](docs/PRODUCTION_CONVERSION.md). Verified branding/document behavior is recorded in [DOCUMENT_WORKFLOWS.md](docs/DOCUMENT_WORKFLOWS.md), and the clean bootstrap, transport and session increment in [PREDEPLOYMENT_FOUNDATION.md](docs/PREDEPLOYMENT_FOUNDATION.md).
 
-### Integration Progress Matrix
-
-```
-[Tier 0: Transport & Proxy] ────► [Tier 1: Lookups & Catalogs] ────► [Tier 2: Auth, Search & Config] ────► [Tier 3: Clients, Tasks & Intake]
-          ✅ COMPLETE                         ✅ COMPLETE                         ✅ COMPLETE                         ✅ COMPLETE
-                                                                                                                           │
-[Tier 7: Matter Spine & PI] ◄──── [Tier 6: Documents & Stamps] ◄──── [Tier 5: Comms & Realtime] ◄──── [Tier 4: Calendar, Court & Approvals]
-          ⏳ ROADMAP                          ⏳ ROADMAP                          ⏳ ROADMAP                          🔷 NEXT UP
-```
-
-| Tier | Focus | Status | Key Features |
-|---|---|---|---|
-| **Tier 0** | Transport & Dev Proxy | **Completed** | Vite dev proxy (`/api/v1` -> `:3000`), typed HTTP client with cookie credentials (`apps/web/src/lib/api/client.ts`), live `ConnectionStatusBadge` in shell. |
-| **Tier 1** | Catalogs & Independent Lookups | **Completed** | Health diagnostics (`/health/live`), third-party directory contacts (`/directory`), branches (`/organization/branches`), active staff list (`/users`), system notifications (`/notifications`). |
-| **Tier 2** | Auth, Search & Configuration | **Completed** | Real credentials login modal with dev personas (`/auth/login`, `/auth/me`, `/auth/logout`), live database global search (`/search`), settings studio sync (`/settings`), truthful integration tests (`/integrations/test`). |
-| **Tier 3** | Clients, Tasks & Intake Pipeline | **Completed** | Client lifecycle and editing (`/clients`), task board & status mutations (`/tasks`, `/tasks/:id/status`), intake leads & conflict checks (`/intake`). |
-| **Tier 4** | Calendar, Court Ops & Approvals | **Next Up** | Temporal Command Centre (`/calendar`), Court Diary & CTS filings (`/court`), expense/leave sign-offs (`/approvals`). |
-| **Tier 5** | Communications & Real-Time | Roadmap | Messaging threads, SMS/WhatsApp outbox, Socket.IO live events. |
-| **Tier 6** | Documents & Digital Seals | Roadmap | Private VPS storage adapter, versioning, official firm execution blocks and stamps. |
-| **Tier 7** | Matter Spine & 16-Stage PI Engine | Roadmap | Authoritative server-side matter lifecycle, stage gates, limitation trackers, medical record indexes. |
-| **Tier 8** | Ledger-Grade Finance | Roadmap | Double-entry client trust accounts vs. office funds, fee notes, disbursements, M-Pesa statements. |
-| **Tier 9** | Offline PWA & Teardown | Roadmap | IndexedDB outbox synchronization, replay engine, retirement of mock localStorage state. |
-
-For detailed integration instructions and specs, see [backend-frontend-integration.md](file:///c:/Users/Admin/Downloads/kka/KKA/backend-frontend-integration.md).
+Business local storage and persona switching are development-only. Legacy business mutations still in `AppContext.tsx` require server-backed conversion and acceptance. API failure must not expose synthetic records or report local work as saved. [PROJECT_STATE.md](docs/PROJECT_STATE.md) lists the remaining launch phases; the historical hybrid-bridge tier matrix is superseded.
 
 ---
 
@@ -168,8 +149,8 @@ Internet
    │
    ▼
  Caddy (Ports 80 / 443)
-   ├── Static Web SPA Build (apps/web/dist)
-   └── Reverse Proxy: /api/v1/* & /socket.io/*
+   ├── os.kariukikagunda.com -> Static SPA (apps/web/dist)
+   └── api.kariukikagunda.com -> /api/v1/* & /socket.io/*
               │
               ▼
          NestJS API (Port 3000)
@@ -194,17 +175,17 @@ docker compose -f infra/docker-compose.production.yml down
 ```
 
 ### Infrastructure Documents
-- [Deployment Checklist](file:///c:/Users/Admin/Downloads/kka/KKA/infra/DEPLOYMENT_CHECKLIST.md)
-- [Disaster Recovery & Restore Runbook](file:///c:/Users/Admin/Downloads/kka/KKA/infra/RESTORE_RUNBOOK.md)
-- [Caddy Configuration](file:///c:/Users/Admin/Downloads/kka/KKA/infra/Caddyfile)
+- [Deployment Checklist](infra/DEPLOYMENT_CHECKLIST.md)
+- [Disaster Recovery & Restore Runbook](infra/RESTORE_RUNBOOK.md)
+- [Caddy Configuration](infra/Caddyfile)
 
 ---
 
-## 7. Core Architectural Invariants
+## 7. Required Architectural Invariants
 
 1. **Matter-Centric Spine**: Every operational object (tasks, court mentions, deadlines, documents, invoices, messages) relates back to an authoritative Matter.
 2. **Integration Truthfulness**: Provider adapters (Judiciary CTS, M-Pesa Daraja, WhatsApp Cloud, Africa's Talking) never fabricate success. Unavailable or unconfigured providers explicitly report unconfigured status.
-3. **Firm Seals, Signatures & Stamps**: The marks subsystem operates with controlled, versioned vector assets. Applying a mark generates an immutable document version with audited user, checksum, placement, and timestamp.
+3. **Firm Marks, Visual Signatures & Stamps**: The marks subsystem uses controlled, versioned image assets. Applying a mark generates an immutable document version with audited user, checksum, placement, and timestamp. Visual signatures do not imply cryptographic signing.
 4. **Trust Fund Separation**: Client trust money is strictly isolated from office operational funds in separate ledgers with double-entry invariants.
 5. **Private Document Storage**: All legal documents reside outside the public web root and are accessed exclusively through audited, authorized API streams.
 
@@ -216,7 +197,7 @@ The repository includes a comprehensive specification suite in the `docs/` direc
 
 | Section | Key Documents |
 |---|---|
-| **Full Product Index** | [FULL_PRODUCT_INDEX.md](file:///c:/Users/Admin/Downloads/kka/KKA/docs/FULL_PRODUCT_INDEX.md), [MASTER_DEVELOPER_GUIDE.md](file:///c:/Users/Admin/Downloads/kka/KKA/docs/MASTER_DEVELOPER_GUIDE.md) |
+| **Full Product Index** | [FULL_PRODUCT_INDEX.md](docs/FULL_PRODUCT_INDEX.md), [MASTER_DEVELOPER_GUIDE.md](docs/MASTER_DEVELOPER_GUIDE.md) |
 | **System Architecture** | `01_SYSTEM_ARCHITECTURE.md`, `18_VPS_STACK.md`, `19_FULL_PRODUCT_VISION_AND_CAPABILITY_MAP.md` |
 | **Domain & Data Models** | `02_DOMAIN_MODEL.md`, `03_DATA_MODEL.md`, `23_FULL_PRODUCT_DOMAIN_AND_MODULE_EXPANSION.md` |
 | **Workflows & Operations** | `04_WORKFLOWS.md`, `06_CALENDAR_TASKS_COMMS.md`, `25_WORKFLOW_AUTOMATION_CUSTOM_FIELDS_FORMS.md` |

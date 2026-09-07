@@ -5,6 +5,7 @@ export interface RequestUser {
   firmId: string;
   email: string;
   fullName: string;
+  homeBranchId?: string | null;
   roleKeys: string[];
   permissions: string[];
 }

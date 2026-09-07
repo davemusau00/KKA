@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrandingProvider } from './context/BrandingContext';
+import { ServerStateProvider } from './context/ServerStateProvider';
 import { AppProvider, useApp } from './context/AppContext';
 import { AppShell } from './components/layout/AppShell';
 import { HomeDashboard } from './components/dashboard/HomeDashboard';
@@ -41,7 +42,7 @@ const MainWorkspaceRouter: React.FC = () => {
 export default function App() {
   return (
     <BrandingProvider><AppProvider>
-      <MainWorkspaceRouter />
+      <ServerStateProvider><MainWorkspaceRouter /></ServerStateProvider>
     </AppProvider></BrandingProvider>
   );
 }

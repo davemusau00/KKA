@@ -28,16 +28,17 @@ export function issueCsrf(request: FastifyRequest, reply: FastifyReply, config: 
 }
 
 export function csrfHook(config: Config) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async (request: { method: string; headers: { origin?: string; 'x-csrf-token'?: string | string[] }; cookies?: Record<string, string | undefined> }, reply: { code(status: number): { send(payload: unknown): unknown } }) => {
     if (!config.CSRF_ENABLED || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
     const origins = config.WEB_ORIGIN.split(',').map(origin => origin.trim());
     if (request.headers.origin && !origins.includes(request.headers.origin)) {
-      return reply.code(403).send({ code: 'ORIGIN_DENIED', message: 'Request origin is not permitted' });
+      reply.code(403).send({ code: 'ORIGIN_DENIED', message: 'Request origin is not permitted' });
+      return;
     }
-    const cookie = request.cookies[config.CSRF_COOKIE_NAME];
+    const cookie = request.cookies?.[config.CSRF_COOKIE_NAME];
     const header = request.headers['x-csrf-token'];
     if (!validCsrf(cookie, config) || typeof header !== 'string' || !equal(cookie!, header)) {
-      return reply.code(403).send({ code: 'CSRF_INVALID', message: 'Secure session token expired or missing' });
+      reply.code(403).send({ code: 'CSRF_INVALID', message: 'Secure session token expired or missing' });
     }
   };
 }

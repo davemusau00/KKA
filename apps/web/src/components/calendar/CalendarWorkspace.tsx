@@ -1573,9 +1573,9 @@ export const CalendarWorkspace: React.FC = () => {
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded uppercase font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
                         {t.priority} priority
                       </span>
-                      {t.dueDate && (
+                      {t.dueAt && (
                         <span className="text-[10px] font-mono text-slate-500">
-                          Due: {t.dueDate}
+                          Due: {t.dueAt}
                         </span>
                       )}
                     </div>

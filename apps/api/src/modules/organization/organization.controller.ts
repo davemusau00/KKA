@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from "@nestjs/common";
-import { CreateBranchSchema } from "@kka/contracts";
+import { CreateBranchSchema, FirmIdentityWriteSchema, LegalEntityWriteSchema, BranchContactWriteSchema } from "@kka/contracts";
 import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
@@ -12,6 +12,30 @@ export class OrganizationController {
   @Get()
   getFirm(@CurrentUser() user: RequestUser) {
     return this.org.getFirm(user.firmId);
+  }
+
+  @Get("profile")
+  @RequirePermissions("admin.settings_manage")
+  profile(@CurrentUser() user: RequestUser) {
+    return this.org.profile(user.firmId);
+  }
+
+  @Patch("profile")
+  @RequirePermissions("admin.settings_manage")
+  identity(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.org.updateIdentity(user.firmId, user.id, FirmIdentityWriteSchema.parse(body));
+  }
+
+  @Patch("legal-entities/:id")
+  @RequirePermissions("admin.settings_manage")
+  legalEntity(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    return this.org.updateLegalEntity(user.firmId, user.id, id, LegalEntityWriteSchema.parse(body));
+  }
+
+  @Patch("branches/:id/contact")
+  @RequirePermissions("admin.branches_manage")
+  branchContact(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    return this.org.updateBranchContact(user.firmId, user.id, id, BranchContactWriteSchema.parse(body));
   }
 
   @Get("branches")

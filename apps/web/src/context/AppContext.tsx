@@ -432,6 +432,13 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'kklaw_os_state_v1';
+// All legacy business persistence is confined to explicit development fixtures.
+const demoStorage = {
+  getItem: (key: string) => runtimeConfig.enableDemoMode ? localStorage.getItem(key) : null,
+  setItem: (key: string, value: string) => { if (runtimeConfig.enableDemoMode) localStorage.setItem(key, value); },
+  removeItem: (key: string) => { if (runtimeConfig.enableDemoMode) localStorage.removeItem(key); },
+  clear: () => { if (runtimeConfig.enableDemoMode) Object.keys(localStorage).filter(key => key.startsWith(LOCAL_STORAGE_KEY)).forEach(key => localStorage.removeItem(key)); },
+};
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Navigation
@@ -463,21 +470,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Core Data Collections
   const [branches, setBranches] = useState<Branch[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_branches`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_branches`);
     return saved ? JSON.parse(saved) : SEED_BRANCHES;
   });
   const [stageHandoffs, setStageHandoffs] = useState<StageHandoff[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_stage_handoffs`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_stage_handoffs`);
     return saved ? JSON.parse(saved) : SEED_STAGE_HANDOFFS;
   });
   const [users, setUsers] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
     return saved ? JSON.parse(saved) : SEED_USERS;
   });
   const [workflowStages] = useState<WorkflowStageDefinition[]>(WORKFLOW_STAGES_PI);
 
   const [rolePermissionsMap, setRolePermissionsMap] = useState<Record<RoleId, PermissionKey[]>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_role_permissions`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_role_permissions`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -499,147 +506,147 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [practiceWorkflows, setPracticeWorkflows] = useState<PracticeAreaWorkflow[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_practice_workflows`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_practice_workflows`);
     return saved ? JSON.parse(saved) : SEED_PRACTICE_WORKFLOWS;
   });
 
   const [firmSettings, setFirmSettings] = useState<FirmSettingsConfig>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_firm_settings`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_firm_settings`);
     return saved ? JSON.parse(saved) : DEFAULT_FIRM_SETTINGS;
   });
 
   const [clients, setClients] = useState<Client[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_clients`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_clients`);
     return saved ? JSON.parse(saved) : SEED_CLIENTS;
   });
 
   const [intakes, setIntakes] = useState<IntakeLead[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_intakes`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_intakes`);
     return saved ? JSON.parse(saved) : SEED_INTAKES;
   });
 
   const [matters, setMatters] = useState<Matter[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_matters`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_matters`);
     return saved ? JSON.parse(saved) : SEED_MATTERS;
   });
 
   const [parties, setParties] = useState<MatterParty[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_parties`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_parties`);
     return saved ? JSON.parse(saved) : SEED_PARTIES;
   });
 
   const [proceedings, setProceedings] = useState<CourtProceeding[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_proceedings`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_proceedings`);
     return saved ? JSON.parse(saved) : SEED_PROCEEDINGS;
   });
 
   const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_tasks`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_tasks`);
     return saved ? JSON.parse(saved) : SEED_TASKS;
   });
 
   const [deadlines, setDeadlines] = useState<Deadline[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_deadlines`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_deadlines`);
     return saved ? JSON.parse(saved) : SEED_DEADLINES;
   });
 
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_events`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_events`);
     return saved ? JSON.parse(saved) : SEED_CALENDAR_EVENTS;
   });
 
   const [documents, setDocuments] = useState<LegalDocument[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_documents`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_documents`);
     return saved ? JSON.parse(saved) : SEED_DOCUMENTS;
   });
 
   const [channels, setChannels] = useState<CommunicationChannel[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_channels`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_channels`);
     return saved ? JSON.parse(saved) : SEED_CHANNELS;
   });
 
   const [messages, setMessages] = useState<ChannelMessage[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_messages`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_messages`);
     return saved ? JSON.parse(saved) : SEED_MESSAGES;
   });
 
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_expenses`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_expenses`);
     return saved ? JSON.parse(saved) : SEED_EXPENSES;
   });
 
   const [accounts, setAccounts] = useState<FinancialAccount[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_accounts`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_accounts`);
     return saved ? JSON.parse(saved) : SEED_ACCOUNTS;
   });
 
   const [payments, setPayments] = useState<PaymentReceipt[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_payments`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_payments`);
     return saved ? JSON.parse(saved) : SEED_PAYMENTS;
   });
 
   const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_notifications`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_notifications`);
     return saved ? JSON.parse(saved) : SEED_NOTIFICATIONS;
   });
 
   const [auditLogs, setAuditLogs] = useState<AuditEvent[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_audit`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_audit`);
     return saved ? JSON.parse(saved) : SEED_AUDIT_LOGS;
   });
 
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_time_entries`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_time_entries`);
     return saved ? JSON.parse(saved) : SEED_TIME_ENTRIES;
   });
 
   const [feeNotes, setFeeNotes] = useState<FeeNote[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_fee_notes`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_fee_notes`);
     return saved ? JSON.parse(saved) : SEED_FEE_NOTES;
   });
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_fee_notes`, JSON.stringify(feeNotes));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_fee_notes`, JSON.stringify(feeNotes));
   }, [feeNotes]);
 
   // System Admin & Governance Studio State
   const [firmMarks, setFirmMarks] = useState<FirmMarkAsset[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_firm_marks`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_firm_marks`);
     return saved ? JSON.parse(saved) : SEED_FIRM_MARKS;
   });
 
   const [signatureProfiles, setSignatureProfiles] = useState<SignatureProfile[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_signature_profiles`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_signature_profiles`);
     return saved ? JSON.parse(saved) : SEED_SIGNATURE_PROFILES;
   });
 
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_custom_fields`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_custom_fields`);
     return saved ? JSON.parse(saved) : SEED_CUSTOM_FIELDS;
   });
 
   const [numberingScheme, setNumberingScheme] = useState<NumberingSchemeConfig>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_numbering_scheme`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_numbering_scheme`);
     return saved ? JSON.parse(saved) : DEFAULT_NUMBERING_SCHEME;
   });
 
   const [backupSnapshots, setBackupSnapshots] = useState<BackupSnapshot[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_backup_snapshots`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_backup_snapshots`);
     return saved ? JSON.parse(saved) : SEED_BACKUP_SNAPSHOTS;
   });
 
   const [systemHealth] = useState<SystemHealthMetrics>(MOCK_SYSTEM_HEALTH);
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_firm_marks`, JSON.stringify(firmMarks));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_signature_profiles`, JSON.stringify(signatureProfiles));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_custom_fields`, JSON.stringify(customFields));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_numbering_scheme`, JSON.stringify(numberingScheme));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_backup_snapshots`, JSON.stringify(backupSnapshots));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_firm_marks`, JSON.stringify(firmMarks));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_signature_profiles`, JSON.stringify(signatureProfiles));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_custom_fields`, JSON.stringify(customFields));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_numbering_scheme`, JSON.stringify(numberingScheme));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_backup_snapshots`, JSON.stringify(backupSnapshots));
   }, [firmMarks, signatureProfiles, customFields, numberingScheme, backupSnapshots]);
 
   const [apiSettings, setApiSettings] = useState<ApiSettingsConfig>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_api_settings`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_api_settings`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -675,78 +682,78 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [activeTimer, setActiveTimer] = useState<ActiveTimerState | null>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_active_timer`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_active_timer`);
     return saved ? JSON.parse(saved) : null;
   });
 
   // Domain legal workflow states
   const [incidentEvidence, setIncidentEvidence] = useState<Record<string, IncidentEvidenceData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_incident_evidence`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_incident_evidence`);
     return saved ? JSON.parse(saved) : SEED_INCIDENT_EVIDENCE;
   });
 
   const [medicalCases, setMedicalCases] = useState<Record<string, MedicalCaseData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_medical_cases`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_medical_cases`);
     return saved ? JSON.parse(saved) : SEED_MEDICAL_CASES;
   });
 
   const [liabilityQuantums, setLiabilityQuantums] = useState<Record<string, LiabilityQuantumData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_liability_quantum`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_liability_quantum`);
     return saved ? JSON.parse(saved) : SEED_LIABILITY_QUANTUM;
   });
 
   const [claimNegotiations, setClaimNegotiations] = useState<Record<string, ClaimNegotiationData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`);
     return saved ? JSON.parse(saved) : SEED_CLAIM_NEGOTIATION;
   });
 
   const [pleadingsBundles, setPleadingsBundles] = useState<Record<string, PleadingsBundleData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`);
     return saved ? JSON.parse(saved) : SEED_PLEADINGS_BUNDLES;
   });
 
   const [courtFilingPackages, setCourtFilingPackages] = useState<CourtFilingPackage[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_court_filings`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_court_filings`);
     return saved ? JSON.parse(saved) : SEED_COURT_FILING_PACKAGES;
   });
 
   const [serviceQueue, setServiceQueue] = useState<ServiceQueueItem[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_service_queue`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_service_queue`);
     return saved ? JSON.parse(saved) : SEED_SERVICE_QUEUE;
   });
 
   const [preTrialCompliances, setPreTrialCompliances] = useState<Record<string, PreTrialComplianceData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`);
     return saved ? JSON.parse(saved) : SEED_PRE_TRIAL_COMPLIANCE;
   });
 
   const [hearingBriefs, setHearingBriefs] = useState<Record<string, HearingBriefData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`);
     return saved ? JSON.parse(saved) : SEED_HEARING_BRIEFS;
   });
 
   const [judgmentAwards, setJudgmentAwards] = useState<Record<string, JudgmentAwardData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_judgment_awards`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_judgment_awards`);
     return saved ? JSON.parse(saved) : SEED_JUDGMENT_AWARDS;
   });
 
   const [recoveryExecutions, setRecoveryExecutions] = useState<Record<string, RecoveryExecutionData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_recovery_executions`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_recovery_executions`);
     return saved ? JSON.parse(saved) : SEED_RECOVERY_EXECUTION;
   });
 
   const [settlementDistributions, setSettlementDistributions] = useState<Record<string, SettlementDistributionData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`);
     return saved ? JSON.parse(saved) : SEED_SETTLEMENT_DISTRIBUTIONS;
   });
 
   const [closureAudits, setClosureAudits] = useState<Record<string, MatterClosureAuditData>>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_closure_audits`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_closure_audits`);
     return saved ? JSON.parse(saved) : SEED_CLOSURE_AUDITS;
   });
 
   const [directoryContacts, setDirectoryContacts] = useState<DirectoryContact[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_directory_contacts`);
+    const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_directory_contacts`);
     return saved ? JSON.parse(saved) : SEED_DIRECTORY_CONTACTS;
   });
 
@@ -754,7 +761,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // source of truth; demo fixtures are available only when explicitly enabled.
   useEffect(() => {
     if (runtimeConfig.enableDemoMode) return;
-    Object.keys(localStorage).filter((key) => key.startsWith(LOCAL_STORAGE_KEY)).forEach((key) => localStorage.removeItem(key));
+    Object.keys(localStorage).filter((key) => key.startsWith(LOCAL_STORAGE_KEY) && key !== `${LOCAL_STORAGE_KEY}_theme`).forEach((key) => localStorage.removeItem(key));
     setCurrentUser(EMPTY_USER);
     setBranches([]); setUsers([]); setStageHandoffs([]); setClients([]); setIntakes([]); setMatters([]);
     setParties([]); setProceedings([]); setTasks([]); setDeadlines([]); setCalendarEvents([]); setDocuments([]);
@@ -790,48 +797,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Local storage auto-sync
   useEffect(() => {
     if (!runtimeConfig.enableDemoMode) return;
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_role_permissions`, JSON.stringify(rolePermissionsMap));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_practice_workflows`, JSON.stringify(practiceWorkflows));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_firm_settings`, JSON.stringify(firmSettings));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(clients));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_intakes`, JSON.stringify(intakes));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_matters`, JSON.stringify(matters));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_parties`, JSON.stringify(parties));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_proceedings`, JSON.stringify(proceedings));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_tasks`, JSON.stringify(tasks));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_deadlines`, JSON.stringify(deadlines));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_events`, JSON.stringify(calendarEvents));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_documents`, JSON.stringify(documents));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_channels`, JSON.stringify(channels));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_messages`, JSON.stringify(messages));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify(expenses));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(accounts));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_payments`, JSON.stringify(payments));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_notifications`, JSON.stringify(notifications));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit`, JSON.stringify(auditLogs));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_time_entries`, JSON.stringify(timeEntries));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_api_settings`, JSON.stringify(apiSettings));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_incident_evidence`, JSON.stringify(incidentEvidence));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_medical_cases`, JSON.stringify(medicalCases));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_liability_quantum`, JSON.stringify(liabilityQuantums));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`, JSON.stringify(claimNegotiations));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`, JSON.stringify(pleadingsBundles));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_court_filings`, JSON.stringify(courtFilingPackages));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_service_queue`, JSON.stringify(serviceQueue));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`, JSON.stringify(preTrialCompliances));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`, JSON.stringify(hearingBriefs));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_judgment_awards`, JSON.stringify(judgmentAwards));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_recovery_executions`, JSON.stringify(recoveryExecutions));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`, JSON.stringify(settlementDistributions));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_closure_audits`, JSON.stringify(closureAudits));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_directory_contacts`, JSON.stringify(directoryContacts));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_branches`, JSON.stringify(branches));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_stage_handoffs`, JSON.stringify(stageHandoffs));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_role_permissions`, JSON.stringify(rolePermissionsMap));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_practice_workflows`, JSON.stringify(practiceWorkflows));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_firm_settings`, JSON.stringify(firmSettings));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(clients));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_intakes`, JSON.stringify(intakes));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_matters`, JSON.stringify(matters));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_parties`, JSON.stringify(parties));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_proceedings`, JSON.stringify(proceedings));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_tasks`, JSON.stringify(tasks));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_deadlines`, JSON.stringify(deadlines));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_events`, JSON.stringify(calendarEvents));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_documents`, JSON.stringify(documents));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_channels`, JSON.stringify(channels));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_messages`, JSON.stringify(messages));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify(expenses));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(accounts));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_payments`, JSON.stringify(payments));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_notifications`, JSON.stringify(notifications));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_audit`, JSON.stringify(auditLogs));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_time_entries`, JSON.stringify(timeEntries));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_api_settings`, JSON.stringify(apiSettings));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_incident_evidence`, JSON.stringify(incidentEvidence));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_medical_cases`, JSON.stringify(medicalCases));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_liability_quantum`, JSON.stringify(liabilityQuantums));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`, JSON.stringify(claimNegotiations));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`, JSON.stringify(pleadingsBundles));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_court_filings`, JSON.stringify(courtFilingPackages));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_service_queue`, JSON.stringify(serviceQueue));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`, JSON.stringify(preTrialCompliances));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`, JSON.stringify(hearingBriefs));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_judgment_awards`, JSON.stringify(judgmentAwards));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_recovery_executions`, JSON.stringify(recoveryExecutions));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`, JSON.stringify(settlementDistributions));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_closure_audits`, JSON.stringify(closureAudits));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_directory_contacts`, JSON.stringify(directoryContacts));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_branches`, JSON.stringify(branches));
+    demoStorage.setItem(`${LOCAL_STORAGE_KEY}_stage_handoffs`, JSON.stringify(stageHandoffs));
     if (activeTimer) {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_active_timer`, JSON.stringify(activeTimer));
+      demoStorage.setItem(`${LOCAL_STORAGE_KEY}_active_timer`, JSON.stringify(activeTimer));
     } else {
-      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
+      demoStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
     }
   }, [
     branches,
@@ -932,13 +939,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (isMounted && notifRes.status === 'fulfilled' && Array.isArray(notifRes.value) && notifRes.value.length > 0) {
           setNotifications(notifRes.value.map((n) => ({
             id: n.id,
-            userId: n.userId,
+            recipientUserId: n.recipientUserId,
             title: n.title,
-            message: n.body,
-            type: (n.type as any) || 'system',
-            isRead: n.read,
+            message: n.message,
+            category: (['assignment', 'deadline', 'court_event', 'task_mention', 'document_review', 'expense_approval'] as const).find(category => category === n.category.toLowerCase()) || 'system',
+            isRead: Boolean(n.readAt),
             createdAt: n.createdAt,
-            urgency: 'medium',
+            urgency: n.urgency === 'CRITICAL' ? 'critical' : n.urgency === 'URGENT' ? 'urgent' : 'normal',
           })));
         }
 
@@ -996,7 +1003,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             matterId: t.matterId || '',
             title: t.title,
             description: t.description || '',
-            assignedTo: t.assignedToId || 'usr-adv-1',
+            assignedTo: t.assignedToId || '',
+            createdBy: t.createdById,
             status: revStatusMap[t.status] || 'todo',
             priority: (t.priority?.toLowerCase() as any) || 'medium',
             dueAt: t.dueDate || new Date().toISOString(),
@@ -2767,19 +2775,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           createTask({
             matterId: event.matterId,
             title: workflowAutomation.draftingTaskTitle || `Draft & Prepare Pleadings/Submissions for ${event.title}`,
-            assignedUserId: event.assignedUserId,
-            priority: 'urgent',
+            assignedTo: event.assignedUserId,
+            createdBy: currentUser.id,
+            priority: 'critical',
             status: 'in_progress',
-            dueDate: draftingDueDate,
+            dueAt: new Date(draftingDueDate).toISOString(),
             description: `Prepare filings and required documents compliant with court directions: "${outcomeNotes}". Official court deadline is ${workflowAutomation.filingDeadlineDate}.`,
-            matterStageId: 10,
+            stageId: 10,
           });
 
           notify(
             event.assignedUserId,
             'Court Filing Deadline & Prep Task Generated',
             `Court ordered deadline on ${workflowAutomation.filingDeadlineDate}. Preparation task assigned.`,
-            'task',
+            'deadline',
             event.matterId,
             'urgent'
           );
@@ -2915,7 +2924,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updatedAt: now,
       };
       setDocuments((prev) => [newDoc, ...prev]);
-      logAudit(docData.matterId, 'DOCUMENT_CREATED', { documentId: docId, title: docData.title });
+      logAudit('document.created', 'document', docId, docData.matterId, { title: docData.title });
       return newDoc;
     },
     [logAudit]
@@ -3266,7 +3275,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       )
     );
     logAudit('matter.stage_handoff_acknowledged', 'handoff', handoffId);
-    notify(currentUser.id, 'Handoff Acknowledged', 'Stage responsibility accepted.', 'task');
+    notify(currentUser.id, 'Handoff Acknowledged', 'Stage responsibility accepted.', 'assignment');
   }, [currentUser.id, logAudit, notify]);
 
   // User & Staff Management
@@ -3767,7 +3776,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setTimeEntries((prev) => [newEntry, ...prev]);
     setActiveTimer(null);
-    localStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
+    demoStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_timer`);
 
     logAudit('finance.time_recorded', 'matter', activeTimer.matterId, activeTimer.matterId, {
       durationSeconds: totalSeconds,
@@ -3811,7 +3820,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...prev,
         ...newSettings,
       };
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_api_settings`, JSON.stringify(updated));
+      demoStorage.setItem(`${LOCAL_STORAGE_KEY}_api_settings`, JSON.stringify(updated));
       return updated;
     });
     notify(currentUser.id, 'API Configurations Updated', 'External service credentials and webhooks updated successfully.', 'system');
@@ -3820,7 +3829,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Demo state reset
   const resetToDemoData = useCallback(() => {
     if (!runtimeConfig.enableDemoMode) return;
-    localStorage.clear();
+    demoStorage.clear();
     setUsers(SEED_USERS);
     setPracticeWorkflows(SEED_PRACTICE_WORKFLOWS);
     setFirmSettings(DEFAULT_FIRM_SETTINGS);

@@ -10,6 +10,8 @@ import { AuditService } from '../../platform/audit/audit.service';
 import { RedisService } from '../../platform/redis/redis.service';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { DocumentAccessService } from './document-access.service';
+import { env } from '../../platform/env';
+import { roleContext } from '../../platform/auth/role-context';
 const hash = (b: Buffer | string) => createHash('sha256').update(b).digest('hex');
 const json = (v: unknown) => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue;
 
@@ -19,7 +21,7 @@ export class DocumentWorkflowService {
   async actor(id: string): Promise<RequestUser> {
     const u = await this.prisma.client.user.findUnique({ where: { id }, include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } } });
     if (!u || u.status !== 'ACTIVE') throw new ForbiddenException('User is no longer active');
-    return { id: u.id, firmId: u.firmId, email: u.email, fullName: u.fullName, roleKeys: u.roles.map(r => r.role.key), permissions: u.roles.flatMap(r => r.role.permissions.map(p => p.permission.key)) };
+    return { id: u.id, firmId: u.firmId, email: u.email, fullName: u.fullName, ...roleContext(u.firmId, u.roles) };
   }
   private async validate(user: RequestUser, input: ApplyDocumentMarks, requireElevation: boolean) {
     if (!user.permissions.includes('document.sign')) throw new ForbiddenException('Document application permission required');
@@ -120,7 +122,7 @@ export class DocumentWorkflowService {
   safe(op: DocumentOperation) {
     const { payload, ...safe } = op;
     const data = payload as { configuration?: { marks?: unknown[] }; previewPath?: string };
-    return { ...safe, suggestedMarks: op.kind === 'GENERATE' ? data.configuration?.marks ?? [] : [], previewUrl: data.previewPath ? `/api/v1/document-operations/${op.id}/preview-file` : undefined };
+    return { ...safe, suggestedMarks: op.kind === 'GENERATE' ? data.configuration?.marks ?? [] : [], previewUrl: data.previewPath ? `${env().API_PUBLIC_URL}/api/v1/document-operations/${op.id}/preview-file` : undefined };
   }
   async previewFile(user: RequestUser, id: string) {
     const op = await this.prisma.client.documentOperation.findFirst({ where: { id, firmId: user.firmId, actorId: user.id, status: 'COMPLETED' } });

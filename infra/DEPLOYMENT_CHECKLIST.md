@@ -1,19 +1,23 @@
 # KKA Production Deployment Checklist
 
-- [ ] DNS points the chosen domain to the VPS.
+- [ ] DNS for `os.kariukikagunda.com` and `api.kariukikagunda.com` points to the intended production VPS.
 - [ ] Only SSH, 80 and 443 are publicly reachable; PostgreSQL/Redis have no public ports.
 - [ ] `/srv/kklaw` directories created with `infra/scripts/bootstrap-vps.sh`.
 - [ ] `.env` contains production-only secrets and is not committed.
 - [ ] `POSTGRES_PASSWORD` and `APP_ENCRYPTION_KEY_BASE64` are long/random.
-- [ ] `APP_DOMAIN`, `APP_URL` and `WEB_ORIGIN` use the final HTTPS domain.
+- [ ] `WEB_DOMAIN`, `API_DOMAIN`, `APP_URL`, `API_PUBLIC_URL` and the exact `WEB_ORIGIN` allowlist match the two HTTPS hosts.
 - [ ] `SESSION_COOKIE_SECURE=true` in production.
+- [ ] Session cookie Domain is unset; `CSRF_ENABLED=true`; login, uploads and CSRF renewal pass across the two hosts.
 - [ ] `pnpm install`, `prisma generate`, schema validation, typecheck and tests pass.
 - [ ] A baseline Prisma migration exists and is committed before production deployment.
 - [ ] `pnpm prisma:migrate:deploy` succeeds.
-- [ ] Initial administrator was seeded with a strong one-time password and rotated after login.
+- [ ] A clean database was initialized using reviewed `BOOTSTRAP_*` values and `pnpm bootstrap:production`; no synthetic seed was promoted. Bootstrap password removed from deployment configuration.
 - [ ] Caddy HTTPS certificate succeeds.
 - [ ] `/api/v1/health/live` and `/api/v1/health/ready` are healthy.
 - [ ] Database backup and document backup both succeed.
 - [ ] A restore test has been performed on a disposable database/storage target.
 - [ ] SMTP/S3/provider connections are marked HEALTHY only after a real test.
 - [ ] Unimplemented providers remain `NOT_IMPLEMENTED` and are not presented to staff as connected.
+- [ ] All agreed launch phases in `docs/PRODUCTION_CONVERSION.md` passed with accountable firm acceptance.
+- [ ] Staging has separate credentials, database, storage and provider connections and cannot contact real clients or initiate payments.
+- [ ] Encrypted off-site restoration to a replacement VPS demonstrated at most one hour data loss and four hours recovery.

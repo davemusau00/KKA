@@ -1,0 +1,103 @@
+name: Predeployment acceptance
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  foundation-and-documents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18.6-bookworm
+        env:
+          POSTGRES_USER: kka_test
+          POSTGRES_PASSWORD: synthetic_ci_only
+          POSTGRES_DB: kka_documents_ci
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U kka_test" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:8.2-bookworm
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://kka_test:synthetic_ci_only@localhost:5432/kka_documents_ci
+      TEST_BOOTSTRAP_DATABASE_URL: postgresql://kka_test:synthetic_ci_only@localhost:5432/kka_bootstrap_ci
+      REDIS_URL: redis://localhost:6379/0
+      # Synthetic CI only; the production validator rejects this key.
+      APP_ENCRYPTION_KEY_BASE64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      PUBLIC_BRANDING_FIRM_ID: kka-firm
+      SEED_ADMIN_EMAIL: documents.admin@example.test
+      SEED_ADMIN_PASSWORD: Synthetic-CI-password-only!
+      SEED_ADMIN_NAME: Synthetic CI Administrator
+      API_PORT: '3015'
+      API_PUBLIC_URL: http://localhost:3015
+      VITE_API_URL: http://localhost:3015/api/v1
+      WEB_ORIGIN: http://localhost:5173
+      TEST_API_URL: http://localhost:3015/api/v1
+      TEST_WEB_URL: http://localhost:5173
+      CSRF_ENABLED: 'true'
+      SESSION_COOKIE_SECURE: 'false'
+      RATE_LIMIT_MAX: '10000'
+      LOCAL_STORAGE_ROOT: /tmp/kka-acceptance/documents
+      MARK_STORAGE_ROOT: /tmp/kka-acceptance/marks
+      LIBREOFFICE_PATH: /usr/bin/soffice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:validate && pnpm typecheck && pnpm build
+      - run: pnpm --filter @kka/web typecheck:tests
+      - run: pnpm --filter @kka/api test && pnpm --filter @kka/document-engine test
+      - name: Blank migrations and clean production bootstrap
+        run: |
+          PGPASSWORD=synthetic_ci_only createdb -h localhost -U kka_test kka_bootstrap_ci
+          DATABASE_URL="$TEST_BOOTSTRAP_DATABASE_URL" pnpm prisma:migrate:deploy
+          node --import tsx --test scripts/bootstrap.test.ts
+      - name: Fixture database migrations and repeat deployment
+        run: |
+          pnpm prisma:migrate:deploy
+          pnpm prisma:migrate:deploy
+          pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+          pnpm seed:fixtures
+      - name: Upgrade from the original baseline
+        env:
+          DATABASE_URL: postgresql://kka_test:synthetic_ci_only@localhost:5432/kka_upgrade_ci
+          PGPASSWORD: synthetic_ci_only
+        run: |
+          createdb -h localhost -U kka_test kka_upgrade_ci
+          psql -h localhost -U kka_test -d kka_upgrade_ci -v ON_ERROR_STOP=1 -f prisma/migrations/202609060000_baseline/migration.sql
+          pnpm exec prisma migrate resolve --applied 202609060000_baseline
+          pnpm prisma:migrate:deploy
+          pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - name: Install converters and browser
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice-writer fonts-liberation fonts-dejavu-core
+          pnpm --filter @kka/web exec playwright install --with-deps chromium
+          cd packages/document-engine
+          node -e "console.log('CHROMIUM_EXECUTABLE_PATH='+require('playwright').chromium.executablePath())" >> "$GITHUB_ENV"
+      - name: Start API, worker and cross-origin web server
+        run: |
+          mkdir -p .artifacts
+          node apps/api/dist/main.js > .artifacts/api.log 2>&1 &
+          node apps/worker/dist/main.js > .artifacts/worker.log 2>&1 &
+          pnpm dev:web > .artifacts/web.log 2>&1 &
+          node scripts/wait-acceptance.mjs
+      - name: API and real worker acceptance
+        run: pnpm --filter @kka/api test:documents
+      - name: Browser acceptance across separate origins
+        run: pnpm --filter @kka/web test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-evidence
+          path: |
+            .artifacts/
+            apps/web/test-results/

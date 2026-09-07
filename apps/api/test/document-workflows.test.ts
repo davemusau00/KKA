@@ -7,13 +7,14 @@ import { resolve } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import argon2 from 'argon2';
 import { demonstrationDocx, demonstrationLetter, demonstrationPleading } from '@kka/document-engine';
+import type { OrganizationProfile } from '@kka/contracts';
 const base=process.env.TEST_API_URL||'http://localhost:3015/api/v1';
 const db=createPrismaClient(process.env.DATABASE_URL!);
 const password=process.env.SEED_ADMIN_PASSWORD!;
 let cookie='', approverCookie='', limitedCookie='', outsiderCookie='', docId='', inputId='', logoId='', stampId='', signatureId='', adminId='', advocateId='';
 let image:Buffer;
-async function login(email:string){const r=await fetch(base+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});assert.equal(r.status,201);return r.headers.getSetCookie()[0]!.split(';')[0]!;}
-async function request(path:string,body?:unknown,method=body===undefined?'GET':'POST',session=cookie){const r=await fetch(base+path,{method,headers:{Cookie:session,...(body instanceof FormData?{}:{'Content-Type':'application/json'})},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body)});return r;}
+async function login(email:string){const csrf=await fetch(base+'/auth/csrf');const csrfCookie=csrf.headers.getSetCookie()[0]!.split(';')[0]!;const {token}=await csrf.json();const r=await fetch(base+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json',Cookie:csrfCookie,'X-CSRF-Token':token},body:JSON.stringify({email,password})});assert.equal(r.status,201);return r.headers.getSetCookie()[0]!.split(';')[0]!+'; '+csrfCookie;}
+async function request(path:string,body?:unknown,method=body===undefined?'GET':'POST',session=cookie){const token=session.split('; ').find(c=>c.startsWith('kka_csrf='))?.slice('kka_csrf='.length)||'';const r=await fetch(base+path,{method,headers:{Cookie:session,'X-CSRF-Token':token,...(body instanceof FormData?{}:{'Content-Type':'application/json'})},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body)});return r;}
 async function ok<T=Record<string,unknown>>(path:string,body?:unknown,method?:string,session?:string):Promise<T>{const r=await request(path,body,method,session);const data=await r.json();assert.ok(r.ok,`${path} ${r.status}: ${JSON.stringify(data)}`);return data as T;}
 const upload=(buffer:Buffer,mime='image/png',filename='test.png')=>{const data=new FormData();data.append('file',new Blob([new Uint8Array(buffer)],{type:mime}),filename);return data;};
 const marks=(versionId=logoId)=>({documentId:docId,inputVersionId:inputId,idempotencyKey:randomUUID(),reason:'Synthetic workflow acceptance',items:[{kind:'mark',versionId,placement:{page:1,x:40,y:40,width:100,height:60,rotation:0,opacity:1}}]});
@@ -32,8 +33,11 @@ before(async()=>{
   await db.firm.upsert({where:{id:'doc-test-other-firm'},create:{id:'doc-test-other-firm',name:'Synthetic Other Firm'},update:{}});
   await db.user.upsert({where:{id:'doc-test-outsider'},create:{id:'doc-test-outsider',firmId:'doc-test-other-firm',email:'documents.outsider@example.test',fullName:'Synthetic outsider',passwordHash:hash,status:'ACTIVE'},update:{passwordHash:hash}});
   const role=await db.role.findFirstOrThrow({where:{firmId:admin.firmId,key:'technical_admin'}});
-  // Test-only outsider gets the same permissions, to exercise firm scoping independently of role denial.
-  await db.userRole.upsert({where:{userId_roleId:{userId:'doc-test-outsider',roleId:role.id}},create:{userId:'doc-test-outsider',roleId:role.id},update:{}});
+  // Same permissions on an independently owned role exercise firm scope without invalid cross-firm membership.
+  const outsiderRole=await db.role.upsert({where:{firmId_key:{firmId:'doc-test-other-firm',key:'technical_admin'}},create:{firmId:'doc-test-other-firm',key:'technical_admin',name:'Synthetic other firm administrator'},update:{}});
+  const grants=await db.rolePermission.findMany({where:{roleId:role.id}});
+  await db.rolePermission.createMany({data:grants.map(grant=>({roleId:outsiderRole.id,permissionId:grant.permissionId})),skipDuplicates:true});
+  await db.userRole.upsert({where:{userId_roleId:{userId:'doc-test-outsider',roleId:outsiderRole.id}},create:{userId:'doc-test-outsider',roleId:outsiderRole.id},update:{}});
   const client=await db.client.upsert({where:{id:'doc-demo-client'},create:{id:'doc-demo-client',firmId:admin.firmId,displayName:'Synthetic Client - Demonstration Only'},update:{}});
   await db.matter.upsert({where:{id:'doc-demo-matter'},create:{id:'doc-demo-matter',firmId:admin.firmId,clientId:client.id,internalReference:'DEMO/DOCUMENTS/001',title:'Synthetic document demonstration',practiceArea:'Commercial',matterType:'Demonstration',originatingBranchId:branch.id,responsibleBranchId:branch.id,supervisingUserId:admin.id},update:{}});
   cookie=await login(process.env.SEED_ADMIN_EMAIL!);approverCookie=await login('documents.approver@example.test');limitedCookie=await login('documents.limited@example.test');outsiderCookie=await login('documents.outsider@example.test');
@@ -44,6 +48,50 @@ before(async()=>{
   for(const [type,variable] of [['LOGO','logo'],['RECEIVED_STAMP','stamp']]){const asset=await ok<{id:string}>('/marks',{displayName:`Synthetic ${type}`,type});const v=await ok<{id:string}>(`/marks/${asset.id}/versions`,upload(image));if(variable==='logo')logoId=v.id;else stampId=v.id;}
 });
 after(async()=>db.$disconnect());
+
+test('firm profile rejects unauthorized reads and writes; concurrent edits have one audited winner', async () => {
+  assert.equal((await request('/organization/profile',undefined,'GET',limitedCookie)).status,403);
+  const original = await ok<OrganizationProfile>('/organization/profile');
+  const input = { name: original.name, shortName: 'Synthetic concurrency test', expectedUpdatedAt: original.updatedAt };
+  assert.equal((await request('/organization/profile',input,'PATCH',limitedCookie)).status,403);
+  assert.equal((await request('/organization/profile',{...input,firmId:'doc-test-other-firm'},'PATCH')).status,400);
+  const before = await db.auditEvent.count({where:{entityId:original.id,action:'firm.identity_updated'}});
+  const results = await Promise.all([request('/organization/profile',input,'PATCH'),request('/organization/profile',input,'PATCH')]);
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+  const conflict = await results.find(r=>r.status===409)!.json(); assert.equal(conflict.code,'VERSION_CONFLICT');
+  assert.equal(await db.auditEvent.count({where:{entityId:original.id,action:'firm.identity_updated'}}),before+1);
+  const current = await ok<OrganizationProfile>('/organization/profile',undefined,'GET',approverCookie);
+  assert.equal(current.shortName,input.shortName);
+  assert.equal((await request('/organization/profile',input,'PATCH')).status,409);
+  const outsider = await ok<OrganizationProfile>('/organization/profile',undefined,'GET',outsiderCookie);
+  assert.notEqual(outsider.id,original.id);
+  await ok('/organization/profile',{name:original.name,shortName:original.shortName||'',expectedUpdatedAt:current.updatedAt},'PATCH');
+});
+
+test('legal registration and branch contacts persist with scope, validation and retirement checks', async () => {
+  const original = await ok<OrganizationProfile>('/organization/profile');
+  const entity = original.legalEntities.find(row=>row.active)!;
+  const branch = original.branches.find(row=>row.active)!;
+  assert.ok(entity); assert.ok(branch);
+  const entityInput = {name:entity.name,registrationNo:'SYNTHETIC-REG-ONLY',kraPin:'',vatRegistration:'',expectedUpdatedAt:entity.updatedAt};
+  const branchInput = {address:'Synthetic office acceptance',postalAddress:'',phone:'',email:'contact@example.test',expectedUpdatedAt:branch.updatedAt};
+  assert.equal((await request(`/organization/legal-entities/${entity.id}`,entityInput,'PATCH',outsiderCookie)).status,404);
+  assert.equal((await request(`/organization/branches/${branch.id}/contact`,branchInput,'PATCH',outsiderCookie)).status,404);
+  assert.equal((await request(`/organization/branches/${branch.id}/contact`,{...branchInput,email:'invalid'},'PATCH')).status,400);
+  await ok(`/organization/legal-entities/${entity.id}`,entityInput,'PATCH');
+  await ok(`/organization/branches/${branch.id}/contact`,branchInput,'PATCH');
+  let current = await ok<OrganizationProfile>('/organization/profile',undefined,'GET',approverCookie);
+  const changedEntity=current.legalEntities.find(row=>row.id===entity.id)!;
+  const changedBranch=current.branches.find(row=>row.id===branch.id)!;
+  assert.equal(changedEntity.registrationNo,entityInput.registrationNo); assert.equal(changedBranch.email,branchInput.email);
+  assert.equal((await request(`/organization/branches/${branch.id}/contact`,branchInput,'PATCH')).status,409);
+  await db.legalEntity.update({where:{id:entity.id},data:{active:false}});
+  try { assert.equal((await request(`/organization/legal-entities/${entity.id}`,{...entityInput,expectedUpdatedAt:changedEntity.updatedAt},'PATCH')).status,404); }
+  finally { await db.legalEntity.update({where:{id:entity.id},data:{active:true}}); }
+  current = await ok<OrganizationProfile>('/organization/profile');
+  await ok(`/organization/legal-entities/${entity.id}`,{name:entity.name,registrationNo:entity.registrationNo||'',kraPin:entity.kraPin||'',vatRegistration:entity.vatRegistration||'',expectedUpdatedAt:current.legalEntities.find(row=>row.id===entity.id)!.updatedAt},'PATCH');
+  await ok(`/organization/branches/${branch.id}/contact`,{address:branch.address||'',postalAddress:branch.postalAddress||'',phone:branch.phone||'',email:branch.email||'',expectedUpdatedAt:changedBranch.updatedAt},'PATCH');
+});
 test('branding persists, publishes only selected image, and restores default',async()=>{
   const result=await ok<{versionId:string;imageUrl:string}>('/branding/logo',upload(image));assert.ok(result.versionId);
   const current=await ok<{versionId:string}>('/branding');assert.equal(current.versionId,result.versionId);
