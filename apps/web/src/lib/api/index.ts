@@ -12,3 +12,4 @@ export * from './integrations.api';
 export * from './search.api';
 export * from './settings.api';
 export * from './tasks.api';
+export * from './calendar.api';

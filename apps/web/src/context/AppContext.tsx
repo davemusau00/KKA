@@ -129,7 +129,7 @@ import {
 } from '../data/adminSeedData';
 import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
 import { generateSequentialMatterReference } from '../utils/matterReference';
-import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi } from '../lib/api';
+import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi, calendarApi } from '../lib/api';
 import { runtimeConfig } from '../config/runtime';
 
 const EMPTY_USER: UserProfile = {
@@ -891,13 +891,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (liveCheck.status !== 'ok' || !isMounted) return;
 
         // Backend is online and responsive: hydrate catalogs and operational collections
-        const [dirRes, branchRes, notifRes, meRes, clientRes, taskRes] = await Promise.allSettled([
+        const [dirRes, branchRes, notifRes, meRes, clientRes, taskRes, calendarRes] = await Promise.allSettled([
           directoryApi.list(),
           organizationApi.listBranches(),
           notificationsApi.list(false),
           authApi.me(),
           clientsApi.list({ limit: 100 }),
           tasksApi.list({ limit: 100 }),
+          calendarApi.list(),
         ]);
 
         if (isMounted && dirRes.status === 'fulfilled' && Array.isArray(dirRes.value) && dirRes.value.length > 0) {
@@ -1011,6 +1012,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             dependsOnTaskIds: [],
+          })));
+        }
+
+        if (isMounted && calendarRes.status === 'fulfilled' && Array.isArray(calendarRes.value)) {
+          const eventTypeMap: Record<string, CalendarEventType> = {
+            COURT: 'court', CLIENT_MEETING: 'client_meeting', INTERNAL_MEETING: 'internal_meeting',
+            MEDICAL: 'medical', FILING: 'filing', DEADLINE: 'deadline', TASK_BLOCK: 'task_block', OTHER: 'other',
+          };
+          const policyMap: Record<string, CalendarEditPolicy> = {
+            FREE: 'free', CONFIRM: 'confirm', REASON_REQUIRED: 'reason_required', APPROVAL_REQUIRED: 'approval_required', LOCKED: 'locked',
+          };
+          const sourceMap: Record<string, CalendarEvent['sourceType']> = {
+            MANUAL: 'manual', COURT_ORDER: 'court_order', WORKFLOW: 'workflow', TASK: 'task', DEADLINE: 'deadline',
+          };
+          setCalendarEvents(calendarRes.value.map((event: any) => ({
+            id: event.id,
+            matterId: event.matterId || undefined,
+            title: event.title,
+            eventType: eventTypeMap[event.eventType] || 'other',
+            startAt: event.startAt,
+            endAt: event.endAt,
+            allDay: event.allDay,
+            location: event.location || '',
+            virtualMeetingUrl: event.virtualMeetingUrl || undefined,
+            assignedUserId: event.assignedUserId,
+            organizerId: event.organizerId,
+            courtProceedingId: event.courtProceedingId || undefined,
+            notes: event.notes || undefined,
+            linkedDocumentIds: (event.documents || []).map((link: any) => link.documentId || link.document?.id),
+            courtStatus: event.status?.toLowerCase() as CourtEventStatus | undefined,
+            syncState: event.syncState?.toLowerCase() as CalendarEvent['syncState'],
+            editPolicy: policyMap[event.editPolicy] || 'confirm',
+            sourceType: sourceMap[event.sourceType] || 'manual',
+            revisions: event.revisions || [],
           })));
         }
       } catch (err) {
