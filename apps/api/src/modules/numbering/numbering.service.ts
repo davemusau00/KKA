@@ -14,10 +14,10 @@ export interface NextSequenceOptions {
 export class NumberingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async next(options: NextSequenceOptions): Promise<string> {
+  async next(options: NextSequenceOptions, client: any = this.prisma.client): Promise<string> {
     const branchId = options.branchId ?? "__GLOBAL__";
     const year = options.year ?? 0;
-    const row = await this.prisma.client.numberSequence.upsert({
+    const row = await client.numberSequence.upsert({
       where: {
         firmId_branchId_entityType_year: {
           firmId: options.firmId,

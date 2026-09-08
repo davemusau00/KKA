@@ -16,6 +16,73 @@ export class MattersService {
     private readonly numbering: NumberingService
   ) {}
 
+  /** Creates the matter and its opening records inside a caller-owned transaction. */
+  async createInTransaction(tx: any, firmId: string, input: {
+    clientId: string;
+    legalEntityId?: string;
+    title: string;
+    practiceArea: string;
+    practiceCode: string;
+    matterType: string;
+    workflowVersionId?: string;
+    originatingBranchId: string;
+    responsibleBranchId: string;
+    supervisingUserId: string;
+    currentStageOwnerId?: string;
+    courtClerkId?: string;
+    financeContactId?: string;
+    priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    summary?: string;
+    nextAction?: string;
+  }) {
+    const branch = await tx.branch.findFirst({ where: { id: input.originatingBranchId, firmId, active: true } });
+    if (!branch) throw new BadRequestException("Originating branch is invalid");
+
+    const internalReference = await this.numbering.next({
+      firmId,
+      branchId: input.originatingBranchId,
+      entityType: "MATTER",
+      year: new Date().getFullYear(),
+      pattern: "{firm}/{practice}/{year}/{seq:5}",
+      tokens: { practice: input.practiceCode.toUpperCase() }
+    }, tx);
+
+    const initialStage = input.workflowVersionId
+      ? await tx.workflowStage.findFirst({ where: { workflowVersionId: input.workflowVersionId, stageNumber: 1 } })
+      : null;
+    const created = await tx.matter.create({
+      data: {
+        firmId,
+        legalEntityId: input.legalEntityId,
+        clientId: input.clientId,
+        internalReference,
+        title: input.title,
+        practiceArea: input.practiceArea,
+        matterType: input.matterType,
+        workflowVersionId: input.workflowVersionId,
+        originatingBranchId: input.originatingBranchId,
+        responsibleBranchId: input.responsibleBranchId,
+        supervisingUserId: input.supervisingUserId,
+        currentStageOwnerId: input.currentStageOwnerId ?? input.supervisingUserId,
+        courtClerkId: input.courtClerkId,
+        financeContactId: input.financeContactId,
+        currentStageId: initialStage?.stageNumber ?? 1,
+        priority: input.priority,
+        summary: input.summary,
+        nextAction: input.nextAction
+      }
+    });
+
+    if (initialStage) {
+      const stageInstance = await tx.matterStageInstance.create({ data: { matterId: created.id, workflowStageId: initialStage.id, ownerUserId: input.currentStageOwnerId ?? input.supervisingUserId } });
+      if (initialStage.checklistItems.length) {
+        await tx.matterStageChecklistItem.createMany({ data: initialStage.checklistItems.map((label: string, index: number) => ({ stageInstanceId: stageInstance.id, key: `item_${index + 1}`, label })) });
+      }
+    }
+    await tx.communicationChannel.create({ data: { firmId, matterId: created.id, type: "MATTER", name: internalReference.replace(/\//g, "-"), description: input.title, private: true } });
+    return created;
+  }
+
   list(
     firmId: string,
     filters: { q?: string; status?: string; branchId?: string; practiceArea?: string; stageOwnerId?: string }

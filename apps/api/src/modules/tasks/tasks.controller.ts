@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
-import { CreateTaskSchema, UpdateTaskStatusSchema } from "@kka/contracts";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { CreateTaskSchema, UpdateTaskSchema, UpdateTaskStatusSchema } from "@kka/contracts";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { TasksService } from "./tasks.service";
@@ -29,5 +29,17 @@ export class TasksController {
   @RequirePermissions("task.edit")
   status(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     return this.tasks.setStatus(user.firmId, user.id, id, UpdateTaskStatusSchema.parse(body));
+  }
+
+  @Patch(":id")
+  @RequirePermissions("task.edit")
+  update(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    return this.tasks.update(user.firmId, user.id, id, UpdateTaskSchema.parse(body));
+  }
+
+  @Delete(":id")
+  @RequirePermissions("task.edit")
+  archive(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.tasks.archive(user.firmId, user.id, id);
   }
 }

@@ -147,6 +147,18 @@ export const UpdateTaskStatusSchema = z.object({
   forceReason: z.string().max(2000).optional()
 });
 
+export const UpdateTaskSchema = z.object({
+  title: z.string().min(2).max(300).optional(),
+  description: z.string().max(10000).optional(),
+  assignedToId: z.string().optional(),
+  reviewerId: z.string().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional(),
+  startAt: z.string().datetime().nullable().optional(),
+  dueAt: z.string().datetime().optional(),
+  officialDeadlineAt: z.string().datetime().nullable().optional(),
+  dependencyIds: z.array(z.string()).optional()
+});
+
 export const CreateCalendarEventSchema = z.object({
   matterId: z.string().optional(),
   courtProceedingId: z.string().optional(),

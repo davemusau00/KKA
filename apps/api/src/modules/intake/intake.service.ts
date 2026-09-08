@@ -207,76 +207,50 @@ export class IntakeService {
       initialAction?: string;
     }
   ) {
-    const intake = await this.get(firmId, intakeId);
-    if (intake.convertedMatterId) return this.matters.get(firmId, intake.convertedMatterId);
-
-    const conflict = intake.conflictChecks[0];
-    if (!conflict || !["CLEAR", "OVERRIDDEN_APPROVED"].includes(conflict.status)) {
-      throw new BadRequestException("Conflict clearance is required before conversion");
-    }
-    const kyc = intake.kycRecords[0];
-    if (!kyc?.idVerified || !kyc.warrantToActSigned || !kyc.retainerAgreementSigned || kyc.partnerApproval !== "APPROVED") {
-      throw new BadRequestException("KYC, authority to act, retainer and partner approval must be complete");
-    }
-
-    let clientId = intake.clientId;
-    if (!clientId) {
-      const client = await this.clients.create(firmId, actorId, {
-        type: "PERSON",
-        displayName: intake.clientName,
-        idNumber: intake.nationalId,
-        phone: intake.phone,
-        email: intake.email,
-        preferredContactMethod: "PHONE",
-        kycStatus: "VERIFIED"
+    const converted = await this.prisma.client.$transaction(async (tx) => {
+      const intake = await tx.intake.findFirst({
+        where: { id: intakeId, firmId },
+        include: { parties: true, conflictChecks: { orderBy: { checkedAt: "desc" }, take: 1 }, kycRecords: { orderBy: { updatedAt: "desc" }, take: 1 } }
       });
-      clientId = client.id;
-    }
+      if (!intake) throw new NotFoundException("Intake not found");
+      if (intake.convertedMatterId) return { alreadyConverted: true, matterId: intake.convertedMatterId };
 
-    const practiceCode = intake.practiceArea.toLowerCase().includes("personal") ? "PI" : "GEN";
-    const matter = await this.matters.create(firmId, actorId, {
-      clientId,
-      legalEntityId: options.legalEntityId,
-      title: `${intake.clientName} - ${intake.matterType ?? intake.practiceArea}`,
-      practiceArea: intake.practiceArea,
-      practiceCode,
-      matterType: intake.matterType ?? intake.practiceArea,
-      workflowVersionId: options.workflowVersionId,
-      originatingBranchId: options.originatingBranchId,
-      responsibleBranchId: options.responsibleBranchId,
-      supervisingUserId: options.supervisingUserId,
-      currentStageOwnerId: options.stageOwnerId,
-      courtClerkId: options.courtClerkId,
-      financeContactId: options.financeContactId,
-      priority: "MEDIUM",
-      summary: intake.briefDescription,
-      nextAction: options.initialAction ?? "Complete opening workflow"
+      const conflict = intake.conflictChecks[0];
+      if (!conflict || !["CLEAR", "OVERRIDDEN_APPROVED"].includes(conflict.status)) throw new BadRequestException("Conflict clearance is required before conversion");
+      const kyc = intake.kycRecords[0];
+      if (!kyc?.idVerified || !kyc.warrantToActSigned || !kyc.retainerAgreementSigned || kyc.partnerApproval !== "APPROVED") throw new BadRequestException("KYC, authority to act, retainer and partner approval must be complete");
+
+      let clientId = intake.clientId;
+      if (!clientId) {
+        const clientNumber = await this.numbering.next({ firmId, entityType: "CLIENT", year: new Date().getFullYear(), pattern: "KKA/CL/{year}/{seq:5}" }, tx);
+        const client = await tx.client.create({ data: { firmId, clientNumber, type: "PERSON", displayName: intake.clientName, idNumber: intake.nationalId, phone: intake.phone, email: intake.email, preferredContactMethod: "PHONE", kycStatus: "VERIFIED" } });
+        clientId = client.id;
+      }
+
+      const practiceCode = intake.practiceArea.toLowerCase().includes("personal") ? "PI" : "GEN";
+      const matter = await this.matters.createInTransaction(tx, firmId, {
+        clientId, legalEntityId: options.legalEntityId,
+        title: `${intake.clientName} - ${intake.matterType ?? intake.practiceArea}`,
+        practiceArea: intake.practiceArea, practiceCode, matterType: intake.matterType ?? intake.practiceArea,
+        workflowVersionId: options.workflowVersionId, originatingBranchId: options.originatingBranchId,
+        responsibleBranchId: options.responsibleBranchId, supervisingUserId: options.supervisingUserId,
+        currentStageOwnerId: options.stageOwnerId, courtClerkId: options.courtClerkId, financeContactId: options.financeContactId,
+        priority: "MEDIUM", summary: intake.briefDescription, nextAction: options.initialAction ?? "Complete opening workflow"
+      });
+
+      await tx.intake.update({ where: { id: intakeId }, data: { disposition: "CONVERTED", convertedMatterId: matter.id, clientId } });
+      if (intake.parties.length) {
+        await tx.matterParty.createMany({ data: intake.parties.map((party) => ({ matterId: matter.id, partyType: party.role, name: party.name, idNumber: party.idOrRegNumber, phone: party.phone, email: party.email, organizationName: party.insuranceCompany, notes: party.notes })) });
+      }
+      return { alreadyConverted: false, matterId: matter.id };
     });
 
-    await this.prisma.client.$transaction([
-      this.prisma.client.intake.update({
-        where: { id: intakeId },
-        data: { disposition: "CONVERTED", convertedMatterId: matter.id, clientId }
-      }),
-      ...intake.parties.map((party) =>
-        this.prisma.client.matterParty.create({
-          data: {
-            matterId: matter.id,
-            partyType: party.role,
-            name: party.name,
-            idNumber: party.idOrRegNumber,
-            phone: party.phone,
-            email: party.email,
-            organizationName: party.insuranceCompany,
-            notes: party.notes
-          }
-        })
-      )
-    ]);
+    const matter = await this.matters.get(firmId, converted.matterId);
+    if (converted.alreadyConverted) return matter;
 
     await this.audit.record({
       firmId, actorUserId: actorId, action: "intake.converted",
-      entityType: "intake", entityId: intakeId, matterId: matter.id, clientId,
+      entityType: "intake", entityId: intakeId, matterId: matter.id, clientId: matter.clientId,
       metadata: { internalReference: matter.internalReference }
     });
     return matter;

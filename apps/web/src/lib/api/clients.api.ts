@@ -11,15 +11,16 @@ export interface BackendClient {
   displayName: string;
   idNumber?: string | null;
   kraPin?: string | null;
-  primaryPhone: string;
-  primaryEmail?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  email?: string | null;
   postalAddress?: string | null;
   county?: string | null;
   status: ClientStatus;
   createdAt: string;
   updatedAt: string;
   // relations (populated on detail fetch)
-  matters?: { id: string; matterNumber: string; title: string }[];
+  matters?: { id: string; internalReference: string; title: string }[];
 }
 
 export interface CreateClientDto {
@@ -40,23 +41,38 @@ export interface ClientsListResponse {
   limit: number;
 }
 
+function normalizeClient(client: any): BackendClient {
+  return {
+    ...client,
+    type: client.type === 'ORGANIZATION' ? 'CORPORATE' : 'INDIVIDUAL',
+    phone: client.phone ?? null,
+    email: client.email ?? null,
+    matters: client.matters?.map((matter: any) => ({ ...matter, matterNumber: matter.matterNumber ?? matter.internalReference }))
+  };
+}
+
 export const clientsApi = {
   /** List clients with optional search, pagination */
-  list: (params?: {
+  list: async (params?: {
     q?: string;
     status?: ClientStatus;
     page?: number;
     limit?: number;
-  }) => apiClient.get<ClientsListResponse>('/clients', { params }),
+  }) => {
+    return apiClient.get<any>('/clients', { params }).then((rows) => {
+      const data = Array.isArray(rows) ? rows.map(normalizeClient) : (rows.data || []).map(normalizeClient);
+      return { data, total: rows.total ?? data.length, page: rows.page ?? 1, limit: rows.limit ?? data.length };
+    });
+  },
 
   /** Get a single client with full detail */
-  get: (id: string) => apiClient.get<BackendClient>(`/clients/${id}`),
+  get: (id: string) => apiClient.get<any>(`/clients/${id}`).then(normalizeClient),
 
   /** Create a new client record */
   create: (dto: CreateClientDto) =>
-    apiClient.post<BackendClient>('/clients', { ...dto, type: dto.type === 'CORPORATE' ? 'ORGANIZATION' : 'PERSON', phone: dto.primaryPhone, email: dto.primaryEmail }),
+    apiClient.post<any>('/clients', { ...dto, type: dto.type === 'CORPORATE' ? 'ORGANIZATION' : 'PERSON', phone: dto.primaryPhone, email: dto.primaryEmail }).then(normalizeClient),
 
   /** Update client profile */
   update: (id: string, dto: Partial<CreateClientDto>) =>
-    apiClient.patch<BackendClient>(`/clients/${id}`, { ...dto, ...(dto.type ? { type: dto.type === 'CORPORATE' ? 'ORGANIZATION' : 'PERSON' } : {}), phone: dto.primaryPhone, email: dto.primaryEmail }),
+    apiClient.patch<any>(`/clients/${id}`, { ...dto, ...(dto.type ? { type: dto.type === 'CORPORATE' ? 'ORGANIZATION' : 'PERSON' } : {}), phone: dto.primaryPhone, email: dto.primaryEmail }).then(normalizeClient),
 };

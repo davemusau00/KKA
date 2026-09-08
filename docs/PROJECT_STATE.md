@@ -6,6 +6,8 @@ Updated 2026-09-07. Repository: `davemusau00/KKA`.
 
 The full operating product and its launch gates are defined in [PRODUCTION_CONVERSION.md](PRODUCTION_CONVERSION.md). Staff launch occurs after all agreed phases pass. Frontend: `https://os.kariukikagunda.com`. API: `https://api.kariukikagunda.com/api/v1`. Business writes are online and server-confirmed; offline synchronization and multi-node high availability are deferred.
 
+The implementation register for local-only conversion work is [LOCAL_ONLY_CONVERSION_PLAN.md](LOCAL_ONLY_CONVERSION_PLAN.md). It covers work that can be built and verified against the local API, PostgreSQL, Redis, worker and browser stack without deployment or external provider credentials.
+
 This record supersedes the historical tier checklist. Backend module existence, a rendered screen, compilation and empty test runners do not establish a completed workflow. Branch names, deadlines, retention and accounting defaults in synthetic fixtures require firm approval.
 
 ## Implemented increments and evidence

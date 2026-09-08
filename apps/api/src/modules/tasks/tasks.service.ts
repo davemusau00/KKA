@@ -99,4 +99,54 @@ export class TasksService {
     });
     return updated;
   }
+
+  async update(firmId: string, actorId: string, taskId: string, input: any) {
+    const task = await this.prisma.client.task.findFirst({
+      where: { id: taskId, matter: { firmId } },
+      include: { dependencies: true }
+    });
+    if (!task) throw new NotFoundException("Task not found");
+
+    if (input.assignedToId) {
+      const assignee = await this.prisma.client.user.findFirst({ where: { id: input.assignedToId, firmId, status: "ACTIVE" } });
+      if (!assignee) throw new BadRequestException("Assigned user is not active in this firm");
+    }
+
+    const dependencyIds = input.dependencyIds as string[] | undefined;
+    if (dependencyIds) {
+      if (dependencyIds.includes(taskId)) throw new BadRequestException("A task cannot depend on itself");
+      const dependencies = await this.prisma.client.task.findMany({ where: { id: { in: dependencyIds }, matter: { firmId } }, select: { id: true } });
+      if (dependencies.length !== new Set(dependencyIds).size) throw new BadRequestException("One or more dependencies are invalid");
+    }
+
+    const { dependencyIds: nextDependencyIds, ...fields } = input;
+    const updated = await this.prisma.client.$transaction(async (tx) => {
+      if (nextDependencyIds) {
+        await tx.taskDependency.deleteMany({ where: { taskId } });
+        if (nextDependencyIds.length) await tx.taskDependency.createMany({ data: nextDependencyIds.map((dependsOnId: string) => ({ taskId, dependsOnId })) });
+      }
+      return tx.task.update({
+        where: { id: taskId },
+        data: {
+          ...fields,
+          ...(fields.startAt !== undefined ? { startAt: fields.startAt ? new Date(fields.startAt) : null } : {}),
+          ...(fields.dueAt ? { dueAt: new Date(fields.dueAt) } : {}),
+          ...(fields.officialDeadlineAt !== undefined ? { officialDeadlineAt: fields.officialDeadlineAt ? new Date(fields.officialDeadlineAt) : null } : {})
+        } as any,
+        include: { dependencies: true }
+      });
+    });
+
+    await this.audit.record({ firmId, actorUserId: actorId, action: "task.updated", entityType: "task", entityId: taskId, matterId: updated.matterId ?? undefined, metadata: { changedKeys: Object.keys(input) } });
+    return updated;
+  }
+
+  async archive(firmId: string, actorId: string, taskId: string) {
+    const task = await this.prisma.client.task.findFirst({ where: { id: taskId, matter: { firmId } } });
+    if (!task) throw new NotFoundException("Task not found");
+    if (task.status === "COMPLETED") throw new BadRequestException("Completed tasks must be reversed explicitly");
+    const updated = await this.prisma.client.task.update({ where: { id: taskId }, data: { status: "CANCELLED", blockedReason: "Archived by user" } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "task.archived", entityType: "task", entityId: taskId, matterId: updated.matterId ?? undefined, metadata: {} });
+    return updated;
+  }
 }
