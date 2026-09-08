@@ -67,3 +67,13 @@ A slice is complete only when:
 ## Current evidence
 
 The foundation, organization-profile and document slices have prior local acceptance evidence in [PROJECT_STATE.md](PROJECT_STATE.md). This plan is the work register for the remaining local-only conversion and must not be read as production deployment evidence.
+
+The current implementation increment includes:
+
+- transactional, idempotent intake-to-matter conversion with backend numbering, conflict/KYC gates and audit coverage;
+- persisted intake metadata updates with firm scoping and converted-intake immutability;
+- server-backed task edit/archive routes and normalized client, task, search and intake response adapters;
+- client and task creation/update paths that only add or change local state after the API confirms success;
+- local verification against PostgreSQL, Redis and the API with authenticated health, client, task and intake requests returning successfully.
+
+The remaining phases are not certified by this entry and require the acceptance contract above slice by slice.

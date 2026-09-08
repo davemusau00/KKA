@@ -2415,14 +2415,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Client operations
   const createClient = useCallback((clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
-    const newClient: Client = {
+    const pendingClient: Client = {
       ...clientData,
-      id: `cli-${Date.now()}`,
+      id: `pending-client-${Date.now()}`,
       createdAt: now,
       updatedAt: now,
     };
-    setClients((prev) => [newClient, ...prev]);
-    logAudit('client.created', 'client', newClient.id, undefined, { name: newClient.displayName });
 
     clientsApi.create({
       type: clientData.clientType === 'organization' ? 'CORPORATE' : 'INDIVIDUAL',
@@ -2434,22 +2432,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       postalAddress: clientData.postalAddress || undefined,
     }).then((created) => {
       if (created?.id) {
-        setClients((prev) =>
-          prev.map((c) => (c.id === newClient.id ? { ...c, id: created.id } : c))
-        );
+        setClients((prev) => [{ ...pendingClient, id: created.id, updatedAt: created.updatedAt, createdAt: created.createdAt }, ...prev]);
+        logAudit('client.created', 'client', created.id, undefined, { name: created.displayName });
       }
     }).catch((err) => {
-      console.warn('Backend client sync offline/queued:', err);
+      notify(currentUser.id, 'Client was not saved', 'The server rejected the client record. No local record was created.', 'system', undefined, 'urgent');
     });
 
-    return newClient;
-  }, [logAudit]);
+    return pendingClient;
+  }, [currentUser.id, logAudit, notify]);
 
   const updateClient = useCallback((id: string, updates: Partial<Client>) => {
-    setClients((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c))
-    );
-
     clientsApi.update(id, {
       displayName: updates.displayName,
       primaryPhone: updates.phone,
@@ -2457,10 +2450,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       idNumber: updates.idNumber,
       kraPin: updates.kraPin,
       postalAddress: updates.postalAddress,
-    }).catch((err) => {
-      console.warn('Backend client update offline/queued:', err);
+    }).then((updated) => {
+      setClients((prev) => prev.map((c) => c.id === id ? { ...c, ...updates, updatedAt: updated.updatedAt } : c));
+    }).catch(() => {
+      notify(currentUser.id, 'Client was not updated', 'The server rejected the change. The displayed record was left unchanged.', 'system', id, 'urgent');
     });
-  }, []);
+  }, [currentUser.id, notify]);
 
   // Convert Intake to Matter
   const convertIntakeToMatter = useCallback((intakeId: string) => {
@@ -2532,24 +2527,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Task Operations
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
-    const newTask: Task = {
+    const pendingTask: Task = {
       ...taskData,
-      id: `tsk-${Date.now()}`,
+      id: `pending-task-${Date.now()}`,
       dependsOnTaskIds: taskData.dependsOnTaskIds || [],
       createdAt: now,
       updatedAt: now,
     };
-    setTasks((prev) => [newTask, ...prev]);
-    logAudit('task.created', 'task', newTask.id, newTask.matterId, { title: newTask.title });
-
-    if (newTask.assignedTo !== currentUser.id) {
-      notify(newTask.assignedTo, 'New Task Assigned', `${currentUser.fullName} assigned you: "${newTask.title}"`, 'assignment', newTask.matterId);
-    }
-
-    if (!isOnline) {
-      queueMutation('task', 'create', newTask as unknown as Record<string, unknown>);
-    }
-
     tasksApi.create({
       title: taskData.title,
       description: taskData.description,
@@ -2559,15 +2543,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dueDate: taskData.dueAt,
     }).then((created) => {
       if (created?.id) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === newTask.id ? { ...t, id: created.id } : t))
-        );
+        const savedTask: Task = { ...pendingTask, id: created.id, createdAt: created.createdAt, updatedAt: created.updatedAt, status: (created.status?.toLowerCase() as TaskStatus) || pendingTask.status };
+        setTasks((prev) => [savedTask, ...prev]);
+        logAudit('task.created', 'task', savedTask.id, savedTask.matterId, { title: savedTask.title });
+        if (savedTask.assignedTo !== currentUser.id) notify(savedTask.assignedTo, 'New Task Assigned', `${currentUser.fullName} assigned you: "${savedTask.title}"`, 'assignment', savedTask.matterId);
       }
     }).catch((err) => {
-      console.warn('Backend task sync offline/queued:', err);
+      notify(currentUser.id, 'Task was not saved', 'The server rejected the task. No local task was created.', 'system', taskData.matterId, 'urgent');
     });
 
-    return newTask;
+    return pendingTask;
   }, [currentUser, logAudit, notify, isOnline, queueMutation]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>, force: boolean = false): { success: boolean; error?: string } => {
@@ -2590,28 +2575,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t))
-    );
-    if (!isOnline) {
-      queueMutation('task', 'update', { id, ...updates });
-    }
-
+    const statusMap: Record<string, any> = {
+      todo: 'TODO', in_progress: 'IN_PROGRESS', review: 'IN_REVIEW',
+      completed: 'COMPLETED', cancelled: 'CANCELLED',
+    };
     if (updates.status) {
-      const statusMap: Record<string, any> = {
-        todo: 'TODO',
-        in_progress: 'IN_PROGRESS',
-        review: 'IN_REVIEW',
-        completed: 'COMPLETED',
-        cancelled: 'CANCELLED',
-      };
       const backendStatus = statusMap[updates.status] || 'TODO';
-      tasksApi.setStatus(id, backendStatus).catch((err) => {
-        console.warn('Backend task status sync offline/queued:', err);
+      tasksApi.setStatus(id, backendStatus).then(() => {
+        setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
+      }).catch(() => {
+        notify(currentUser.id, 'Task was not updated', 'The server rejected the status change. The task remains unchanged.', 'system', currentTask.matterId, 'urgent');
+      });
+    } else {
+      tasksApi.update(id, {
+        title: updates.title,
+        description: updates.description,
+        assignedToId: updates.assignedTo,
+        priority: updates.priority?.toUpperCase() as any,
+        dueDate: updates.dueAt,
+      }).then(() => {
+        setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
+      }).catch(() => {
+        notify(currentUser.id, 'Task was not updated', 'The server rejected the change. The task remains unchanged.', 'system', currentTask.matterId, 'urgent');
       });
     }
     return { success: true };
-  }, [tasks, currentUser.id, notify, isOnline, queueMutation]);
+  }, [tasks, currentUser.id, notify]);
 
   const completeTask = useCallback((id: string, force: boolean = false): { success: boolean; error?: string } => {
     const currentTask = tasks.find((t) => t.id === id);
@@ -2632,20 +2621,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    const now = new Date().toISOString();
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: 'completed', completedAt: now, updatedAt: now } : t))
-    );
-    logAudit('task.completed', 'task', id);
-    if (!isOnline) {
-      queueMutation('task', 'update', { id, status: 'completed', completedAt: now });
-    }
-
-    tasksApi.setStatus(id, 'COMPLETED').catch((err) => {
-      console.warn('Backend complete task sync offline/queued:', err);
+    tasksApi.setStatus(id, 'COMPLETED').then(() => {
+      const now = new Date().toISOString();
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'completed', completedAt: now, updatedAt: now } : t)));
+      logAudit('task.completed', 'task', id);
+    }).catch(() => {
+      notify(currentUser.id, 'Task was not completed', 'The server rejected completion. The task remains unchanged.', 'system', currentTask.matterId, 'urgent');
     });
     return { success: true };
-  }, [tasks, currentUser.id, logAudit, notify, isOnline, queueMutation]);
+  }, [tasks, currentUser.id, logAudit, notify]);
 
   // Calendar Operations
   const createCalendarEvent = useCallback((eventData: Omit<CalendarEvent, 'id'>) => {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { ConvertIntakeSchema, CreateIntakeSchema, IntakePartySchema } from "@kka/contracts";
 import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
@@ -31,6 +31,12 @@ export class IntakeController {
   @RequirePermissions("matter.create")
   addParty(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     return this.intake.addParty(user.firmId, user.id, id, IntakePartySchema.parse(body));
+  }
+
+  @Patch(":id")
+  @RequirePermissions("matter.create")
+  update(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    return this.intake.update(user.firmId, user.id, id, CreateIntakeSchema.partial().parse(body));
   }
 
   @Post(":id/conflict-search")

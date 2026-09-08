@@ -54,6 +54,22 @@ export class IntakeService {
     return intake;
   }
 
+  async update(firmId: string, actorId: string, intakeId: string, input: Record<string, any>) {
+    const existing = await this.prisma.client.intake.findFirst({ where: { id: intakeId, firmId } });
+    if (!existing) throw new NotFoundException("Intake not found");
+    if (existing.disposition === "CONVERTED") throw new BadRequestException("Converted intakes are immutable");
+    const intake = await this.prisma.client.intake.update({
+      where: { id: intakeId },
+      data: { ...input, ...(input.incidentDate ? { incidentDate: new Date(input.incidentDate) } : {}) } as any,
+      include: { parties: true, conflictChecks: { orderBy: { checkedAt: "desc" }, take: 1 }, kycRecords: true }
+    });
+    await this.audit.record({
+      firmId, actorUserId: actorId, action: "intake.updated",
+      entityType: "intake", entityId: intakeId, metadata: { fields: Object.keys(input) }
+    });
+    return intake;
+  }
+
   addParty(firmId: string, actorId: string, intakeId: string, input: Record<string, any>) {
     return this.prisma.client.intakeParty.create({
       data: { intakeId, ...input } as any

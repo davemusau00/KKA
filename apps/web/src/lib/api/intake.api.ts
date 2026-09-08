@@ -34,16 +34,16 @@ export interface IntakeParty {
 export interface BackendIntakeLead {
   id: string;
   firmId: string;
-  leadNumber: string;
+  intakeNumber: string;
   disposition: IntakeDisposition;
   practiceArea: string;
   incidentDate?: string | null;
   incidentLocation?: string | null;
-  incidentSummary?: string | null;
+  briefDescription?: string | null;
   assignedToId?: string | null;
-  conflictScore?: number | null;
-  conflictNotes?: string | null;
-  kycChecklist?: Record<string, boolean>;
+  nationalId?: string | null;
+  matterType?: string | null;
+  convertedMatterId?: string | null;
   parties: IntakeParty[];
   createdAt: string;
   updatedAt: string;
@@ -79,10 +79,33 @@ export interface ConflictSearchResult {
 }
 
 export interface ConvertToMatterDto {
-  supervisingPartnerId: string;
+  supervisingUserId: string;
   originatingBranchId: string;
+  responsibleBranchId: string;
+  legalEntityId?: string;
+  workflowVersionId?: string;
+  stageOwnerId?: string;
   courtClerkId?: string;
+  financeContactId?: string;
   initialAction?: string;
+}
+
+function normalizeIntake(raw: any): BackendIntakeLead {
+  const latestConflict = raw.conflictChecks?.[0];
+  const latestKyc = raw.kycRecords?.[0];
+  return {
+    ...raw,
+    intakeNumber: raw.intakeNumber ?? raw.leadNumber,
+    briefDescription: raw.briefDescription ?? raw.incidentSummary ?? '',
+    parties: (raw.parties ?? []).map((party: any) => ({
+      ...party,
+      idNumber: party.idNumber ?? party.idOrRegNumber ?? null,
+      insurerName: party.insurerName ?? party.insuranceCompany ?? null,
+      policyNumber: party.policyNumber ?? party.policyOrClaimNumber ?? null,
+    })),
+    conflictCheck: latestConflict,
+    kycRecord: latestKyc,
+  };
 }
 
 export const intakeApi = {
@@ -92,18 +115,21 @@ export const intakeApi = {
     assignedToId?: string;
     page?: number;
     limit?: number;
-  }) => apiClient.get<{ data: BackendIntakeLead[]; total: number }>('/intake', { params }),
+  }) => apiClient.get<any>('/intake', { params }).then((rows) => {
+    const data = (Array.isArray(rows) ? rows : rows.data ?? []).map(normalizeIntake);
+    return { data, total: rows.total ?? data.length };
+  }),
 
   /** Get full lead detail */
-  get: (id: string) => apiClient.get<BackendIntakeLead>(`/intake/${id}`),
+  get: (id: string) => apiClient.get<any>(`/intake/${id}`).then(normalizeIntake),
 
   /** Create a new intake lead */
   create: (dto: CreateIntakeLeadDto) =>
-    apiClient.post<BackendIntakeLead>('/intake', dto),
+    apiClient.post<any>('/intake', dto).then(normalizeIntake),
 
   /** Update lead metadata */
   update: (id: string, dto: Partial<CreateIntakeLeadDto>) =>
-    apiClient.patch<BackendIntakeLead>(`/intake/${id}`, dto),
+    apiClient.patch<any>(`/intake/${id}`, dto).then(normalizeIntake),
 
   /** Add an associated party to a lead */
   addParty: (id: string, dto: CreateIntakePartyDto) =>
@@ -111,7 +137,17 @@ export const intakeApi = {
 
   /** Run automated conflict search */
   runConflictSearch: (id: string) =>
-    apiClient.post<ConflictSearchResult>(`/intake/${id}/conflict-search`),
+    apiClient.post<any>(`/intake/${id}/conflict-search`).then((check) => ({
+      hasConflict: check.status !== 'CLEAR',
+      conflictScore: check.status === 'CLEAR' ? 0 : 1,
+      matches: (check.matchesFound ?? []).map((match: any) => ({
+        matterId: match.matterId ?? match.matchedEntityId ?? '',
+        matterNumber: match.matterRef ?? '',
+        title: match.display ?? match.partyName ?? '',
+        matchedOn: match.matchType ?? 'unknown',
+        similarity: match.severity === 'HIGH' ? 1 : 0.5,
+      })),
+    })),
 
   /** Record partner conflict clearance decision */
   clearConflict: (
@@ -122,7 +158,7 @@ export const intakeApi = {
   ) =>
     apiClient.post<BackendIntakeLead>(
       `/intake/${id}/conflict-clearance`,
-      { cleared, notes },
+      { notes: cleared ? notes : `Clearance refused: ${notes}` },
       { elevationToken },
     ),
 
@@ -132,15 +168,23 @@ export const intakeApi = {
     checklist: Record<string, boolean>,
     retainerSigned: boolean,
   ) =>
-    apiClient.post<BackendIntakeLead>(`/intake/${id}/kyc`, {
-      checklist,
-      retainerSigned,
+    apiClient.post<any>(`/intake/${id}/kyc`, {
+      idDocumentType: checklist.idDocumentType ? 'NATIONAL_ID' : 'UNKNOWN',
+      idNumber: checklist.idNumber ? String(checklist.idNumber) : 'PENDING',
+      idVerified: Boolean(checklist.idVerified),
+      warrantToActSigned: Boolean(checklist.warrantToActSigned),
+      retainerAgreementSigned: retainerSigned || Boolean(checklist.retainerAgreementSigned),
+      termsAccepted: Boolean(checklist.termsAccepted),
+      partnerApproval: checklist.partnerApproval ? 'APPROVED' : 'PENDING',
     }),
 
   /** Convert a cleared lead into a live Matter */
   convertToMatter: (id: string, dto: ConvertToMatterDto) =>
-    apiClient.post<{ matterId: string; matterNumber: string }>(
+    apiClient.post<any>(
       `/intake/${id}/convert`,
       dto,
-    ),
+    ).then((matter) => ({
+      matterId: matter.id ?? matter.matterId,
+      matterNumber: matter.internalReference ?? matter.matterNumber,
+    })),
 };
