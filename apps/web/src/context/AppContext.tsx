@@ -423,7 +423,7 @@ interface AppContextType {
   updateCustomField: (id: string, updates: Partial<CustomFieldDefinition>) => void;
   deleteCustomField: (id: string) => void;
   updateNumberingScheme: (updates: Partial<NumberingSchemeConfig>) => void;
-  createDatabaseBackupSnapshot: (type?: BackupSnapshot['type'], notes?: string) => BackupSnapshot;
+  createDatabaseBackupSnapshot: (type?: BackupSnapshot['type'], notes?: string) => BackupSnapshot | null;
   deleteBackupSnapshot: (id: string) => void;
   restoreBackupSnapshot: (id: string) => boolean;
   exportSystemDiagnosticBundle: () => { filename: string; payload: string };
@@ -1183,14 +1183,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Trigger sync of offline mutations
   const triggerSync = useCallback(async () => {
     setIsSyncing(true);
-    // Simulate server synchronization
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setMutationQueue((prev) => prev.map((m) => ({ ...m, status: 'synced' })));
-    setTimeout(() => {
-      setMutationQueue([]);
-      setIsSyncing(false);
-    }, 400);
-  }, []);
+    setMutationQueue((prev) => prev.map((m) => ({ ...m, status: 'failed' })));
+    notify(currentUser.id, 'Offline sync unavailable', 'Queued mutations were not marked as synchronized. Reconnect and retry each server-backed action.', 'system', undefined, 'urgent');
+    setIsSyncing(false);
+  }, [currentUser.id, notify]);
 
   // Matter Creation
   const createMatter = useCallback((data: Partial<Matter> & { clientDisplayName: string; clientPhone: string; clientNationalId: string }) => {
@@ -3411,22 +3407,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [currentUser.id, logAudit, notify]);
 
-  const createDatabaseBackupSnapshot = useCallback((type: BackupSnapshot['type'] = 'manual', notes?: string): BackupSnapshot => {
-    const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
-    const newSnapshot: BackupSnapshot = {
-      id: `snap-${Date.now()}`,
-      filename: `kka_os_backup_${dateStr}.sql.enc`,
-      sizeBytes: 44000000 + Math.floor(Math.random() * 2000000),
-      createdAt: new Date().toISOString(),
-      type,
-      status: 'completed',
-      storageLocation: `local://var/backups/kka/${type}/${dateStr}.sql.enc`,
-      checksum: `sha256:${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-    };
-    setBackupSnapshots((prev) => [newSnapshot, ...prev]);
-    logAudit('admin.backup_created', 'system', newSnapshot.id, undefined, { type, filename: newSnapshot.filename, notes });
-    notify(currentUser.id, 'Backup Created', `Encrypted snapshot "${newSnapshot.filename}" created successfully.`, 'system');
-    return newSnapshot;
+  const createDatabaseBackupSnapshot = useCallback((_type: BackupSnapshot['type'] = 'manual', _notes?: string): BackupSnapshot | null => {
+    notify(currentUser.id, 'Backup unavailable locally', 'Backup creation is not implemented in the local application and no snapshot was created.', 'system', undefined, 'urgent');
+    return null;
   }, [currentUser.id, logAudit, notify]);
 
   const deleteBackupSnapshot = useCallback((id: string) => {
@@ -3438,10 +3421,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const restoreBackupSnapshot = useCallback((id: string): boolean => {
     const snap = backupSnapshots.find((b) => b.id === id);
     if (!snap) return false;
-    logAudit('admin.backup_restored', 'system', id, undefined, { filename: snap.filename, checksum: snap.checksum });
-    notify(currentUser.id, 'Sandbox Restored', `Snapshot "${snap.filename}" validated and applied in test container.`, 'system');
-    return true;
-  }, [backupSnapshots, currentUser.id, logAudit, notify]);
+    notify(currentUser.id, 'Restore unavailable locally', `Snapshot "${snap.filename}" was not restored. Restore requires an explicit local recovery implementation.`, 'system', undefined, 'urgent');
+    return false;
+  }, [backupSnapshots, currentUser.id, notify]);
 
   const exportSystemDiagnosticBundle = useCallback(() => {
     const bundle = {

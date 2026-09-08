@@ -51,6 +51,7 @@ export const SystemOperationsTab: React.FC = () => {
 
   const handleCreateSnapshot = () => {
     createDatabaseBackupSnapshot(snapshotType);
+    setRestoreResult('Backup creation is unavailable in local mode; no snapshot was created.');
   };
 
   const handleRestore = (id: string) => {

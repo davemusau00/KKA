@@ -74,54 +74,19 @@ export const IntegrationsWorkspace: React.FC = () => {
       notify(currentUser.id, `${serviceId.toUpperCase()} Integration Test`, msg, 'system');
       return;
     } catch {
-      setTimeout(() => {
-        setIsTesting(null);
-        let msg = '';
-        if (serviceId === 'google') {
-          msg = 'Google Workspace OAuth handshake successful (200 OK). 14 court calendar events synchronized.';
-        } else if (serviceId === 'whatsapp') {
-          msg = 'Meta Graph API v20.0 verified. Webhook subscription active on phone ID ' + formData.whatsapp.phoneNumberId;
-        } else if (serviceId === 'judiciary') {
-          msg = 'Kenya Judiciary CTS API connected. Milimani Commercial Registry mention list polled (3 matters verified).';
-        } else if (serviceId === 'mpesa') {
-          msg = 'Safaricom Daraja OAuth Token generated successfully. Paybill 522123 C2B URL registered.';
-        } else if (serviceId === 'africas_talking') {
-          msg = "Africa's Talking API authenticated. Sender ID KKC-ADV active with 4,200 SMS units.";
-        }
-
-        setTestResult({ id: serviceId, success: true, message: msg });
-        notify(currentUser.id, `${serviceId.toUpperCase()} Integration Test`, msg, 'system');
-      }, 800);
+      setIsTesting(null);
+      const msg = `${serviceId.toUpperCase()} is unavailable or unconfigured in local mode. No external connection was established.`;
+      setTestResult({ id: serviceId, success: false, message: msg });
+      notify(currentUser.id, `${serviceId.toUpperCase()} Integration Test`, msg, 'system', undefined, 'urgent');
     }
   };
 
   const handleSimulateWhatsAppSend = () => {
-    setIsTesting('whatsapp_send');
-    setTimeout(() => {
-      setIsTesting(null);
-      notify(
-        currentUser.id,
-        'WhatsApp Dispatched via Meta Cloud API',
-        `Dispatched '${testTemplate}' template to ${testPhone}. Status: Delivered & Read.`,
-        'task_mention'
-      );
-      alert(`WhatsApp Message delivered to ${testPhone} using Meta Cloud API.\n\nTemplate: ${testTemplate}\nWABA ID: ${formData.whatsapp.wabaAccountId}`);
-    }, 900);
+    notify(currentUser.id, 'WhatsApp delivery unavailable', `No message was sent to ${testPhone}. Configure a provider-backed adapter before delivery.`, 'system', undefined, 'urgent');
   };
 
   const handleSimulateMpesaC2B = () => {
-    setIsTesting('mpesa_c2b');
-    setTimeout(() => {
-      setIsTesting(null);
-      const parsedAmount = parseInt(testAmount, 10) || 15000;
-      notify(
-        currentUser.id,
-        'M-Pesa C2B Webhook Processed',
-        `Received KES ${parsedAmount.toLocaleString()} from ${testPhone} (TransID: QKH${Math.floor(Math.random() * 90000 + 10000)}). Auto-credited to Client Trust Account.`,
-        'expense_approval'
-      );
-      alert(`M-Pesa Daraja C2B Payment of KES ${parsedAmount.toLocaleString()} received!\nAuto-reconciled and posted to trust ledger.`);
-    }, 900);
+    notify(currentUser.id, 'M-Pesa receipt unavailable', `No payment was recorded from ${testPhone}. Provider-backed payment webhooks are unconfigured in local mode.`, 'system', undefined, 'urgent');
   };
 
   return (

@@ -75,5 +75,6 @@ The current implementation increment includes:
 - server-backed task edit/archive routes and normalized client, task, search and intake response adapters;
 - client and task creation/update paths that only add or change local state after the API confirms success;
 - local verification against PostgreSQL, Redis and the API with authenticated health, client, task and intake requests returning successfully.
+- provider, backup/restore and offline-sync fallbacks now report unavailable or failed local states instead of claiming delivery, payment, synchronization, snapshot creation or recovery.
 
 The remaining phases are not certified by this entry and require the acceptance contract above slice by slice.
