@@ -25,7 +25,10 @@
     "seed:fixtures": "tsx prisma/seed.ts",
     "docker:up": "docker compose -f infra/docker-compose.production.yml up -d --build",
     "docker:down": "docker compose -f infra/docker-compose.production.yml down",
-    "docker:logs": "docker compose -f infra/docker-compose.production.yml logs -f --tail=200"
+    "docker:logs": "docker compose -f infra/docker-compose.production.yml logs -f --tail=200",
+    "dev:site": "pnpm --filter @kka/public-site dev",
+    "build:site": "pnpm --filter @kka/public-site build",
+    "seed:website": "tsx prisma/seed-website.ts"
   },
   "devDependencies": {
     "dotenv": "17.2.3",

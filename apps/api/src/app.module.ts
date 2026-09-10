@@ -41,6 +41,7 @@ import { CustomizationModule } from "./modules/customization/customization.modul
 import { AutomationModule } from "./modules/automation/automation.module";
 import { DeveloperModule } from "./modules/developer/developer.module";
 import { PortalModule } from "./modules/portal/portal.module";
+import { WebsiteModule } from "./modules/website/website.module";
 
 @Module({
   imports: [
@@ -82,7 +83,8 @@ import { PortalModule } from "./modules/portal/portal.module";
     CustomizationModule,
     AutomationModule,
     DeveloperModule,
-    PortalModule
+    PortalModule,
+    WebsiteModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

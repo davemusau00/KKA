@@ -9,6 +9,7 @@ import { processDocument } from "./processors/document.processor";
 import { processCalendar } from "./processors/calendar.processor";
 import { processAutomation } from "./processors/automation.processor";
 import { webhookProcessor } from "./processors/webhook.processor";
+import { processWebsitePublish } from "./processors/website-publish.processor";
 
 const prisma = createPrismaClient(workerEnv.DATABASE_URL);
 const connection = new Redis(workerEnv.REDIS_URL, { maxRetriesPerRequest: null });
@@ -51,6 +52,10 @@ const workers = [
   new Worker("webhooks", webhookProcessor(prisma), {
     connection,
     concurrency: workerEnv.WEBHOOK_QUEUE_CONCURRENCY
+  }),
+  new Worker("website-publish", (job) => processWebsitePublish(job, prisma), {
+    connection,
+    concurrency: 2
   })
 ];
 

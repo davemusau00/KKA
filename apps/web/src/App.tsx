@@ -16,6 +16,7 @@ import { FinanceWorkspace } from './components/finance/FinanceWorkspace';
 import { ReportsWorkspace } from './components/reports/ReportsWorkspace';
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { IntegrationsWorkspace } from './components/integrations/IntegrationsWorkspace';
+import { WebsiteGrowthWorkspace } from './components/website/WebsiteGrowthWorkspace';
 
 const MainWorkspaceRouter: React.FC = () => {
   const { activeWorkspace } = useApp();
@@ -35,6 +36,7 @@ const MainWorkspaceRouter: React.FC = () => {
       {activeWorkspace === 'reports' && <ReportsWorkspace />}
       {activeWorkspace === 'admin' && <AdminWorkspace />}
       {activeWorkspace === 'integrations' && <IntegrationsWorkspace />}
+      {activeWorkspace === 'website' && <WebsiteGrowthWorkspace />}
     </AppShell>
   );
 };

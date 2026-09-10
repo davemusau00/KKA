@@ -300,33 +300,48 @@ enum PurchaseStatus {
 }
 
 model Firm {
-  id            String        @id @default(cuid())
-  name          String
-  shortName     String?
-  timezone      String        @default("Africa/Nairobi")
-  locale        String        @default("en-KE")
-  currency      String        @default("KES")
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  shortName String?
+  timezone  String   @default("Africa/Nairobi")
+  locale    String   @default("en-KE")
+  currency  String   @default("KES")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  legalEntities LegalEntity[]
-  branches      Branch[]
-  departments   Department[]
-  teams         Team[]
-  users         User[]
-  clients       Client[]
-  intakes       Intake[]
-  matters       Matter[]
-  workflows     WorkflowTemplate[]
-  settings      SettingValue[]
-  integrations  IntegrationConnection[]
-  roles         Role[]
-  directory     DirectoryContact[]
+  legalEntities  LegalEntity[]
+  branches       Branch[]
+  departments    Department[]
+  teams          Team[]
+  users          User[]
+  clients        Client[]
+  intakes        Intake[]
+  matters        Matter[]
+  workflows      WorkflowTemplate[]
+  settings       SettingValue[]
+  integrations   IntegrationConnection[]
+  roles          Role[]
+  directory      DirectoryContact[]
   ledgerAccounts LedgerAccount[]
-  vendors       Vendor[]
-  assets        Asset[]
-  projects      InternalProject[]
+  vendors        Vendor[]
+  assets         Asset[]
+  projects       InternalProject[]
   knowledgeItems KnowledgeItem[]
+
+  // KKA Public Digital Platform relations
+  websiteSettings      WebsiteSiteSettings?
+  websiteMediaAssets   WebsiteMediaAsset[]
+  websiteProfiles      WebsiteProfessionalProfile[]
+  websitePracticeAreas WebsitePracticeArea[]
+  websitePages         WebsitePage[]
+  websitePublications  WebsitePublication[]
+  websiteTestimonials  WebsiteTestimonial[]
+  websiteMetrics       WebsiteMetric[]
+  websiteForms         WebsiteFormDefinition[]
+  websiteSubmissions   WebsiteFormSubmission[]
+  websiteLeads         WebsiteLead[]
+  websiteCampaigns     WebsiteCampaign[]
+  websiteReleases      WebsitePublishRelease[]
 }
 
 model LegalEntity {
@@ -349,77 +364,77 @@ model LegalEntity {
 }
 
 model Branch {
-  id                    String   @id @default(cuid())
-  firmId                String
-  legalEntityId         String?
-  name                  String
-  code                  String
-  address               String?
-  postalAddress         String?
-  phone                 String?
-  email                 String?
-  timezone              String   @default("Africa/Nairobi")
-  defaultCourtStation   String?
-  numberingPrefix       String?
-  active                Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  firmId              String
+  legalEntityId       String?
+  name                String
+  code                String
+  address             String?
+  postalAddress       String?
+  phone               String?
+  email               String?
+  timezone            String   @default("Africa/Nairobi")
+  defaultCourtStation String?
+  numberingPrefix     String?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  firm             Firm          @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  legalEntity      LegalEntity?  @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
-  homeUsers         User[]        @relation("HomeBranch")
-  userBranches      UserBranch[]
-  departments       Department[]
-  teams             Team[]
-  originatedMatters Matter[]      @relation("OriginatingBranch")
-  responsibleMatters Matter[]     @relation("ResponsibleBranch")
-  ledgerAccounts    LedgerAccount[]
-  assets            Asset[]
-  settings          SettingValue[]
+  firm               Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  legalEntity        LegalEntity?    @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  homeUsers          User[]          @relation("HomeBranch")
+  userBranches       UserBranch[]
+  departments        Department[]
+  teams              Team[]
+  originatedMatters  Matter[]        @relation("OriginatingBranch")
+  responsibleMatters Matter[]        @relation("ResponsibleBranch")
+  ledgerAccounts     LedgerAccount[]
+  assets             Asset[]
+  settings           SettingValue[]
 
   @@unique([firmId, code])
   @@index([firmId, active])
 }
 
 model Department {
-  id          String   @id @default(cuid())
-  firmId      String
-  branchId    String?
-  name        String
-  code        String
-  managerId   String?
-  costCentre  String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  firmId     String
+  branchId   String?
+  name       String
+  code       String
+  managerId  String?
+  costCentre String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  firm       Firm       @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  manager    User?      @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
-  members    User[]     @relation("UserDepartment")
-  teams      Team[]
-  settings   SettingValue[]
+  firm     Firm           @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  branch   Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  manager  User?          @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  members  User[]         @relation("UserDepartment")
+  teams    Team[]
+  settings SettingValue[]
 
   @@unique([firmId, code])
 }
 
 model Team {
-  id             String   @id @default(cuid())
-  firmId         String
-  branchId       String?
-  departmentId   String?
-  name           String
-  code           String
-  managerId      String?
-  practiceArea   String?
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(cuid())
+  firmId       String
+  branchId     String?
+  departmentId String?
+  name         String
+  code         String
+  managerId    String?
+  practiceArea String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  firm        Firm        @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  department  Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  manager     User?       @relation("TeamManager", fields: [managerId], references: [id], onDelete: SetNull)
+  firm        Firm               @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  branch      Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  department  Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  manager     User?              @relation("TeamManager", fields: [managerId], references: [id], onDelete: SetNull)
   memberships UserTeam[]
   settings    SettingValue[]
   assignments MatterAssignment[]
@@ -428,54 +443,67 @@ model Team {
 }
 
 model User {
-  id                  String     @id @default(cuid())
-  firmId              String
-  homeBranchId        String?
-  departmentId        String?
-  email               String     @unique
-  fullName            String
-  phone               String?
-  jobTitle            String?
-  admissionNumber     String?
-  passwordHash        String?
-  status              UserStatus @default(INVITED)
-  locale              String     @default("en-KE")
-  timezone            String     @default("Africa/Nairobi")
-  lastLoginAt         DateTime?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  id              String     @id @default(cuid())
+  firmId          String
+  homeBranchId    String?
+  departmentId    String?
+  email           String     @unique
+  fullName        String
+  phone           String?
+  jobTitle        String?
+  admissionNumber String?
+  passwordHash    String?
+  status          UserStatus @default(INVITED)
+  locale          String     @default("en-KE")
+  timezone        String     @default("Africa/Nairobi")
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  firm               Firm        @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  homeBranch         Branch?     @relation("HomeBranch", fields: [homeBranchId], references: [id], onDelete: SetNull)
-  department         Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
-  managedDepartments Department[] @relation("DepartmentManager")
-  managedTeams       Team[]       @relation("TeamManager")
-  roles              UserRole[]
-  branches           UserBranch[]
-  teams              UserTeam[]
-  invites            UserInvite[]
-  supervisedMatters  Matter[]     @relation("MatterSupervisor")
-  stageOwnedMatters  Matter[]     @relation("MatterStageOwner")
-  assignments        MatterAssignment[]
-  tasksAssigned      Task[]       @relation("TaskAssignee")
-  tasksCreated       Task[]       @relation("TaskCreator")
-  calendarOrganized  CalendarEvent[] @relation("CalendarOrganizer")
-  calendarAssigned   CalendarEvent[] @relation("CalendarAssignee")
-  documentsOwned     Document[]   @relation("DocumentOwner")
-  versionsUploaded   DocumentVersion[] @relation("DocumentVersionUploader")
-  settings           SettingValue[]
-  signatureProfile   SignatureProfile?
+  firm                           Firm                  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  homeBranch                     Branch?               @relation("HomeBranch", fields: [homeBranchId], references: [id], onDelete: SetNull)
+  department                     Department?           @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  managedDepartments             Department[]          @relation("DepartmentManager")
+  managedTeams                   Team[]                @relation("TeamManager")
+  roles                          UserRole[]
+  branches                       UserBranch[]
+  teams                          UserTeam[]
+  invites                        UserInvite[]
+  supervisedMatters              Matter[]              @relation("MatterSupervisor")
+  stageOwnedMatters              Matter[]              @relation("MatterStageOwner")
+  assignments                    MatterAssignment[]
+  tasksAssigned                  Task[]                @relation("TaskAssignee")
+  tasksCreated                   Task[]                @relation("TaskCreator")
+  calendarOrganized              CalendarEvent[]       @relation("CalendarOrganizer")
+  calendarAssigned               CalendarEvent[]       @relation("CalendarAssignee")
+  documentsOwned                 Document[]            @relation("DocumentOwner")
+  versionsUploaded               DocumentVersion[]     @relation("DocumentVersionUploader")
+  settings                       SettingValue[]
+  signatureProfile               SignatureProfile?
   signatureDelegationsAsDelegate SignatureDelegation[] @relation("SignatureDelegateUser")
-  leaveRequests      LeaveRequest[] @relation("LeaveRequester")
-  leaveApprovals     LeaveRequest[] @relation("LeaveApprover")
-  assetAssignments   AssetAssignment[]
-  projectMemberships ProjectMember[]
-  meetingParticipation MeetingParticipant[]
+  leaveRequests                  LeaveRequest[]        @relation("LeaveRequester")
+  leaveApprovals                 LeaveRequest[]        @relation("LeaveApprover")
+  assetAssignments               AssetAssignment[]
+  projectMemberships             ProjectMember[]
+  meetingParticipation           MeetingParticipant[]
+
+  // KKA Public Digital Platform relations
+  websiteMediaCreated        WebsiteMediaAsset[]         @relation("WebsiteMediaCreator")
+  websiteProfile             WebsiteProfessionalProfile? @relation("WebsiteProfileUser")
+  websitePageVersions        WebsitePageVersion[]        @relation("WebsitePageEditor")
+  websitePublicationVersions WebsitePublicationVersion[] @relation("WebsitePublicationEditor")
+  websiteLeadsOwned          WebsiteLead[]               @relation("WebsiteLeadOwner")
+  websiteLeadEvents          WebsiteLeadEvent[]          @relation("WebsiteLeadEventActor")
+  websiteLeadAssignments     WebsiteLeadAssignment[]     @relation("WebsiteLeadAssignee")
+  websiteLeadAssignmentsMade WebsiteLeadAssignment[]     @relation("WebsiteLeadAssignedBy")
+  websiteLeadContacts        WebsiteLeadContactAttempt[] @relation("WebsiteLeadContactActor")
+  websiteLeadAppointments    WebsiteLeadAppointment[]    @relation("WebsiteLeadAppointmentAssignee")
+  websiteReleaseRequests     WebsitePublishRelease[]     @relation("WebsiteReleaseRequester")
 }
 
 model UserBranch {
-  userId   String
-  branchId String
+  userId    String
+  branchId  String
   createdAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -485,8 +513,8 @@ model UserBranch {
 }
 
 model UserTeam {
-  userId   String
-  teamId   String
+  userId    String
+  teamId    String
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -496,13 +524,13 @@ model UserTeam {
 }
 
 model UserInvite {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  tokenHash   String   @unique
+  tokenHash   String    @unique
   expiresAt   DateTime
   acceptedAt  DateTime?
   createdById String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -529,8 +557,8 @@ model Role {
 }
 
 model Permission {
-  id          String @id @default(cuid())
-  key         String @unique
+  id          String           @id @default(cuid())
+  key         String           @unique
   category    String
   description String?
   roles       RolePermission[]
@@ -582,27 +610,27 @@ model SettingDefinition {
 }
 
 model SettingValue {
-  id             String           @id @default(cuid())
-  definitionId   String
-  firmId         String?
-  branchId       String?
-  roleId         String?
-  userId         String?
-  departmentId   String?
-  teamId         String?
-  scopeType      SettingScope
-  scopeId        String
-  value          Json?
-  secretRefId    String?
-  lifecycle      SettingLifecycle @default(ACTIVE)
-  version        Int              @default(1)
-  effectiveFrom  DateTime?
-  effectiveTo    DateTime?
-  changeReason   String?
-  createdById    String?
-  approvedById   String?
-  approvedAt     DateTime?
-  createdAt      DateTime         @default(now())
+  id            String           @id @default(cuid())
+  definitionId  String
+  firmId        String?
+  branchId      String?
+  roleId        String?
+  userId        String?
+  departmentId  String?
+  teamId        String?
+  scopeType     SettingScope
+  scopeId       String
+  value         Json?
+  secretRefId   String?
+  lifecycle     SettingLifecycle @default(ACTIVE)
+  version       Int              @default(1)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  changeReason  String?
+  createdById   String?
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime         @default(now())
 
   definition SettingDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
   secret     SecretRecord?     @relation(fields: [secretRefId], references: [id], onDelete: SetNull)
@@ -618,40 +646,40 @@ model SettingValue {
 }
 
 model SecretRecord {
-  id          String   @id @default(cuid())
-  purpose     String
-  ciphertext  Bytes
-  iv          Bytes
-  authTag     Bytes
-  keyVersion  Int
-  createdAt   DateTime @default(now())
-  rotatedAt   DateTime?
+  id         String    @id @default(cuid())
+  purpose    String
+  ciphertext Bytes
+  iv         Bytes
+  authTag    Bytes
+  keyVersion Int
+  createdAt  DateTime  @default(now())
+  rotatedAt  DateTime?
 
   settingValues SettingValue[]
-  integrations IntegrationConnection[]
+  integrations  IntegrationConnection[]
 }
 
 model IntegrationConnection {
-  id             String            @id @default(cuid())
-  firmId         String
-  kind           IntegrationKind
-  name           String
-  scopeType      SettingScope      @default(FIRM)
-  scopeId        String
-  publicConfig   Json
-  secretRefId    String?
-  status         IntegrationStatus @default(UNCONFIGURED)
-  enabled        Boolean           @default(false)
-  lastTestAt     DateTime?
-  lastHealthyAt  DateTime?
-  lastError      String?
-  createdById    String?
-  updatedById    String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id            String            @id @default(cuid())
+  firmId        String
+  kind          IntegrationKind
+  name          String
+  scopeType     SettingScope      @default(FIRM)
+  scopeId       String
+  publicConfig  Json
+  secretRefId   String?
+  status        IntegrationStatus @default(UNCONFIGURED)
+  enabled       Boolean           @default(false)
+  lastTestAt    DateTime?
+  lastHealthyAt DateTime?
+  lastError     String?
+  createdById   String?
+  updatedById   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  firm   Firm          @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  secret SecretRecord? @relation(fields: [secretRefId], references: [id], onDelete: SetNull)
+  firm             Firm                        @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  secret           SecretRecord?               @relation(fields: [secretRefId], references: [id], onDelete: SetNull)
   senderIdentities SenderIdentity[]
   inboundMailboxes InboundMailbox[]
   signingProviders SigningProviderConnection[]
@@ -661,14 +689,14 @@ model IntegrationConnection {
 }
 
 model NumberSequence {
-  id          String   @id @default(cuid())
-  firmId      String
-  branchId    String   @default("__GLOBAL__")
-  entityType  String
-  year        Int      @default(0)
-  lastValue   Int      @default(0)
-  pattern     String   @default("{firm}/{practice}/{year}/{seq:5}")
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  firmId     String
+  branchId   String   @default("__GLOBAL__")
+  entityType String
+  year       Int      @default(0)
+  lastValue  Int      @default(0)
+  pattern    String   @default("{firm}/{practice}/{year}/{seq:5}")
+  updatedAt  DateTime @updatedAt
 
   @@unique([firmId, branchId, entityType, year])
 }
@@ -696,9 +724,9 @@ model Client {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  firm      Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  matters   Matter[]
-  intakes   Intake[]
+  firm    Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  matters Matter[]
+  intakes Intake[]
 
   @@index([firmId, displayName])
   @@index([firmId, phone])
@@ -706,10 +734,10 @@ model Client {
 }
 
 model Intake {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   firmId            String
   clientId          String?
-  intakeNumber      String?  @unique
+  intakeNumber      String?   @unique
   source            String?
   referrerName      String?
   clientName        String
@@ -722,49 +750,52 @@ model Intake {
   practiceArea      String
   matterType        String?
   assignedOwnerId   String?
-  disposition       String   @default("NEW")
+  disposition       String    @default("NEW")
   notes             String?
   convertedMatterId String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  firm          Firm        @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  client        Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  parties       IntakeParty[]
+  firm           Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  client         Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  parties        IntakeParty[]
   conflictChecks ConflictCheck[]
-  kycRecords    KycRecord[]
+  kycRecords     KycRecord[]
+
+  // KKA Public Digital Platform relations
+  websiteLead WebsiteLead? @relation("WebsiteLeadIntake")
 
   @@index([firmId, disposition, createdAt])
   @@index([firmId, phone])
 }
 
 model IntakeParty {
-  id              String @id @default(cuid())
-  intakeId        String
-  name            String
-  role            String
-  idOrRegNumber   String?
-  phone           String?
-  email           String?
-  insuranceCompany String?
+  id                  String  @id @default(cuid())
+  intakeId            String
+  name                String
+  role                String
+  idOrRegNumber       String?
+  phone               String?
+  email               String?
+  insuranceCompany    String?
   policyOrClaimNumber String?
-  notes           String?
+  notes               String?
 
   intake Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
 }
 
 model ConflictCheck {
-  id                  String   @id @default(cuid())
-  intakeId            String?
-  matterId            String?
-  checkedByUserId     String
-  status              String
-  partiesSearched     Json
-  matchesFound        Json
-  clearanceNotes      String?
-  clearedByPartnerId  String?
-  checkedAt           DateTime @default(now())
-  clearedAt           DateTime?
+  id                 String    @id @default(cuid())
+  intakeId           String?
+  matterId           String?
+  checkedByUserId    String
+  status             String
+  partiesSearched    Json
+  matchesFound       Json
+  clearanceNotes     String?
+  clearedByPartnerId String?
+  checkedAt          DateTime  @default(now())
+  clearedAt          DateTime?
 
   intake Intake? @relation(fields: [intakeId], references: [id], onDelete: Cascade)
 
@@ -772,23 +803,23 @@ model ConflictCheck {
 }
 
 model KycRecord {
-  id                    String   @id @default(cuid())
-  intakeId              String
-  idDocumentType        String
-  idNumber              String
-  idVerified            Boolean  @default(false)
-  kycDocumentIds        String[]
-  warrantToActSigned    Boolean  @default(false)
-  retainerAgreementSigned Boolean @default(false)
-  retainerAgreedAmount  Decimal? @db.Decimal(18, 2)
-  retainerDepositPaid   Boolean  @default(false)
-  depositReceiptRef     String?
-  termsAccepted         Boolean  @default(false)
-  partnerApproval       String   @default("PENDING")
-  approvedByUserId      String?
-  approvedAt            DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                      String    @id @default(cuid())
+  intakeId                String
+  idDocumentType          String
+  idNumber                String
+  idVerified              Boolean   @default(false)
+  kycDocumentIds          String[]
+  warrantToActSigned      Boolean   @default(false)
+  retainerAgreementSigned Boolean   @default(false)
+  retainerAgreedAmount    Decimal?  @db.Decimal(18, 2)
+  retainerDepositPaid     Boolean   @default(false)
+  depositReceiptRef       String?
+  termsAccepted           Boolean   @default(false)
+  partnerApproval         String    @default("PENDING")
+  approvedByUserId        String?
+  approvedAt              DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   intake Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
 }
@@ -821,31 +852,31 @@ model Matter {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
-  firm              Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  legalEntity       LegalEntity?    @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
-  client            Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  originatingBranch Branch          @relation("OriginatingBranch", fields: [originatingBranchId], references: [id], onDelete: Restrict)
-  responsibleBranch Branch          @relation("ResponsibleBranch", fields: [responsibleBranchId], references: [id], onDelete: Restrict)
-  supervisor        User            @relation("MatterSupervisor", fields: [supervisingUserId], references: [id], onDelete: Restrict)
-  currentStageOwner User?           @relation("MatterStageOwner", fields: [currentStageOwnerId], references: [id], onDelete: SetNull)
-  workflowVersion  WorkflowVersion? @relation(fields: [workflowVersionId], references: [id], onDelete: SetNull)
-  assignments       MatterAssignment[]
-  accesses          MatterAccess[]
-  parties           MatterParty[]
-  proceedings       CourtProceeding[]
-  tasks             Task[]
-  deadlines         Deadline[]
-  calendarEvents    CalendarEvent[]
-  documents         Document[]
-  stageInstances    MatterStageInstance[]
-  handoffs          StageHandoff[]
-  expenses          ExpenseRequest[]
-  feeNotes          FeeNote[]
-  journalEntries    JournalEntry[]
-  auditEvents       AuditEvent[]
-  channels          CommunicationChannel[]
-  meetings          Meeting[]
-  customValues      CustomFieldValue[]
+  firm               Firm                   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  legalEntity        LegalEntity?           @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  client             Client                 @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  originatingBranch  Branch                 @relation("OriginatingBranch", fields: [originatingBranchId], references: [id], onDelete: Restrict)
+  responsibleBranch  Branch                 @relation("ResponsibleBranch", fields: [responsibleBranchId], references: [id], onDelete: Restrict)
+  supervisor         User                   @relation("MatterSupervisor", fields: [supervisingUserId], references: [id], onDelete: Restrict)
+  currentStageOwner  User?                  @relation("MatterStageOwner", fields: [currentStageOwnerId], references: [id], onDelete: SetNull)
+  workflowVersion    WorkflowVersion?       @relation(fields: [workflowVersionId], references: [id], onDelete: SetNull)
+  assignments        MatterAssignment[]
+  accesses           MatterAccess[]
+  parties            MatterParty[]
+  proceedings        CourtProceeding[]
+  tasks              Task[]
+  deadlines          Deadline[]
+  calendarEvents     CalendarEvent[]
+  documents          Document[]
+  stageInstances     MatterStageInstance[]
+  handoffs           StageHandoff[]
+  expenses           ExpenseRequest[]
+  feeNotes           FeeNote[]
+  journalEntries     JournalEntry[]
+  auditEvents        AuditEvent[]
+  channels           CommunicationChannel[]
+  meetings           Meeting[]
+  customValues       CustomFieldValue[]
   personalInjuryCase PersonalInjuryCase?
 
   @@index([firmId, status, practiceArea])
@@ -855,15 +886,15 @@ model Matter {
 }
 
 model MatterAssignment {
-  id         String   @id @default(cuid())
-  matterId   String
-  userId     String?
-  teamId     String?
-  roleKey    String
-  startsAt   DateTime @default(now())
-  endsAt     DateTime?
-  primary    Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String    @id @default(cuid())
+  matterId  String
+  userId    String?
+  teamId    String?
+  roleKey   String
+  startsAt  DateTime  @default(now())
+  endsAt    DateTime?
+  primary   Boolean   @default(false)
+  createdAt DateTime  @default(now())
 
   matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -888,7 +919,7 @@ model MatterAccess {
 }
 
 model MatterParty {
-  id               String @id @default(cuid())
+  id               String  @id @default(cuid())
   matterId         String
   partyType        String
   name             String
@@ -906,18 +937,18 @@ model MatterParty {
 }
 
 model WorkflowTemplate {
-  id          String   @id @default(cuid())
-  firmId      String
-  name        String
+  id           String   @id @default(cuid())
+  firmId       String
+  name         String
   practiceArea String
-  matterType  String
-  description String?
-  active      Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  matterType   String
+  description  String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  firm      Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  versions  WorkflowVersion[]
+  firm     Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  versions WorkflowVersion[]
 
   @@unique([firmId, practiceArea, matterType, name])
 }
@@ -950,7 +981,7 @@ model WorkflowStage {
   description           String?
   targetDurationDays    Int      @default(0)
   responsibleRoleKeys   String[]
-  assignmentStrategy    String? 
+  assignmentStrategy    String?
   requiresApproval      Boolean  @default(false)
   approvalRoleKey       String?
   allowedNextStageCodes String[]
@@ -962,7 +993,7 @@ model WorkflowStage {
   portalMilestone       String?
   active                Boolean  @default(true)
 
-  workflowVersion WorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
+  workflowVersion WorkflowVersion       @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
   stageInstances  MatterStageInstance[]
 
   @@unique([workflowVersionId, stageNumber])
@@ -970,29 +1001,29 @@ model WorkflowStage {
 }
 
 model MatterStageInstance {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   matterId        String
   workflowStageId String
   ownerUserId     String?
-  enteredAt       DateTime @default(now())
+  enteredAt       DateTime  @default(now())
   completedAt     DateTime?
   completionNote  String?
   overrideReason  String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  stage  WorkflowStage @relation(fields: [workflowStageId], references: [id], onDelete: Restrict)
+  matter    Matter                     @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  stage     WorkflowStage              @relation(fields: [workflowStageId], references: [id], onDelete: Restrict)
   checklist MatterStageChecklistItem[]
 
   @@index([matterId, enteredAt])
 }
 
 model MatterStageChecklistItem {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   stageInstanceId String
   key             String
   label           String
-  completed       Boolean  @default(false)
+  completed       Boolean   @default(false)
   completedById   String?
   completedAt     DateTime?
   notes           String?
@@ -1003,20 +1034,20 @@ model MatterStageChecklistItem {
 }
 
 model StageHandoff {
-  id                     String   @id @default(cuid())
-  matterId               String
-  fromStageNumber        Int
-  toStageNumber          Int
-  fromUserId             String
-  toUserId               String
-  handoffNotes           String
-  criticalNextAction     String?
-  supervisorSignOffJson  Json?
-  acknowledgedAt         DateTime?
-  acknowledgedByUserId   String?
-  createdAt              DateTime @default(now())
+  id                    String    @id @default(cuid())
+  matterId              String
+  fromStageNumber       Int
+  toStageNumber         Int
+  fromUserId            String
+  toUserId              String
+  handoffNotes          String
+  criticalNextAction    String?
+  supervisorSignOffJson Json?
+  acknowledgedAt        DateTime?
+  acknowledgedByUserId  String?
+  createdAt             DateTime  @default(now())
 
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matter Matter             @relation(fields: [matterId], references: [id], onDelete: Cascade)
   items  StageHandoffItem[]
 
   @@index([matterId, createdAt])
@@ -1033,7 +1064,7 @@ model StageHandoffItem {
 }
 
 model Task {
-  id                 String     @id @default(cuid())
+  id                 String         @id @default(cuid())
   matterId           String?
   stageNumber        Int?
   calendarEventId    String?
@@ -1043,19 +1074,19 @@ model Task {
   createdById        String
   reviewerId         String?
   priority           MatterPriority @default(MEDIUM)
-  status             TaskStatus @default(TODO)
+  status             TaskStatus     @default(TODO)
   startAt            DateTime?
   dueAt              DateTime
   officialDeadlineAt DateTime?
   completedAt        DateTime?
   blockedReason      String?
   recurrenceRule     String?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
-  matter       Matter?   @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  assignedTo   User      @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
-  createdBy    User      @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  matter       Matter?          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  assignedTo   User             @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  createdBy    User             @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
   dependencies TaskDependency[] @relation("TaskDependencies")
   dependents   TaskDependency[] @relation("TaskDependents")
   documents    TaskDocument[]
@@ -1065,8 +1096,8 @@ model Task {
 }
 
 model TaskDependency {
-  taskId       String
-  dependsOnId  String
+  taskId      String
+  dependsOnId String
 
   task      Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
   dependsOn Task @relation("TaskDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
@@ -1075,19 +1106,19 @@ model TaskDependency {
 }
 
 model Deadline {
-  id             String   @id @default(cuid())
-  matterId       String
-  title          String
-  deadlineType   String
-  officialDueAt  DateTime
+  id               String    @id @default(cuid())
+  matterId         String
+  title            String
+  deadlineType     String
+  officialDueAt    DateTime
   internalTargetAt DateTime?
-  source         String
-  riskLevel      String
-  immutable      Boolean  @default(true)
-  completedAt    DateTime?
-  completedById  String?
-  notes          String?
-  createdAt      DateTime @default(now())
+  source           String
+  riskLevel        String
+  immutable        Boolean   @default(true)
+  completedAt      DateTime?
+  completedById    String?
+  notes            String?
+  createdAt        DateTime  @default(now())
 
   matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
@@ -1096,36 +1127,36 @@ model Deadline {
 }
 
 model CalendarEvent {
-  id                      String             @id @default(cuid())
-  firmId                  String
-  matterId                String?
-  courtProceedingId       String?
-  taskId                  String?
-  deadlineId              String?
-  title                   String
-  eventType               CalendarEventType
-  startAt                 DateTime
-  endAt                   DateTime
-  timezone                String             @default("Africa/Nairobi")
-  allDay                  Boolean            @default(false)
-  location                String?
-  virtualMeetingUrl       String?
-  organizerId             String
-  assignedUserId          String
-  sourceType              String             @default("MANUAL")
-  editPolicy              CalendarEditPolicy @default(CONFIRM)
-  status                  String             @default("SCHEDULED")
-  reminderPolicyId        String?
-  externalGoogleEventId   String?
+  id                       String             @id @default(cuid())
+  firmId                   String
+  matterId                 String?
+  courtProceedingId        String?
+  taskId                   String?
+  deadlineId               String?
+  title                    String
+  eventType                CalendarEventType
+  startAt                  DateTime
+  endAt                    DateTime
+  timezone                 String             @default("Africa/Nairobi")
+  allDay                   Boolean            @default(false)
+  location                 String?
+  virtualMeetingUrl        String?
+  organizerId              String
+  assignedUserId           String
+  sourceType               String             @default("MANUAL")
+  editPolicy               CalendarEditPolicy @default(CONFIRM)
+  status                   String             @default("SCHEDULED")
+  reminderPolicyId         String?
+  externalGoogleEventId    String?
   externalMicrosoftEventId String?
-  syncState               String?
-  notes                   String?
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  syncState                String?
+  notes                    String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
-  matter       Matter? @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  organizer    User    @relation("CalendarOrganizer", fields: [organizerId], references: [id], onDelete: Restrict)
-  assignedUser User    @relation("CalendarAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
+  matter       Matter?                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  organizer    User                    @relation("CalendarOrganizer", fields: [organizerId], references: [id], onDelete: Restrict)
+  assignedUser User                    @relation("CalendarAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
   participants CalendarParticipant[]
   documents    CalendarEventDocument[]
   revisions    CalendarRevision[]
@@ -1136,9 +1167,9 @@ model CalendarEvent {
 }
 
 model CalendarParticipant {
-  eventId String
-  userId  String
-  role    String?
+  eventId        String
+  userId         String
+  role           String?
   responseStatus String?
 
   event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -1166,7 +1197,7 @@ model CalendarRevision {
 }
 
 model CourtProceeding {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   matterId          String
   courtName         String
   station           String
@@ -1176,12 +1207,12 @@ model CourtProceeding {
   filedAt           DateTime?
   judgeOrMagistrate String?
   opposingCounsel   String?
-  status            String   @default("ACTIVE")
+  status            String    @default("ACTIVE")
   notes             String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matter         Matter               @relation(fields: [matterId], references: [id], onDelete: Cascade)
   filingPackages CourtFilingPackage[]
   serviceRecords ServiceRecord[]
 
@@ -1190,28 +1221,28 @@ model CourtProceeding {
 }
 
 model CourtFilingPackage {
-  id                    String   @id @default(cuid())
-  matterId              String
-  proceedingId          String?
-  courtStation          String
-  division              String?
-  caseType              String?
-  plaintiff             String?
-  defendants            Json?
-  courtAssessmentAmount Decimal? @db.Decimal(18,2)
-  feeRequisitionApproved Boolean @default(false)
-  receiptDocumentId     String?
-  receiptNumber         String?
-  ctsReference          String?
-  courtCaseNumber       String?
-  status                String   @default("READY_TO_FILE")
-  assignedClerkId       String?
-  submittedAt           DateTime?
-  acceptedAt            DateTime?
-  rejectedAt            DateTime?
-  rejectionReason       String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  matterId               String
+  proceedingId           String?
+  courtStation           String
+  division               String?
+  caseType               String?
+  plaintiff              String?
+  defendants             Json?
+  courtAssessmentAmount  Decimal?  @db.Decimal(18, 2)
+  feeRequisitionApproved Boolean   @default(false)
+  receiptDocumentId      String?
+  receiptNumber          String?
+  ctsReference           String?
+  courtCaseNumber        String?
+  status                 String    @default("READY_TO_FILE")
+  assignedClerkId        String?
+  submittedAt            DateTime?
+  acceptedAt             DateTime?
+  rejectedAt             DateTime?
+  rejectionReason        String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   proceeding CourtProceeding? @relation(fields: [proceedingId], references: [id], onDelete: SetNull)
 
@@ -1219,23 +1250,23 @@ model CourtFilingPackage {
 }
 
 model ServiceRecord {
-  id                       String   @id @default(cuid())
-  matterId                 String
-  proceedingId             String?
-  documentId               String?
-  partyName                String
-  partyAddress             String?
-  processServerName        String?
-  assignedDate             DateTime?
-  dueDate                  DateTime?
-  serviceDate              DateTime?
-  serviceMethod            String?
-  affidavitDocumentId      String?
-  affidavitStatus          String   @default("AWAITED")
-  status                   String   @default("REQUESTED")
-  notes                    String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  matterId            String
+  proceedingId        String?
+  documentId          String?
+  partyName           String
+  partyAddress        String?
+  processServerName   String?
+  assignedDate        DateTime?
+  dueDate             DateTime?
+  serviceDate         DateTime?
+  serviceMethod       String?
+  affidavitDocumentId String?
+  affidavitStatus     String    @default("AWAITED")
+  status              String    @default("REQUESTED")
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   proceeding CourtProceeding? @relation(fields: [proceedingId], references: [id], onDelete: SetNull)
   attempts   ServiceAttempt[]
@@ -1271,12 +1302,12 @@ model Document {
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
 
-  matter     Matter            @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  owner      User              @relation("DocumentOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  versions   DocumentVersion[] @relation("DocumentVersions")
-  currentVersion DocumentVersion? @relation("CurrentDocumentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
-  taskLinks  TaskDocument[]
-  calendarLinks CalendarEventDocument[]
+  matter           Matter                    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  owner            User                      @relation("DocumentOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  versions         DocumentVersion[]         @relation("DocumentVersions")
+  currentVersion   DocumentVersion?          @relation("CurrentDocumentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  taskLinks        TaskDocument[]
+  calendarLinks    CalendarEventDocument[]
   markApplications DocumentMarkApplication[]
 
   @@index([matterId, category])
@@ -1307,10 +1338,10 @@ model DocumentVersion {
   revertedFromVersion Int?
   createdAt           DateTime       @default(now())
 
-  document   Document @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
-  currentFor  Document[] @relation("CurrentDocumentVersion")
-  uploader   User     @relation("DocumentVersionUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
-  reviews    DocumentReview[]
+  document               Document                  @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  currentFor             Document[]                @relation("CurrentDocumentVersion")
+  uploader               User                      @relation("DocumentVersionUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  reviews                DocumentReview[]
   inputMarkApplications  DocumentMarkApplication[] @relation("MarkInputVersion")
   outputMarkApplications DocumentMarkApplication[] @relation("MarkOutputVersion")
 
@@ -1319,12 +1350,12 @@ model DocumentVersion {
 }
 
 model DocumentReview {
-  id          String         @id @default(cuid())
+  id          String          @id @default(cuid())
   versionId   String
   reviewerId  String
   decision    ReviewDecision?
   comment     String?
-  requestedAt DateTime       @default(now())
+  requestedAt DateTime        @default(now())
   decidedAt   DateTime?
 
   version DocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
@@ -1342,9 +1373,9 @@ model TaskDocument {
 }
 
 model CalendarEventDocument {
-  eventId    String
-  documentId String
-  requirementKey String?
+  eventId              String
+  documentId           String
+  requirementKey       String?
   satisfiesRequirement Boolean @default(false)
 
   event    CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -1354,32 +1385,32 @@ model CalendarEventDocument {
 }
 
 model FirmMarkAsset {
-  id                   String        @id @default(cuid())
-  firmId               String
-  branchId             String?
-  displayName          String
-  type                 MarkAssetType
-  description          String?
-  intendedUse          String?
-  permittedRoleKeys    String[]
-  permittedUserIds     String[]
-  allowedDocumentTypes String[]
-  allowedMatterTypes   String[]
-  canApplyAutomatically Boolean      @default(false)
-  requiresApproval     Boolean       @default(false)
-  approvalRoleKeys     String[]
-  minScale             Float         @default(0.25)
-  maxScale             Float         @default(2.0)
-  minOpacity           Float         @default(0.2)
-  maxOpacity           Float         @default(1.0)
-  minRotationDegrees   Float         @default(0)
-  maxRotationDegrees   Float         @default(0)
-  effectiveFrom        DateTime?
-  effectiveTo          DateTime?
-  active               Boolean       @default(true)
-  createdById          String
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  id                    String        @id @default(cuid())
+  firmId                String
+  branchId              String?
+  displayName           String
+  type                  MarkAssetType
+  description           String?
+  intendedUse           String?
+  permittedRoleKeys     String[]
+  permittedUserIds      String[]
+  allowedDocumentTypes  String[]
+  allowedMatterTypes    String[]
+  canApplyAutomatically Boolean       @default(false)
+  requiresApproval      Boolean       @default(false)
+  approvalRoleKeys      String[]
+  minScale              Float         @default(0.25)
+  maxScale              Float         @default(2.0)
+  minOpacity            Float         @default(0.2)
+  maxOpacity            Float         @default(1.0)
+  minRotationDegrees    Float         @default(0)
+  maxRotationDegrees    Float         @default(0)
+  effectiveFrom         DateTime?
+  effectiveTo           DateTime?
+  active                Boolean       @default(true)
+  createdById           String
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   versions     FirmMarkAssetVersion[]
   applications DocumentMarkApplication[]
@@ -1401,49 +1432,49 @@ model FirmMarkAssetVersion {
   createdById      String
   createdAt        DateTime @default(now())
 
-  asset FirmMarkAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset        FirmMarkAsset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
   applications DocumentMarkApplication[]
 
   @@unique([assetId, version])
 }
 
 model SignatureProfile {
-  id                       String   @id @default(cuid())
-  userId                   String   @unique
-  professionalDisplayName  String
-  postNominals             String?
-  jobTitle                 String?
-  admissionNumber          String?
-  typedSignatureAllowed    Boolean  @default(false)
-  defaultExecutionBlockId  String?
-  validFrom                DateTime?
-  validTo                  DateTime?
-  approvalStatus           String   @default("PENDING")
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                      String    @id @default(cuid())
+  userId                  String    @unique
+  professionalDisplayName String
+  postNominals            String?
+  jobTitle                String?
+  admissionNumber         String?
+  typedSignatureAllowed   Boolean   @default(false)
+  defaultExecutionBlockId String?
+  validFrom               DateTime?
+  validTo                 DateTime?
+  approvalStatus          String    @default("PENDING")
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  versions  SignatureAssetVersion[]
-  delegationsFrom SignatureDelegation[] @relation("SignatureDelegator")
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions        SignatureAssetVersion[]
+  delegationsFrom SignatureDelegation[]   @relation("SignatureDelegator")
 }
 
 model SignatureAssetVersion {
-  id             String   @id @default(cuid())
-  profileId      String
-  version        Int
-  storagePath    String
-  mimeType       String
-  checksumSha256 String
-  widthPx        Int?
-  heightPx       Int?
+  id               String   @id @default(cuid())
+  profileId        String
+  version          Int
+  storagePath      String
+  mimeType         String
+  checksumSha256   String
+  widthPx          Int?
+  heightPx         Int?
   transparentReady Boolean?
-  active         Boolean @default(true)
-  createdAt      DateTime @default(now())
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
 
-  profile SignatureProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile      SignatureProfile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  applications DocumentMarkApplication[]
 
   @@unique([profileId, version])
-  applications DocumentMarkApplication[]
 }
 
 model ExecutionBlockTemplate {
@@ -1453,7 +1484,7 @@ model ExecutionBlockTemplate {
   name           String
   documentTypes  String[]
   signerRoleKeys String[]
-  active         Boolean @default(true)
+  active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1461,89 +1492,89 @@ model ExecutionBlockTemplate {
 }
 
 model ExecutionBlockTemplateVersion {
-  id           String   @id @default(cuid())
-  templateId   String
-  version      Int
-  definition   Json
+  id            String    @id @default(cuid())
+  templateId    String
+  version       Int
+  definition    Json
   effectiveFrom DateTime?
   effectiveTo   DateTime?
-  createdById  String
-  createdAt    DateTime @default(now())
+  createdById   String
+  createdAt     DateTime  @default(now())
 
-  template ExecutionBlockTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template     ExecutionBlockTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
   applications DocumentMarkApplication[]
 
   @@unique([templateId, version])
 }
 
 model DocumentPlacementPreset {
-  id             String   @id @default(cuid())
-  firmId         String
-  name           String
-  pageSelection  String   @default("LAST")
-  anchorType     String   @default("PAGE")
-  anchorName     String?
-  xPoints        Float?
-  yPoints        Float?
-  widthPoints    Float?
-  heightPoints   Float?
-  scale          Float    @default(1)
-  rotation       Float    @default(0)
-  opacity        Float    @default(1)
-  zOrder         Int      @default(0)
-  constraints    Json?
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  firmId        String
+  name          String
+  pageSelection String   @default("LAST")
+  anchorType    String   @default("PAGE")
+  anchorName    String?
+  xPoints       Float?
+  yPoints       Float?
+  widthPoints   Float?
+  heightPoints  Float?
+  scale         Float    @default(1)
+  rotation      Float    @default(0)
+  opacity       Float    @default(1)
+  zOrder        Int      @default(0)
+  constraints   Json?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   applications DocumentMarkApplication[]
 }
 
 model DocumentMarkPolicy {
-  id                    String   @id @default(cuid())
-  firmId                String
-  name                  String
-  documentTypes         String[]
-  matterTypes           String[]
-  allowedMarkAssetTypes MarkAssetType[]
-  requiresReviewComplete Boolean @default(true)
-  requiresReauth         Boolean @default(true)
-  requiresApproval       Boolean @default(false)
+  id                     String          @id @default(cuid())
+  firmId                 String
+  name                   String
+  documentTypes          String[]
+  matterTypes            String[]
+  allowedMarkAssetTypes  MarkAssetType[]
+  requiresReviewComplete Boolean         @default(true)
+  requiresReauth         Boolean         @default(true)
+  requiresApproval       Boolean         @default(false)
   approvalRoleKeys       String[]
-  active                 Boolean @default(true)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  active                 Boolean         @default(true)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 }
 
 model DocumentMarkApplication {
-  id                       String                @id @default(cuid())
-  documentId               String
-  inputVersionId           String
-  outputVersionId          String?
-  markAssetId              String?
-  markAssetVersionId       String?
-  signatureAssetVersionId  String?
-  operationId              String?
-  placementPresetId        String?
-  executionBlockVersionId  String?
-  requestedById            String
-  signerUserId             String?
-  approvedById             String?
-  status                   MarkApplicationStatus @default(PENDING)
-  placementResolved        Json?
-  inputChecksum            String
-  outputChecksum           String?
-  reason                   String?
-  providerTransactionId    String?
-  createdAt                DateTime              @default(now())
-  appliedAt                DateTime?
+  id                      String                @id @default(cuid())
+  documentId              String
+  inputVersionId          String
+  outputVersionId         String?
+  markAssetId             String?
+  markAssetVersionId      String?
+  signatureAssetVersionId String?
+  operationId             String?
+  placementPresetId       String?
+  executionBlockVersionId String?
+  requestedById           String
+  signerUserId            String?
+  approvedById            String?
+  status                  MarkApplicationStatus @default(PENDING)
+  placementResolved       Json?
+  inputChecksum           String
+  outputChecksum          String?
+  reason                  String?
+  providerTransactionId   String?
+  createdAt               DateTime              @default(now())
+  appliedAt               DateTime?
 
-  document             Document                      @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  inputVersion         DocumentVersion               @relation("MarkInputVersion", fields: [inputVersionId], references: [id], onDelete: Restrict)
-  outputVersion        DocumentVersion?              @relation("MarkOutputVersion", fields: [outputVersionId], references: [id], onDelete: SetNull)
-  markAsset            FirmMarkAsset?                @relation(fields: [markAssetId], references: [id], onDelete: Restrict)
-  markAssetVersion     FirmMarkAssetVersion?         @relation(fields: [markAssetVersionId], references: [id], onDelete: Restrict)
-  placementPreset      DocumentPlacementPreset?      @relation(fields: [placementPresetId], references: [id], onDelete: SetNull)
+  document              Document                       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  inputVersion          DocumentVersion                @relation("MarkInputVersion", fields: [inputVersionId], references: [id], onDelete: Restrict)
+  outputVersion         DocumentVersion?               @relation("MarkOutputVersion", fields: [outputVersionId], references: [id], onDelete: SetNull)
+  markAsset             FirmMarkAsset?                 @relation(fields: [markAssetId], references: [id], onDelete: Restrict)
+  markAssetVersion      FirmMarkAssetVersion?          @relation(fields: [markAssetVersionId], references: [id], onDelete: Restrict)
+  placementPreset       DocumentPlacementPreset?       @relation(fields: [placementPresetId], references: [id], onDelete: SetNull)
   executionBlockVersion ExecutionBlockTemplateVersion? @relation(fields: [executionBlockVersionId], references: [id], onDelete: SetNull)
 
   signatureAssetVersion SignatureAssetVersion? @relation(fields: [signatureAssetVersionId], references: [id], onDelete: Restrict)
@@ -1552,18 +1583,18 @@ model DocumentMarkApplication {
 }
 
 model SignatureDelegation {
-  id              String   @id @default(cuid())
-  delegatorProfileId String
-  delegateUserId  String
-  allowedActions  String[]
-  allowedMatterTypes String[]
+  id                   String    @id @default(cuid())
+  delegatorProfileId   String
+  delegateUserId       String
+  allowedActions       String[]
+  allowedMatterTypes   String[]
   allowedDocumentTypes String[]
-  startsAt        DateTime
-  endsAt          DateTime
-  reason          String
-  approvalRequestId String?
-  revokedAt       DateTime?
-  createdAt       DateTime @default(now())
+  startsAt             DateTime
+  endsAt               DateTime
+  reason               String
+  approvalRequestId    String?
+  revokedAt            DateTime?
+  createdAt            DateTime  @default(now())
 
   delegator SignatureProfile @relation("SignatureDelegator", fields: [delegatorProfileId], references: [id], onDelete: Cascade)
   delegate  User             @relation("SignatureDelegateUser", fields: [delegateUserId], references: [id], onDelete: Cascade)
@@ -1578,23 +1609,23 @@ model SigningProviderConnection {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  integration IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
+  integration  IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
   transactions SigningTransaction[]
 }
 
 model SigningTransaction {
-  id                   String                   @id @default(cuid())
-  providerConnectionId String?
-  documentId           String
-  inputVersionId       String
-  requestedById        String
-  signerUserId         String
+  id                    String                   @id @default(cuid())
+  providerConnectionId  String?
+  documentId            String
+  inputVersionId        String
+  requestedById         String
+  signerUserId          String
   providerTransactionId String?
-  documentHash         String
-  status               SigningTransactionStatus @default(CREATED)
-  metadata             Json?
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
+  documentHash          String
+  status                SigningTransactionStatus @default(CREATED)
+  metadata              Json?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
 
   provider SigningProviderConnection? @relation(fields: [providerConnectionId], references: [id], onDelete: SetNull)
 }
@@ -1610,7 +1641,7 @@ model CommunicationChannel {
   private     Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  matter      Matter? @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matter      Matter?             @relation(fields: [matterId], references: [id], onDelete: Cascade)
   memberships ChannelMembership[]
   messages    ChannelMessage[]
 
@@ -1629,15 +1660,15 @@ model ChannelMembership {
 }
 
 model ChannelMessage {
-  id             String   @id @default(cuid())
-  channelId      String
-  senderId       String
-  text           String
-  replyToId      String?
+  id              String    @id @default(cuid())
+  channelId       String
+  senderId        String
+  text            String
+  replyToId       String?
   convertedTaskId String?
-  editedAt       DateTime?
-  deletedAt      DateTime?
-  createdAt      DateTime @default(now())
+  editedAt        DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
 
   channel     CommunicationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   attachments MessageAttachment[]
@@ -1646,79 +1677,79 @@ model ChannelMessage {
 }
 
 model MessageAttachment {
-  id        String @id @default(cuid())
-  messageId String
+  id         String  @id @default(cuid())
+  messageId  String
   documentId String?
-  filename  String
-  mimeType  String?
-  sizeBytes BigInt?
+  filename   String
+  mimeType   String?
+  sizeBytes  BigInt?
 
   message ChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 model SenderIdentity {
-  id                      String   @id @default(cuid())
-  integrationConnectionId String
-  scopeType               SettingScope
-  scopeId                 String
-  displayName             String
-  email                   String
-  replyTo                 String?
-  signatureHtml           String?
+  id                        String       @id @default(cuid())
+  integrationConnectionId   String
+  scopeType                 SettingScope
+  scopeId                   String
+  displayName               String
+  email                     String
+  replyTo                   String?
+  signatureHtml             String?
   confidentialityDisclaimer String?
-  brandingProfile         Json?
-  allowedRoleKeys         String[]
-  active                  Boolean  @default(true)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  brandingProfile           Json?
+  allowedRoleKeys           String[]
+  active                    Boolean      @default(true)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
 
-  integration IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
+  integration  IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
   mailMessages MailMessage[]
 }
 
 model InboundMailbox {
-  id                      String   @id @default(cuid())
+  id                      String    @id @default(cuid())
   integrationConnectionId String
   name                    String
   email                   String
-  folder                  String   @default("INBOX")
-  readOnly                Boolean  @default(true)
-  initialSyncDays         Int      @default(30)
-  active                  Boolean  @default(true)
+  folder                  String    @default("INBOX")
+  readOnly                Boolean   @default(true)
+  initialSyncDays         Int       @default(30)
+  active                  Boolean   @default(true)
   lastSyncedAt            DateTime?
-  createdAt               DateTime @default(now())
+  createdAt               DateTime  @default(now())
 
   integration IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
 }
 
 model MailMessage {
-  id               String   @id @default(cuid())
-  firmId           String
-  senderIdentityId String?
-  direction        String
+  id                String    @id @default(cuid())
+  firmId            String
+  senderIdentityId  String?
+  direction         String
   providerMessageId String?
   internetMessageId String?
-  inReplyTo        String?
-  referencesHeader String?
-  subject          String
-  bodyText         String?
-  bodyHtml         String?
-  fromAddress      String
-  matterId         String?
-  clientId         String?
-  intakeId         String?
-  triageConfidence Float?
-  triageStatus     String   @default("UNASSIGNED")
-  queuedAt         DateTime?
-  sentAt           DateTime?
-  receivedAt       DateTime?
-  createdById      String?
-  createdAt        DateTime @default(now())
+  inReplyTo         String?
+  referencesHeader  String?
+  subject           String
+  bodyText          String?
+  bodyHtml          String?
+  fromAddress       String
+  matterId          String?
+  clientId          String?
+  intakeId          String?
+  triageConfidence  Float?
+  triageStatus      String    @default("UNASSIGNED")
+  queuedAt          DateTime?
+  sentAt            DateTime?
+  receivedAt        DateTime?
+  createdById       String?
+  createdAt         DateTime  @default(now())
 
-  senderIdentity SenderIdentity? @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
-  recipients      MailRecipient[]
-  attachments     MailAttachment[]
-  deliveries      MailDeliveryEvent[]
+  senderIdentity SenderIdentity?     @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
+  recipients     MailRecipient[]
+  attachments    MailAttachment[]
+  deliveries     MailDeliveryEvent[]
 
   @@index([matterId, createdAt])
   @@index([triageStatus, createdAt])
@@ -1726,34 +1757,34 @@ model MailMessage {
 }
 
 model MailRecipient {
-  id        String @id @default(cuid())
-  messageId String
-  type      String
-  address   String
+  id          String  @id @default(cuid())
+  messageId   String
+  type        String
+  address     String
   displayName String?
 
   message MailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 model MailAttachment {
-  id          String @id @default(cuid())
-  messageId   String
-  documentId  String?
-  filename    String
-  mimeType    String?
-  sizeBytes   BigInt?
+  id             String  @id @default(cuid())
+  messageId      String
+  documentId     String?
+  filename       String
+  mimeType       String?
+  sizeBytes      BigInt?
   checksumSha256 String?
 
   message MailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 model MailDeliveryEvent {
-  id          String         @id @default(cuid())
-  messageId   String
-  status      DeliveryStatus
+  id              String         @id @default(cuid())
+  messageId       String
+  status          DeliveryStatus
   providerEventId String?
-  detail      String?
-  occurredAt  DateTime       @default(now())
+  detail          String?
+  occurredAt      DateTime       @default(now())
 
   message MailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
@@ -1761,16 +1792,16 @@ model MailDeliveryEvent {
 }
 
 model Notification {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   recipientUserId String
   matterId        String?
   category        String
   title           String
   message         String
   actionUrl       String?
-  urgency         String   @default("NORMAL")
+  urgency         String    @default("NORMAL")
   readAt          DateTime?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   deliveries NotificationDelivery[]
 
@@ -1778,16 +1809,16 @@ model Notification {
 }
 
 model NotificationDelivery {
-  id             String              @id @default(cuid())
-  notificationId String
-  channel        NotificationChannel
-  status         DeliveryStatus      @default(QUEUED)
+  id                String              @id @default(cuid())
+  notificationId    String
+  channel           NotificationChannel
+  status            DeliveryStatus      @default(QUEUED)
   providerMessageId String?
-  attempts       Int                 @default(0)
-  lastError      String?
-  deliveredAt    DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  attempts          Int                 @default(0)
+  lastError         String?
+  deliveredAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
@@ -1795,36 +1826,36 @@ model NotificationDelivery {
 }
 
 model NotificationPolicy {
-  id          String   @id @default(cuid())
-  firmId      String
-  name        String
-  eventKey    String
-  conditions  Json?
-  recipients  Json
-  channels    Json
-  escalation  Json?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  firmId     String
+  name       String
+  eventKey   String
+  conditions Json?
+  recipients Json
+  channels   Json
+  escalation Json?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model LedgerAccount {
-  id             String       @id @default(cuid())
-  firmId         String
-  branchId       String?
-  code           String
-  name           String
-  accountClass   AccountClass
-  fundType       FundType
-  currency       String       @default("KES")
-  bankName       String?
+  id                  String       @id @default(cuid())
+  firmId              String
+  branchId            String?
+  code                String
+  name                String
+  accountClass        AccountClass
+  fundType            FundType
+  currency            String       @default("KES")
+  bankName            String?
   accountNumberMasked String?
-  active         Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  active              Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  firm       Firm      @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  firm         Firm          @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  branch       Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
   journalLines JournalLine[]
 
   @@unique([firmId, code])
@@ -1832,24 +1863,24 @@ model LedgerAccount {
 }
 
 model JournalEntry {
-  id           String        @id @default(cuid())
-  firmId       String
-  branchId     String?
-  matterId     String?
-  clientId     String?
-  reference    String        @unique
-  description  String
-  status       JournalStatus @default(DRAFT)
+  id              String        @id @default(cuid())
+  firmId          String
+  branchId        String?
+  matterId        String?
+  clientId        String?
+  reference       String        @unique
+  description     String
+  status          JournalStatus @default(DRAFT)
   transactionDate DateTime
-  postedAt     DateTime?
-  postedById   String?
+  postedAt        DateTime?
+  postedById      String?
   reversedEntryId String?
-  sourceType   String?
-  sourceId     String?
-  createdById  String
-  createdAt    DateTime      @default(now())
+  sourceType      String?
+  sourceId        String?
+  createdById     String
+  createdAt       DateTime      @default(now())
 
-  matter Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matter Matter?       @relation(fields: [matterId], references: [id], onDelete: SetNull)
   lines  JournalLine[]
 
   @@index([matterId, transactionDate])
@@ -1858,15 +1889,15 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id         String   @id @default(cuid())
-  entryId    String
-  accountId  String
-  debit      Decimal  @default(0) @db.Decimal(18,2)
-  credit     Decimal  @default(0) @db.Decimal(18,2)
-  matterId   String?
-  clientId   String?
-  memo       String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  entryId   String
+  accountId String
+  debit     Decimal  @default(0) @db.Decimal(18, 2)
+  credit    Decimal  @default(0) @db.Decimal(18, 2)
+  matterId  String?
+  clientId  String?
+  memo      String?
+  createdAt DateTime @default(now())
 
   entry   JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
   account LedgerAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -1877,50 +1908,50 @@ model JournalLine {
 }
 
 model PaymentReceipt {
-  id                  String   @id @default(cuid())
-  firmId              String
-  matterId            String?
-  clientId            String?
-  accountId           String
-  journalEntryId      String?
-  receiptNumber       String   @unique
-  amount              Decimal  @db.Decimal(18,2)
-  currency            String   @default("KES")
-  payerName           String
-  paymentMethod       String
-  referenceNumber     String
-  description         String
-  receivedAt          DateTime
-  allocatedToFees     Decimal  @default(0) @db.Decimal(18,2)
-  allocatedToDisbursements Decimal @default(0) @db.Decimal(18,2)
-  createdById         String
-  createdAt           DateTime @default(now())
+  id                       String   @id @default(cuid())
+  firmId                   String
+  matterId                 String?
+  clientId                 String?
+  accountId                String
+  journalEntryId           String?
+  receiptNumber            String   @unique
+  amount                   Decimal  @db.Decimal(18, 2)
+  currency                 String   @default("KES")
+  payerName                String
+  paymentMethod            String
+  referenceNumber          String
+  description              String
+  receivedAt               DateTime
+  allocatedToFees          Decimal  @default(0) @db.Decimal(18, 2)
+  allocatedToDisbursements Decimal  @default(0) @db.Decimal(18, 2)
+  createdById              String
+  createdAt                DateTime @default(now())
 
   @@index([matterId, receivedAt])
   @@index([clientId, receivedAt])
 }
 
 model ExpenseRequest {
-  id               String        @id @default(cuid())
-  firmId           String
-  matterId         String?
-  branchId         String
-  expenseNumber    String        @unique
-  category         String
-  description      String
-  amount           Decimal       @db.Decimal(18,2)
-  currency         String        @default("KES")
-  paymentSource    String
-  requestedById    String
-  approvedById     String?
-  disbursedById    String?
-  receiptDocumentId String?
-  journalEntryId   String?
-  status           ExpenseStatus @default(DRAFT)
-  requestedAt      DateTime      @default(now())
-  approvedAt       DateTime?
-  disbursedAt      DateTime?
-  reconciledAt     DateTime?
+  id                  String        @id @default(cuid())
+  firmId              String
+  matterId            String?
+  branchId            String
+  expenseNumber       String        @unique
+  category            String
+  description         String
+  amount              Decimal       @db.Decimal(18, 2)
+  currency            String        @default("KES")
+  paymentSource       String
+  requestedById       String
+  approvedById        String?
+  disbursedById       String?
+  receiptDocumentId   String?
+  journalEntryId      String?
+  status              ExpenseStatus @default(DRAFT)
+  requestedAt         DateTime      @default(now())
+  approvedAt          DateTime?
+  disbursedAt         DateTime?
+  reconciledAt        DateTime?
   reconciliationNotes String?
 
   matter Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
@@ -1930,41 +1961,41 @@ model ExpenseRequest {
 }
 
 model FeeNote {
-  id                  String        @id @default(cuid())
-  firmId              String
-  matterId            String
-  clientId            String
-  feeNoteNumber       String        @unique
-  issuedDate          DateTime
-  dueDate             DateTime
-  status              FeeNoteStatus @default(DRAFT)
-  professionalFeesSubtotal Decimal @default(0) @db.Decimal(18,2)
-  disbursementsSubtotal Decimal @default(0) @db.Decimal(18,2)
-  vatRate             Decimal       @default(0.16) @db.Decimal(8,4)
-  vatAmount           Decimal       @default(0) @db.Decimal(18,2)
-  grossTotal          Decimal       @default(0) @db.Decimal(18,2)
-  trustFundsApplied   Decimal       @default(0) @db.Decimal(18,2)
-  netBalanceDue       Decimal       @default(0) @db.Decimal(18,2)
-  notes               String?
-  aroScaleReference   String?
-  signatoryUserId     String
-  journalEntryId      String?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                       String        @id @default(cuid())
+  firmId                   String
+  matterId                 String
+  clientId                 String
+  feeNoteNumber            String        @unique
+  issuedDate               DateTime
+  dueDate                  DateTime
+  status                   FeeNoteStatus @default(DRAFT)
+  professionalFeesSubtotal Decimal       @default(0) @db.Decimal(18, 2)
+  disbursementsSubtotal    Decimal       @default(0) @db.Decimal(18, 2)
+  vatRate                  Decimal       @default(0.16) @db.Decimal(8, 4)
+  vatAmount                Decimal       @default(0) @db.Decimal(18, 2)
+  grossTotal               Decimal       @default(0) @db.Decimal(18, 2)
+  trustFundsApplied        Decimal       @default(0) @db.Decimal(18, 2)
+  netBalanceDue            Decimal       @default(0) @db.Decimal(18, 2)
+  notes                    String?
+  aroScaleReference        String?
+  signatoryUserId          String
+  journalEntryId           String?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
 
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Restrict)
+  matter Matter        @relation(fields: [matterId], references: [id], onDelete: Restrict)
   items  FeeNoteItem[]
 
   @@index([matterId, status])
 }
 
 model FeeNoteItem {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   feeNoteId   String
   description String
   category    String
-  amount      Decimal  @db.Decimal(18,2)
-  taxable     Boolean  @default(false)
+  amount      Decimal @db.Decimal(18, 2)
+  taxable     Boolean @default(false)
   timeEntryId String?
   expenseId   String?
 
@@ -1972,71 +2003,71 @@ model FeeNoteItem {
 }
 
 model TimeEntry {
-  id             String   @id @default(cuid())
-  firmId         String
-  matterId       String
-  lawyerUserId   String
-  activityType   String
-  startedAt      DateTime?
-  endedAt        DateTime?
+  id              String    @id @default(cuid())
+  firmId          String
+  matterId        String
+  lawyerUserId    String
+  activityType    String
+  startedAt       DateTime?
+  endedAt         DateTime?
   durationSeconds Int
-  hourlyRate     Decimal  @db.Decimal(18,2)
-  totalAmount    Decimal  @db.Decimal(18,2)
-  notes          String?
-  billable       Boolean  @default(true)
-  billed         Boolean  @default(false)
-  feeNoteItemId  String?
-  createdAt      DateTime @default(now())
+  hourlyRate      Decimal   @db.Decimal(18, 2)
+  totalAmount     Decimal   @db.Decimal(18, 2)
+  notes           String?
+  billable        Boolean   @default(true)
+  billed          Boolean   @default(false)
+  feeNoteItemId   String?
+  createdAt       DateTime  @default(now())
 
   @@index([matterId, createdAt])
   @@index([lawyerUserId, createdAt])
 }
 
 model Reconciliation {
-  id          String   @id @default(cuid())
-  firmId      String
-  accountId   String
-  periodStart DateTime
-  periodEnd   DateTime
-  statementOpeningBalance Decimal @db.Decimal(18,2)
-  statementClosingBalance Decimal @db.Decimal(18,2)
-  ledgerClosingBalance Decimal @db.Decimal(18,2)
-  status      String   @default("OPEN")
-  completedById String?
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
+  id                      String    @id @default(cuid())
+  firmId                  String
+  accountId               String
+  periodStart             DateTime
+  periodEnd               DateTime
+  statementOpeningBalance Decimal   @db.Decimal(18, 2)
+  statementClosingBalance Decimal   @db.Decimal(18, 2)
+  ledgerClosingBalance    Decimal   @db.Decimal(18, 2)
+  status                  String    @default("OPEN")
+  completedById           String?
+  completedAt             DateTime?
+  createdAt               DateTime  @default(now())
 
   items ReconciliationItem[]
 }
 
 model ReconciliationItem {
-  id                String   @id @default(cuid())
-  reconciliationId  String
-  sourceReference   String
-  sourceDate        DateTime
-  amount            Decimal  @db.Decimal(18,2)
-  journalEntryId    String?
-  matched           Boolean  @default(false)
-  notes             String?
+  id               String   @id @default(cuid())
+  reconciliationId String
+  sourceReference  String
+  sourceDate       DateTime
+  amount           Decimal  @db.Decimal(18, 2)
+  journalEntryId   String?
+  matched          Boolean  @default(false)
+  notes            String?
 
   reconciliation Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
 }
 
 model ApprovalRequest {
-  id             String         @id @default(cuid())
-  firmId         String
-  type           String
-  entityType     String
-  entityId       String
-  requestedById  String
+  id               String         @id @default(cuid())
+  firmId           String
+  type             String
+  entityType       String
+  entityId         String
+  requestedById    String
   requiredRoleKeys String[]
-  assignedUserIds String[]
-  payload        Json?
-  status         ApprovalStatus @default(PENDING)
-  reason         String?
-  dueAt          DateTime?
-  createdAt      DateTime       @default(now())
-  resolvedAt     DateTime?
+  assignedUserIds  String[]
+  payload          Json?
+  status           ApprovalStatus @default(PENDING)
+  reason           String?
+  dueAt            DateTime?
+  createdAt        DateTime       @default(now())
+  resolvedAt       DateTime?
 
   decisions ApprovalDecision[]
 
@@ -2056,22 +2087,22 @@ model ApprovalDecision {
 }
 
 model DirectoryContact {
-  id             String   @id @default(cuid())
-  firmId         String
-  type           String
-  displayName    String
+  id               String   @id @default(cuid())
+  firmId           String
+  type             String
+  displayName      String
   organizationName String?
-  phone          String?
-  alternatePhone String?
-  email          String?
-  address        String?
-  county         String?
-  specialization String?
-  identifiers    Json?
-  notes          String?
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  phone            String?
+  alternatePhone   String?
+  email            String?
+  address          String?
+  county           String?
+  specialization   String?
+  identifiers      Json?
+  notes            String?
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
@@ -2103,20 +2134,20 @@ model AuditEvent {
 }
 
 model AutomationRule {
-  id             String   @id @default(cuid())
-  firmId         String
-  name           String
-  triggerKey     String
-  conditions     Json?
-  actions        Json
-  schedule       Json?
-  retryPolicy    Json?
+  id                String    @id @default(cuid())
+  firmId            String
+  name              String
+  triggerKey        String
+  conditions        Json?
+  actions           Json
+  schedule          Json?
+  retryPolicy       Json?
   failureEscalation Json?
-  enabled        Boolean  @default(true)
-  effectiveFrom  DateTime?
-  effectiveTo    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  enabled           Boolean   @default(true)
+  effectiveFrom     DateTime?
+  effectiveTo       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   runs AutomationRun[]
 
@@ -2124,42 +2155,42 @@ model AutomationRule {
 }
 
 model AutomationRun {
-  id           String              @id @default(cuid())
-  ruleId       String
-  triggerEvent Json
-  status       AutomationRunStatus @default(QUEUED)
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  result       Json?
-  error        String?
-  idempotencyKey String?           @unique
-  createdAt    DateTime            @default(now())
+  id             String              @id @default(cuid())
+  ruleId         String
+  triggerEvent   Json
+  status         AutomationRunStatus @default(QUEUED)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  result         Json?
+  error          String?
+  idempotencyKey String?             @unique
+  createdAt      DateTime            @default(now())
 
   rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 }
 
 model CustomFieldDefinition {
-  id                  String       @id @default(cuid())
-  firmId              String
-  entityType          String
-  key                 String
-  label               String
-  helpText            String?
-  fieldType           String
-  requiredRule        Json?
-  validation          Json?
-  defaultValue        Json?
-  options             Json?
+  id                    String   @id @default(cuid())
+  firmId                String
+  entityType            String
+  key                   String
+  label                 String
+  helpText              String?
+  fieldType             String
+  requiredRule          Json?
+  validation            Json?
+  defaultValue          Json?
+  options               Json?
   conditionalVisibility Json?
-  readPermissionKeys  String[]
-  writePermissionKeys String[]
-  searchable          Boolean      @default(false)
-  reportable          Boolean      @default(false)
-  mergeField          Boolean      @default(false)
-  sensitivity         String       @default("INTERNAL")
-  active              Boolean      @default(true)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  readPermissionKeys    String[]
+  writePermissionKeys   String[]
+  searchable            Boolean  @default(false)
+  reportable            Boolean  @default(false)
+  mergeField            Boolean  @default(false)
+  sensitivity           String   @default("INTERNAL")
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   values CustomFieldValue[]
 
@@ -2167,33 +2198,33 @@ model CustomFieldDefinition {
 }
 
 model CustomFieldValue {
-  id         String   @id @default(cuid())
-  fieldId    String
-  matterId   String?
-  entityType String
-  entityId   String
-  value      Json
+  id          String   @id @default(cuid())
+  fieldId     String
+  matterId    String?
+  entityType  String
+  entityId    String
+  value       Json
   updatedById String
-  updatedAt  DateTime @updatedAt
-  createdAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 
   field  CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  matter Matter? @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matter Matter?               @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   @@unique([fieldId, entityType, entityId])
 }
 
 model FormDefinition {
-  id          String   @id @default(cuid())
-  firmId      String
-  key         String
-  name        String
-  purpose     String?
-  scopeType   SettingScope
-  scopeId     String
-  active      Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String       @id @default(cuid())
+  firmId    String
+  key       String
+  name      String
+  purpose   String?
+  scopeType SettingScope
+  scopeId   String
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   versions FormVersion[]
 
@@ -2201,32 +2232,32 @@ model FormDefinition {
 }
 
 model FormVersion {
-  id           String   @id @default(cuid())
-  formId       String
-  version      Int
-  schema       Json
-  publishedAt  DateTime?
+  id            String    @id @default(cuid())
+  formId        String
+  version       Int
+  schema        Json
+  publishedAt   DateTime?
   effectiveFrom DateTime?
   effectiveTo   DateTime?
-  createdById  String
-  createdAt    DateTime @default(now())
+  createdById   String
+  createdAt     DateTime  @default(now())
 
-  form        FormDefinition @relation(fields: [formId], references: [id], onDelete: Cascade)
+  form        FormDefinition   @relation(fields: [formId], references: [id], onDelete: Cascade)
   submissions FormSubmission[]
 
   @@unique([formId, version])
 }
 
 model FormSubmission {
-  id            String   @id @default(cuid())
-  formVersionId String
-  entityType    String
-  entityId      String
-  submittedById String
-  data          Json
-  status        String   @default("SUBMITTED")
+  id                    String   @id @default(cuid())
+  formVersionId         String
+  entityType            String
+  entityId              String
+  submittedById         String
+  data                  Json
+  status                String   @default("SUBMITTED")
   pdfSnapshotDocumentId String?
-  submittedAt   DateTime @default(now())
+  submittedAt           DateTime @default(now())
 
   formVersion FormVersion @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
 
@@ -2245,16 +2276,16 @@ model FeatureFlag {
 }
 
 model ApiClient {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   firmId         String
   name           String
-  clientId       String   @unique
+  clientId       String    @unique
   secretHash     String
   permissionKeys String[]
   allowedCidrs   String[]
-  active         Boolean  @default(true)
+  active         Boolean   @default(true)
   lastUsedAt     DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 }
 
 model WebhookEndpoint {
@@ -2272,17 +2303,17 @@ model WebhookEndpoint {
 }
 
 model WebhookDelivery {
-  id           String         @id @default(cuid())
-  endpointId   String
-  eventKey     String
-  eventId      String
-  status       DeliveryStatus @default(QUEUED)
-  attempts     Int            @default(0)
-  responseCode Int?
-  responseBody String?
+  id            String         @id @default(cuid())
+  endpointId    String
+  eventKey      String
+  eventId       String
+  status        DeliveryStatus @default(QUEUED)
+  attempts      Int            @default(0)
+  responseCode  Int?
+  responseBody  String?
   nextAttemptAt DateTime?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
@@ -2290,21 +2321,21 @@ model WebhookDelivery {
 }
 
 model InternalProject {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   firmId      String
   branchId    String?
   name        String
   description String?
-  status      String   @default("ACTIVE")
+  status      String    @default("ACTIVE")
   ownerUserId String
   startDate   DateTime?
   dueDate     DateTime?
-  budget      Decimal? @db.Decimal(18,2)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  budget      Decimal?  @db.Decimal(18, 2)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  firm    Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  members ProjectMember[]
+  firm     Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  members  ProjectMember[]
   meetings Meeting[]
 
   @@index([firmId, status])
@@ -2322,7 +2353,7 @@ model ProjectMember {
 }
 
 model Meeting {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   firmId      String
   projectId   String?
   matterId    String?
@@ -2332,13 +2363,13 @@ model Meeting {
   location    String?
   agenda      Json?
   minutes     Json?
-  status      String   @default("SCHEDULED")
+  status      String    @default("SCHEDULED")
   organizerId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  project      InternalProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  matter       Matter?          @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  project      InternalProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  matter       Matter?              @relation(fields: [matterId], references: [id], onDelete: SetNull)
   participants MeetingParticipant[]
   decisions    MeetingDecision[]
   actions      MeetingAction[]
@@ -2348,8 +2379,8 @@ model Meeting {
 }
 
 model MeetingParticipant {
-  meetingId String
-  userId    String
+  meetingId        String
+  userId           String
   attendanceStatus String?
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
@@ -2359,55 +2390,55 @@ model MeetingParticipant {
 }
 
 model MeetingDecision {
-  id        String   @id @default(cuid())
-  meetingId String
-  text      String
+  id          String   @id @default(cuid())
+  meetingId   String
+  text        String
   ownerUserId String?
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 }
 
 model MeetingAction {
-  id        String   @id @default(cuid())
-  meetingId String
-  taskId    String?
-  text      String
+  id         String    @id @default(cuid())
+  meetingId  String
+  taskId     String?
+  text       String
   assigneeId String?
-  dueAt     DateTime?
-  createdAt DateTime @default(now())
+  dueAt      DateTime?
+  createdAt  DateTime  @default(now())
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 }
 
 model EmployeeProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  employeeNumber  String   @unique
-  employmentType  String
-  startDate       DateTime
-  endDate         DateTime?
-  managerUserId   String?
-  leavePolicyKey  String?
-  cpdsRequiredAnnual Decimal? @db.Decimal(8,2)
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  employeeNumber     String    @unique
+  employmentType     String
+  startDate          DateTime
+  endDate            DateTime?
+  managerUserId      String?
+  leavePolicyKey     String?
+  cpdsRequiredAnnual Decimal?  @db.Decimal(8, 2)
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model LeaveRequest {
-  id            String      @id @default(cuid())
-  userId        String
-  type          String
-  startsOn      DateTime
-  endsOn        DateTime
-  days          Decimal     @db.Decimal(8,2)
-  reason        String?
-  status        LeaveStatus @default(DRAFT)
-  approverId    String?
-  approvedAt    DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id         String      @id @default(cuid())
+  userId     String
+  type       String
+  startsOn   DateTime
+  endsOn     DateTime
+  days       Decimal     @db.Decimal(8, 2)
+  reason     String?
+  status     LeaveStatus @default(DRAFT)
+  approverId String?
+  approvedAt DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   requester User  @relation("LeaveRequester", fields: [userId], references: [id], onDelete: Cascade)
   approver  User? @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
@@ -2416,33 +2447,33 @@ model LeaveRequest {
 }
 
 model CpdRecord {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  provider    String?
-  occurredOn  DateTime
-  hours       Decimal  @db.Decimal(8,2)
+  id                    String   @id @default(cuid())
+  userId                String
+  title                 String
+  provider              String?
+  occurredOn            DateTime
+  hours                 Decimal  @db.Decimal(8, 2)
   certificateDocumentId String?
-  notes       String?
-  createdAt   DateTime @default(now())
+  notes                 String?
+  createdAt             DateTime @default(now())
 
   @@index([userId, occurredOn])
 }
 
 model Vendor {
-  id           String   @id @default(cuid())
-  firmId       String
-  name         String
-  kraPin       String?
-  contactName  String?
-  phone        String?
-  email        String?
-  address      String?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  firmId      String
+  name        String
+  kraPin      String?
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firm         Firm                  @relation(fields: [firmId], references: [id], onDelete: Cascade)
   requisitions PurchaseRequisition[]
   orders       PurchaseOrder[]
 
@@ -2457,7 +2488,7 @@ model PurchaseRequisition {
   requisitionNo String         @unique
   requestedById String
   description   String
-  amount        Decimal        @db.Decimal(18,2)
+  amount        Decimal        @db.Decimal(18, 2)
   status        PurchaseStatus @default(DRAFT)
   approvedById  String?
   approvedAt    DateTime?
@@ -2468,20 +2499,20 @@ model PurchaseRequisition {
 }
 
 model PurchaseOrder {
-  id             String         @id @default(cuid())
-  firmId         String
-  branchId       String
-  vendorId       String
-  orderNo        String         @unique
-  requisitionId  String?
-  description    String
-  amount         Decimal        @db.Decimal(18,2)
-  status         PurchaseStatus @default(APPROVED)
-  orderedAt      DateTime?
-  receivedAt     DateTime?
-  createdById    String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  firmId        String
+  branchId      String
+  vendorId      String
+  orderNo       String         @unique
+  requisitionId String?
+  description   String
+  amount        Decimal        @db.Decimal(18, 2)
+  status        PurchaseStatus @default(APPROVED)
+  orderedAt     DateTime?
+  receivedAt    DateTime?
+  createdById   String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
 }
@@ -2495,25 +2526,25 @@ model Asset {
   name           String
   serialNumber   String?
   purchaseDate   DateTime?
-  purchaseCost   Decimal?    @db.Decimal(18,2)
+  purchaseCost   Decimal?    @db.Decimal(18, 2)
   status         AssetStatus @default(IN_STOCK)
   warrantyEndsAt DateTime?
   notes          String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  firm        Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  branch      Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  firm        Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
   assignments AssetAssignment[]
 }
 
 model AssetAssignment {
-  id         String   @id @default(cuid())
-  assetId    String
-  userId     String
-  assignedAt DateTime @default(now())
-  returnedAt DateTime?
-  conditionOnIssue String?
+  id                String    @id @default(cuid())
+  assetId           String
+  userId            String
+  assignedAt        DateTime  @default(now())
+  returnedAt        DateTime?
+  conditionOnIssue  String?
   conditionOnReturn String?
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
@@ -2521,7 +2552,7 @@ model AssetAssignment {
 }
 
 model KnowledgeItem {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   firmId       String
   type         String
   title        String
@@ -2529,12 +2560,12 @@ model KnowledgeItem {
   practiceArea String?
   tags         String[]
   documentId   String?
-  status       String   @default("DRAFT")
+  status       String    @default("DRAFT")
   ownerUserId  String
   approvedById String?
   approvedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
@@ -2542,22 +2573,21 @@ model KnowledgeItem {
 }
 
 model PortalAccessGrant {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   firmId      String
   clientId    String
   matterId    String?
   email       String
-  tokenHash   String?  @unique
-  status      String   @default("INVITED")
+  tokenHash   String?   @unique
+  status      String    @default("INVITED")
   permissions String[]
   expiresAt   DateTime?
   lastLoginAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([clientId, status])
 }
-
 
 // =============================================================================
 // PERSONAL INJURY STRUCTURED CASE DATA
@@ -2565,23 +2595,23 @@ model PortalAccessGrant {
 // intentionally matter-linked and can evolve without hard-coding the UI.
 // =============================================================================
 model PersonalInjuryCase {
-  id                    String   @id @default(cuid())
-  matterId              String   @unique
-  incidentDate          DateTime?
-  incidentTime          String?
-  incidentLocation      String?
-  accidentNarrative     String?
-  obNumber              String?
-  policeStation         String?
-  investigatingOfficer  String?
-  investigatingPhone    String?
-  roadConditions        String?
+  id                         String    @id @default(cuid())
+  matterId                   String    @unique
+  incidentDate               DateTime?
+  incidentTime               String?
+  incidentLocation           String?
+  accidentNarrative          String?
+  obNumber                   String?
+  policeStation              String?
+  investigatingOfficer       String?
+  investigatingPhone         String?
+  roadConditions             String?
   vehicleRegistrationPrimary String?
-  insurerClaimReference String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  insurerClaimReference      String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
-  matter          Matter                  @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matter          Matter                    @relation(fields: [matterId], references: [id], onDelete: Cascade)
   vehicles        PiVehicle[]
   witnesses       PiWitness[]
   evidence        PiEvidenceItem[]
@@ -2598,40 +2628,41 @@ model PersonalInjuryCase {
 }
 
 model PiVehicle {
-  id               String @id @default(cuid())
-  personalInjuryId String
-  registrationNo   String
-  makeModel         String?
-  ownerName         String?
-  driverName        String?
-  driverLicenseNo   String?
-  insuranceCompany  String?
-  policyNumber      String?
+  id                 String  @id @default(cuid())
+  personalInjuryId   String
+  registrationNo     String
+  makeModel          String?
+  ownerName          String?
+  driverName         String?
+  driverLicenseNo    String?
+  insuranceCompany   String?
+  policyNumber       String?
   ntsaSearchObtained Boolean @default(false)
-  ntsaSearchRef     String?
-  notes             String?
+  ntsaSearchRef      String?
+  notes              String?
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
+
   @@index([registrationNo])
 }
 
 model PiWitness {
-  id                String   @id @default(cuid())
-  personalInjuryId  String
-  name              String
-  contact           String?
-  statementRequested Boolean @default(false)
-  statementReceived Boolean  @default(false)
-  statementDate     DateTime?
-  keyObservations   String?
-  documentId        String?
-  createdAt         DateTime @default(now())
+  id                 String    @id @default(cuid())
+  personalInjuryId   String
+  name               String
+  contact            String?
+  statementRequested Boolean   @default(false)
+  statementReceived  Boolean   @default(false)
+  statementDate      DateTime?
+  keyObservations    String?
+  documentId         String?
+  createdAt          DateTime  @default(now())
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
 
 model PiEvidenceItem {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   personalInjuryId String
   title            String
   category         String
@@ -2639,93 +2670,94 @@ model PiEvidenceItem {
   obtainedAt       DateTime?
   obtainedById     String?
   notes            String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
+
   @@index([personalInjuryId, category])
 }
 
 model PiInjury {
-  id               String @id @default(cuid())
-  personalInjuryId String
-  description      String
-  severity         String
-  bodyPart         String?
-  permanentEffects String?
-  disabilityPercent Decimal? @db.Decimal(8,3)
+  id                String   @id @default(cuid())
+  personalInjuryId  String
+  description       String
+  severity          String
+  bodyPart          String?
+  permanentEffects  String?
+  disabilityPercent Decimal? @db.Decimal(8, 3)
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
 
 model PiTreatmentEpisode {
-  id               String   @id @default(cuid())
-  personalInjuryId String
-  facilityName     String
-  doctorName       String?
-  admissionDate    DateTime?
-  dischargeDate    DateTime?
-  treatmentSummary String?
-  costAmount       Decimal  @default(0) @db.Decimal(18,2)
-  receiptNumber    String?
+  id                String    @id @default(cuid())
+  personalInjuryId  String
+  facilityName      String
+  doctorName        String?
+  admissionDate     DateTime?
+  dischargeDate     DateTime?
+  treatmentSummary  String?
+  costAmount        Decimal   @default(0) @db.Decimal(18, 2)
+  receiptNumber     String?
   receiptDocumentId String?
-  createdAt        DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
 
 model PiMedicalReportRequest {
-  id                 String   @id @default(cuid())
-  personalInjuryId   String
-  doctorName         String
-  specialty          String?
-  facility            String?
-  requestedAt         DateTime @default(now())
-  feeAmount           Decimal  @default(0) @db.Decimal(18,2)
-  status              String   @default("REQUESTED")
-  appointmentDate     DateTime?
-  examinedAt          DateTime?
-  receivedAt          DateTime?
-  reviewedAt          DateTime?
-  permanentDisabilityPercent Decimal? @db.Decimal(8,3)
-  futureTreatmentEstimate Decimal? @db.Decimal(18,2)
-  futureTreatmentNotes String?
-  reportDocumentId    String?
-  notes               String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                         String    @id @default(cuid())
+  personalInjuryId           String
+  doctorName                 String
+  specialty                  String?
+  facility                   String?
+  requestedAt                DateTime  @default(now())
+  feeAmount                  Decimal   @default(0) @db.Decimal(18, 2)
+  status                     String    @default("REQUESTED")
+  appointmentDate            DateTime?
+  examinedAt                 DateTime?
+  receivedAt                 DateTime?
+  reviewedAt                 DateTime?
+  permanentDisabilityPercent Decimal?  @db.Decimal(8, 3)
+  futureTreatmentEstimate    Decimal?  @db.Decimal(18, 2)
+  futureTreatmentNotes       String?
+  reportDocumentId           String?
+  notes                      String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
 
 model PiLiabilityAssessment {
-  id                     String   @id @default(cuid())
-  personalInjuryId       String   @unique
-  claimantPercent        Decimal  @default(0) @db.Decimal(8,3)
-  defendantPercent       Decimal  @default(100) @db.Decimal(8,3)
-  contributoryNegligence Boolean  @default(false)
-  contributoryNotes      String?
-  supportingEvidence     Json?
-  weaknesses             Json?
-  advocateOpinion        String?
-  generalDamages         Decimal  @default(0) @db.Decimal(18,2)
+  id                          String    @id @default(cuid())
+  personalInjuryId            String    @unique
+  claimantPercent             Decimal   @default(0) @db.Decimal(8, 3)
+  defendantPercent            Decimal   @default(100) @db.Decimal(8, 3)
+  contributoryNegligence      Boolean   @default(false)
+  contributoryNotes           String?
+  supportingEvidence          Json?
+  weaknesses                  Json?
+  advocateOpinion             String?
+  generalDamages              Decimal   @default(0) @db.Decimal(18, 2)
   generalDamagesJustification String?
-  futureMedicalExpenses  Decimal  @default(0) @db.Decimal(18,2)
-  lossOfEarnings         Decimal  @default(0) @db.Decimal(18,2)
-  lossOfEarningCapacity  Decimal  @default(0) @db.Decimal(18,2)
-  otherDamages           Decimal  @default(0) @db.Decimal(18,2)
-  assessedById           String?
-  assessedAt             DateTime?
-  updatedAt              DateTime @updatedAt
+  futureMedicalExpenses       Decimal   @default(0) @db.Decimal(18, 2)
+  lossOfEarnings              Decimal   @default(0) @db.Decimal(18, 2)
+  lossOfEarningCapacity       Decimal   @default(0) @db.Decimal(18, 2)
+  otherDamages                Decimal   @default(0) @db.Decimal(18, 2)
+  assessedById                String?
+  assessedAt                  DateTime?
+  updatedAt                   DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
   specialDamages PiSpecialDamage[]
 }
 
 model PiSpecialDamage {
-  id                    String @id @default(cuid())
+  id                    String  @id @default(cuid())
   liabilityAssessmentId String
   head                  String
-  amount                Decimal @db.Decimal(18,2)
+  amount                Decimal @db.Decimal(18, 2)
   evidenced             Boolean @default(false)
   receiptReference      String?
   evidenceDocumentId    String?
@@ -2740,62 +2772,63 @@ model PiNegotiationEntry {
   occurredAt       DateTime @default(now())
   party            String
   direction        String
-  amount           Decimal? @db.Decimal(18,2)
+  amount           Decimal? @db.Decimal(18, 2)
   status           String?
   notes            String?
   documentId       String?
   recordedById     String
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
+
   @@index([personalInjuryId, occurredAt])
 }
 
 model PiHearingBrief {
-  id               String   @id @default(cuid())
-  personalInjuryId String   @unique
-  courtEventId     String?
-  issues           Json?
-  witnesses        Json?
-  documentChecklist Json?
-  opposingPosition String?
+  id                 String    @id @default(cuid())
+  personalInjuryId   String    @unique
+  courtEventId       String?
+  issues             Json?
+  witnesses          Json?
+  documentChecklist  Json?
+  opposingPosition   String?
   settlementPosition String?
-  advocateNotes    String?
-  ready            Boolean  @default(false)
-  readyAt          DateTime?
-  readyById        String?
-  updatedAt        DateTime @updatedAt
+  advocateNotes      String?
+  ready              Boolean   @default(false)
+  readyAt            DateTime?
+  readyById          String?
+  updatedAt          DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
 
 model PiJudgmentAward {
-  id               String   @id @default(cuid())
-  personalInjuryId String   @unique
-  judgmentDate     DateTime?
-  liabilityPercent Decimal? @db.Decimal(8,3)
-  generalDamages   Decimal  @default(0) @db.Decimal(18,2)
-  specialDamages   Decimal  @default(0) @db.Decimal(18,2)
-  futureMedical    Decimal  @default(0) @db.Decimal(18,2)
-  costsAmount      Decimal  @default(0) @db.Decimal(18,2)
-  interestAmount   Decimal  @default(0) @db.Decimal(18,2)
-  totalAward       Decimal  @default(0) @db.Decimal(18,2)
-  paymentDeadline  DateTime?
-  appealDeadline   DateTime?
-  appealRecommended Boolean @default(false)
+  id                 String    @id @default(cuid())
+  personalInjuryId   String    @unique
+  judgmentDate       DateTime?
+  liabilityPercent   Decimal?  @db.Decimal(8, 3)
+  generalDamages     Decimal   @default(0) @db.Decimal(18, 2)
+  specialDamages     Decimal   @default(0) @db.Decimal(18, 2)
+  futureMedical      Decimal   @default(0) @db.Decimal(18, 2)
+  costsAmount        Decimal   @default(0) @db.Decimal(18, 2)
+  interestAmount     Decimal   @default(0) @db.Decimal(18, 2)
+  totalAward         Decimal   @default(0) @db.Decimal(18, 2)
+  paymentDeadline    DateTime?
+  appealDeadline     DateTime?
+  appealRecommended  Boolean   @default(false)
   judgmentDocumentId String?
-  decreeDocumentId String?
-  notes            String?
-  updatedAt        DateTime @updatedAt
+  decreeDocumentId   String?
+  notes              String?
+  updatedAt          DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
 
 model PiRecoveryAction {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   personalInjuryId String
   actionType       String
   status           String
-  amount           Decimal? @db.Decimal(18,2)
+  amount           Decimal?  @db.Decimal(18, 2)
   dueAt            DateTime?
   completedAt      DateTime?
   counterparty     String?
@@ -2803,59 +2836,60 @@ model PiRecoveryAction {
   documentId       String?
   notes            String?
   createdById      String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
+
   @@index([personalInjuryId, status])
 }
 
 model PiSettlementDistribution {
-  id                  String   @id @default(cuid())
-  personalInjuryId    String   @unique
-  grossAmount         Decimal  @default(0) @db.Decimal(18,2)
-  clientFundsReceived Decimal  @default(0) @db.Decimal(18,2)
-  professionalFees    Decimal  @default(0) @db.Decimal(18,2)
-  disbursements       Decimal  @default(0) @db.Decimal(18,2)
-  otherDeductions     Decimal  @default(0) @db.Decimal(18,2)
-  netClientAmount     Decimal  @default(0) @db.Decimal(18,2)
-  clientApproved      Boolean  @default(false)
-  partnerApproved     Boolean  @default(false)
-  paymentMethod       String?
-  paymentReference    String?
-  paidAt              DateTime?
+  id                            String    @id @default(cuid())
+  personalInjuryId              String    @unique
+  grossAmount                   Decimal   @default(0) @db.Decimal(18, 2)
+  clientFundsReceived           Decimal   @default(0) @db.Decimal(18, 2)
+  professionalFees              Decimal   @default(0) @db.Decimal(18, 2)
+  disbursements                 Decimal   @default(0) @db.Decimal(18, 2)
+  otherDeductions               Decimal   @default(0) @db.Decimal(18, 2)
+  netClientAmount               Decimal   @default(0) @db.Decimal(18, 2)
+  clientApproved                Boolean   @default(false)
+  partnerApproved               Boolean   @default(false)
+  paymentMethod                 String?
+  paymentReference              String?
+  paidAt                        DateTime?
   settlementStatementDocumentId String?
-  dischargeDocumentId String?
-  updatedAt           DateTime @updatedAt
+  dischargeDocumentId           String?
+  updatedAt                     DateTime  @updatedAt
 
-  personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
-  deductions PiSettlementDeduction[]
+  personalInjury PersonalInjuryCase      @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
+  deductions     PiSettlementDeduction[]
 }
 
 model PiSettlementDeduction {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   settlementId   String
   type           String
   description    String
-  amount         Decimal @db.Decimal(18,2)
+  amount         Decimal @db.Decimal(18, 2)
   sourceEntityId String?
 
   settlement PiSettlementDistribution @relation(fields: [settlementId], references: [id], onDelete: Cascade)
 }
 
 model PiClosureRecord {
-  id               String   @id @default(cuid())
-  personalInjuryId String   @unique
-  checklist        Json
-  closingNote      String?
-  financeReconciled Boolean @default(false)
-  documentsComplete Boolean @default(false)
-  clientInformed  Boolean @default(false)
-  supervisorApproved Boolean @default(false)
-  approvedById     String?
-  approvedAt       DateTime?
-  archivedAt       DateTime?
-  updatedAt        DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  personalInjuryId   String    @unique
+  checklist          Json
+  closingNote        String?
+  financeReconciled  Boolean   @default(false)
+  documentsComplete  Boolean   @default(false)
+  clientInformed     Boolean   @default(false)
+  supervisorApproved Boolean   @default(false)
+  approvedById       String?
+  approvedAt         DateTime?
+  archivedAt         DateTime?
+  updatedAt          DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
@@ -2874,24 +2908,26 @@ model DocumentTemplate {
   updatedAt    DateTime @updatedAt
 
   versions DocumentTemplateVersion[]
+
   @@unique([firmId, key])
   @@index([firmId, category, active])
 }
 
 model DocumentTemplateVersion {
-  id             String   @id @default(cuid())
-  templateId     String
-  version        Int
-  status         WorkflowVersionStatus @default(DRAFT)
+  id                String                @id @default(cuid())
+  templateId        String
+  version           Int
+  status            WorkflowVersionStatus @default(DRAFT)
   sourceStoragePath String?
-  sourceMimeType String?
-  mergeSchema    Json?
-  content        String?
-  createdById    String
-  publishedAt    DateTime?
-  createdAt      DateTime @default(now())
+  sourceMimeType    String?
+  mergeSchema       Json?
+  content           String?
+  createdById       String
+  publishedAt       DateTime?
+  createdAt         DateTime              @default(now())
 
   template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
   @@unique([templateId, version])
 }
 
@@ -2913,22 +2949,531 @@ model SystemJobRecord {
 
 // Durable, idempotent document rendering/application request. Payload is a pinned snapshot.
 model DocumentOperation {
-  id String @id @default(cuid())
-  firmId String
-  actorId String
-  documentId String
-  kind String
-  idempotencyKey String
-  payloadHash String
-  payload Json
-  status String @default("QUEUED")
-  approvalRequestId String? @unique
-  outputVersionId String?
+  id                  String   @id @default(cuid())
+  firmId              String
+  actorId             String
+  documentId          String
+  kind                String
+  idempotencyKey      String
+  payloadHash         String
+  payload             Json
+  status              String   @default("QUEUED")
+  approvalRequestId   String?  @unique
+  outputVersionId     String?
   outputDocxVersionId String?
-  error String?
-  attempts Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  error               String?
+  attempts            Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
   @@unique([firmId, idempotencyKey])
   @@index([firmId, documentId, createdAt])
+}
+
+// KKA Public Website + CMS + Media + Lead acquisition additive Prisma models.
+// Applied to the existing KKA schema by scripts/apply-to-kka.mjs.
+
+enum WebsiteContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WebsitePublicationKind {
+  ARTICLE
+  VIDEO
+}
+
+enum WebsiteLeadStatus {
+  NEW
+  REVIEWING
+  CONTACTED
+  CONSULTATION_BOOKED
+  CONSULTED
+  QUALIFIED
+  INTAKE_STARTED
+  CONVERTED
+  DECLINED
+  DUPLICATE
+  NO_RESPONSE
+  CONFLICT
+  OUT_OF_SCOPE
+}
+
+enum WebsiteLeadPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum WebsiteFormSubmissionStatus {
+  RECEIVED
+  PROCESSED
+  SPAM
+  ARCHIVED
+}
+
+enum WebsiteReleaseStatus {
+  QUEUED
+  BUILDING
+  PUBLISHED
+  FAILED
+  ROLLED_BACK
+}
+
+model WebsiteSiteSettings {
+  id         String   @id @default(cuid())
+  firmId     String   @unique
+  firmName   String
+  tagline    String
+  phone      String
+  email      String
+  address    String
+  socials    Json     @default("[]")
+  navigation Json     @default("[]")
+  footer     Json     @default("{}")
+  defaultSeo Json     @default("{}")
+  theme      Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+}
+
+model WebsiteMediaAsset {
+  id           String   @id @default(cuid())
+  firmId       String
+  filename     String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  alt          String
+  caption      String?
+  credit       String?
+  width        Int?
+  height       Int?
+  focalX       Float    @default(0.5)
+  focalY       Float    @default(0.5)
+  checksum     String?
+  variants     Json     @default("{}")
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  firm              Firm                         @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  createdBy         User?                        @relation("WebsiteMediaCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  profileImages     WebsiteProfessionalProfile[]
+  publicationCovers WebsitePublication[]
+  pageHeroes        WebsitePage[]
+
+  @@index([firmId, createdAt])
+  @@index([firmId, mimeType])
+}
+
+model WebsiteProfessionalProfile {
+  id                String               @id @default(cuid())
+  firmId            String
+  userId            String?              @unique
+  slug              String
+  name              String
+  title             String
+  summary           String
+  bio               String
+  imageId           String?
+  email             String?
+  phone             String?
+  practiceAreaSlugs String[]
+  credentials       String[]
+  memberships       String[]
+  education         String[]
+  featured          Boolean              @default(false)
+  displayOrder      Int                  @default(0)
+  status            WebsiteContentStatus @default(DRAFT)
+  publishedAt       DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  firm         Firm                 @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  user         User?                @relation("WebsiteProfileUser", fields: [userId], references: [id], onDelete: SetNull)
+  image        WebsiteMediaAsset?   @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  publications WebsitePublication[] @relation("WebsitePublicationAuthor")
+
+  @@unique([firmId, slug])
+  @@index([firmId, status, displayOrder])
+}
+
+model WebsitePracticeArea {
+  id           String               @id @default(cuid())
+  firmId       String
+  slug         String
+  title        String
+  summary      String
+  description  String
+  icon         String
+  services     String[]
+  faqs         Json                 @default("[]")
+  featured     Boolean              @default(false)
+  displayOrder Int                  @default(0)
+  status       WebsiteContentStatus @default(DRAFT)
+  publishedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  @@unique([firmId, slug])
+  @@index([firmId, status, displayOrder])
+}
+
+model WebsitePage {
+  id             String               @id @default(cuid())
+  firmId         String
+  slug           String
+  title          String
+  description    String
+  status         WebsiteContentStatus @default(DRAFT)
+  seo            Json                 @default("{}")
+  heroAssetId    String?
+  currentVersion Int                  @default(0)
+  scheduledFor   DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  firm      Firm                 @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  heroAsset WebsiteMediaAsset?   @relation(fields: [heroAssetId], references: [id], onDelete: SetNull)
+  versions  WebsitePageVersion[]
+  blocks    WebsiteBlock[]
+
+  @@unique([firmId, slug])
+  @@index([firmId, status, updatedAt])
+}
+
+model WebsitePageVersion {
+  id          String   @id @default(cuid())
+  pageId      String
+  version     Int
+  title       String
+  description String
+  seo         Json
+  snapshot    Json
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  page      WebsitePage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdBy User?       @relation("WebsitePageEditor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([pageId, version])
+}
+
+model WebsiteBlock {
+  id           String   @id @default(cuid())
+  pageId       String
+  blockType    String
+  variant      String   @default("default")
+  displayOrder Int
+  theme        String   @default("light")
+  content      Json
+  settings     Json     @default("{}")
+  visible      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  page WebsitePage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, displayOrder])
+  @@index([pageId, visible])
+}
+
+model WebsitePublication {
+  id                String                 @id @default(cuid())
+  firmId            String
+  slug              String
+  kind              WebsitePublicationKind
+  title             String
+  excerpt           String
+  body              String
+  coverId           String?
+  authorProfileId   String?
+  duration          String?
+  practiceAreaSlugs String[]
+  tags              String[]
+  status            WebsiteContentStatus   @default(DRAFT)
+  seo               Json                   @default("{}")
+  currentVersion    Int                    @default(0)
+  scheduledFor      DateTime?
+  publishedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  firm     Firm                        @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  cover    WebsiteMediaAsset?          @relation(fields: [coverId], references: [id], onDelete: SetNull)
+  author   WebsiteProfessionalProfile? @relation("WebsitePublicationAuthor", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  versions WebsitePublicationVersion[]
+
+  @@unique([firmId, slug])
+  @@index([firmId, status, publishedAt])
+  @@index([authorProfileId])
+}
+
+model WebsitePublicationVersion {
+  id            String   @id @default(cuid())
+  publicationId String
+  version       Int
+  title         String
+  excerpt       String
+  body          String
+  seo           Json
+  snapshot      Json     @default("{}")
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  publication WebsitePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  createdBy   User?              @relation("WebsitePublicationEditor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([publicationId, version])
+}
+
+model WebsiteTestimonial {
+  id           String               @id @default(cuid())
+  firmId       String
+  title        String
+  quote        String
+  source       String
+  rating       Int                  @default(5)
+  featured     Boolean              @default(true)
+  displayOrder Int                  @default(0)
+  status       WebsiteContentStatus @default(DRAFT)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  @@index([firmId, status, displayOrder])
+}
+
+model WebsiteMetric {
+  id           String               @id @default(cuid())
+  firmId       String
+  value        String
+  label        String
+  icon         String
+  sourceNote   String?
+  verifiedAt   DateTime?
+  displayOrder Int                  @default(0)
+  status       WebsiteContentStatus @default(PUBLISHED)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  @@index([firmId, status, displayOrder])
+}
+
+model WebsiteFormDefinition {
+  id          String   @id @default(cuid())
+  firmId      String
+  key         String
+  name        String
+  schema      Json
+  routing     Json
+  consentText String
+  active      Boolean  @default(true)
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  firm        Firm                    @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  submissions WebsiteFormSubmission[]
+
+  @@unique([firmId, key])
+}
+
+model WebsiteFormSubmission {
+  id          String                      @id @default(cuid())
+  firmId      String
+  formId      String?
+  leadId      String?
+  payload     Json
+  ipHash      String?
+  userAgent   String?
+  referrer    String?
+  landingPage String?
+  status      WebsiteFormSubmissionStatus @default(RECEIVED)
+  createdAt   DateTime                    @default(now())
+
+  firm Firm                   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  form WebsiteFormDefinition? @relation(fields: [formId], references: [id], onDelete: SetNull)
+  lead WebsiteLead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([firmId, createdAt])
+  @@index([leadId])
+}
+
+model WebsiteLead {
+  id                String              @id @default(cuid())
+  firmId            String
+  reference         String              @unique
+  name              String
+  email             String?
+  phone             String
+  practiceAreaSlug  String?
+  message           String
+  status            WebsiteLeadStatus   @default(NEW)
+  priority          WebsiteLeadPriority @default(NORMAL)
+  ownerUserId       String?
+  source            String?
+  landingPage       String?
+  consent           Boolean
+  score             Int                 @default(0)
+  dispositionReason String?
+  intakeId          String?             @unique
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  convertedAt       DateTime?
+
+  firm            Firm                        @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  owner           User?                       @relation("WebsiteLeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  intake          Intake?                     @relation("WebsiteLeadIntake", fields: [intakeId], references: [id], onDelete: SetNull)
+  events          WebsiteLeadEvent[]
+  assignments     WebsiteLeadAssignment[]
+  contactAttempts WebsiteLeadContactAttempt[]
+  appointments    WebsiteLeadAppointment[]
+  attribution     WebsiteAttributionTouch[]
+  submissions     WebsiteFormSubmission[]
+
+  @@index([firmId, status, createdAt])
+  @@index([firmId, ownerUserId, status])
+  @@index([firmId, phone])
+  @@index([firmId, email])
+}
+
+model WebsiteLeadEvent {
+  id          String   @id @default(cuid())
+  leadId      String
+  actorUserId String?
+  type        String
+  note        String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  lead  WebsiteLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor User?       @relation("WebsiteLeadEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+}
+
+model WebsiteLeadAssignment {
+  id           String    @id @default(cuid())
+  leadId       String
+  userId       String
+  assignedById String?
+  reason       String?
+  assignedAt   DateTime  @default(now())
+  endedAt      DateTime?
+
+  lead       WebsiteLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user       User        @relation("WebsiteLeadAssignee", fields: [userId], references: [id], onDelete: Restrict)
+  assignedBy User?       @relation("WebsiteLeadAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([leadId, endedAt])
+  @@index([userId, endedAt])
+}
+
+model WebsiteLeadContactAttempt {
+  id          String   @id @default(cuid())
+  leadId      String
+  actorUserId String?
+  channel     String
+  direction   String
+  outcome     String
+  notes       String?
+  contactedAt DateTime @default(now())
+
+  lead  WebsiteLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor User?       @relation("WebsiteLeadContactActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, contactedAt])
+}
+
+model WebsiteLeadAppointment {
+  id              String   @id @default(cuid())
+  leadId          String
+  assignedUserId  String
+  calendarEventId String?
+  startsAt        DateTime
+  endsAt          DateTime
+  location        String?
+  status          String   @default("SCHEDULED")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lead         WebsiteLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedUser User        @relation("WebsiteLeadAppointmentAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
+
+  @@index([leadId, startsAt])
+  @@index([assignedUserId, startsAt])
+}
+
+model WebsiteCampaign {
+  id        String    @id @default(cuid())
+  firmId    String
+  name      String
+  code      String
+  source    String?
+  medium    String?
+  startsAt  DateTime?
+  endsAt    DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  firm        Firm                      @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  attribution WebsiteAttributionTouch[]
+
+  @@unique([firmId, code])
+}
+
+model WebsiteAttributionTouch {
+  id          String   @id @default(cuid())
+  leadId      String
+  campaignId  String?
+  source      String?
+  medium      String?
+  campaign    String?
+  term        String?
+  content     String?
+  referrer    String?
+  landingPage String?
+  occurredAt  DateTime @default(now())
+
+  lead        WebsiteLead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  campaignRef WebsiteCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, occurredAt])
+}
+
+model WebsitePublishRelease {
+  id            String               @id @default(cuid())
+  firmId        String
+  version       Int
+  status        WebsiteReleaseStatus @default(QUEUED)
+  requestedById String?
+  manifest      Json                 @default("{}")
+  error         String?
+  createdAt     DateTime             @default(now())
+  startedAt     DateTime?
+  publishedAt   DateTime?
+
+  firm        Firm  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  requestedBy User? @relation("WebsiteReleaseRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@unique([firmId, version])
+  @@index([firmId, status, createdAt])
 }

@@ -137,6 +137,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     { id: 'comms', label: 'Communications', icon: MessageSquare, permission: 'module.comms' as const },
     { id: 'finance', label: 'Finance & Accounts', icon: DollarSign, badge: pendingExpenseCount > 0 ? pendingExpenseCount : undefined, badgeColor: 'bg-amber-600', permission: 'finance.view' as const },
     { id: 'reports', label: 'Reports & Stalled', icon: BarChart3, permission: 'module.reports' as const },
+    { id: 'website', label: 'Website & Growth', icon: ExternalLink, permission: 'module.admin' as const },
     { id: 'admin', label: 'Admin & Staff', icon: Shield, permission: 'module.admin' as const },
     { id: 'integrations', label: 'Integrations', icon: Settings2, permission: 'module.admin' as const },
   ];

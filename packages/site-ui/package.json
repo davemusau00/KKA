@@ -1,0 +1,6 @@
+{
+  "name":"@kka/site-ui","version":"1.0.0","private":true,"type":"module",
+  "exports":{".":"./src/index.ts"},
+  "dependencies":{"react":"^19.0.1","lucide-react":"^0.546.0"},
+  "devDependencies":{"@types/react":"^19.2.18","typescript":"~5.8.2"}
+}
