@@ -194,48 +194,42 @@ export class WebsiteLeadsService {
     return attempt;
   }
 
-  async appointment(user: RequestUser, id: string, raw: unknown) {
-    const input = AppointmentSchema.parse(raw);
-    const lead = await this.get(user,id);
-    await assertFirmUser(this.prisma,user.firmId,input.assignedUserId);
-    const startsAt = new Date(input.startsAt), endsAt = new Date(input.endsAt);
-    if (endsAt <= startsAt) throw new BadRequestException('Appointment end must be after start');
-    const event = await this.calendar.create(user.firmId,user.id,{
-      title:`Website consultation: ${lead.name}`,
-      eventType:'CLIENT_MEETING', startAt:input.startsAt, endAt:input.endsAt,
-      timezone:'Africa/Nairobi', allDay:false, location:input.location,
-      assignedUserId:input.assignedUserId, participantUserIds:[input.assignedUserId],
-      sourceType:'WEBSITE_LEAD', editPolicy:'CONFIRM',
-      notes:`Lead ${lead.reference}\n${lead.phone}${lead.email ? `\n${lead.email}` : ''}${input.notes ? `\n\n${input.notes}` : ''}`
-    });
-    const appointment = await this.prisma.client.websiteLeadAppointment.create({
-      data:{ leadId:id, assignedUserId:input.assignedUserId, calendarEventId:event.id, startsAt, endsAt, location:input.location, notes:input.notes }
-    });
-    await this.prisma.client.websiteLead.update({ where:{ id }, data:{ status:'CONSULTATION_BOOKED', ownerUserId:lead.ownerUserId ?? input.assignedUserId } });
-    await this.event(user,id,'lead.consultation_booked',`Consultation booked for ${startsAt.toISOString()}`,{ calendarEventId:event.id });
-    return { appointment, calendarEvent:event };
+  async appointment(user:RequestUser,id:string,raw:unknown){
+    const input=AppointmentSchema.parse(raw);await assertFirmUser(this.prisma,user.firmId,input.assignedUserId);
+    const startsAt=new Date(input.startsAt),endsAt=new Date(input.endsAt);
+    if(endsAt<=startsAt)throw new BadRequestException('Appointment end must be after start');
+    return this.prisma.client.$transaction(async tx=>{
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.firmId+':website-appointment:'+id}))`;
+      const lead=await tx.websiteLead.findFirst({where:{id,firmId:user.firmId}});if(!lead)throw new NotFoundException('Website lead not found');
+      const prior=await tx.websiteLeadAppointment.findFirst({where:{leadId:id,assignedUserId:input.assignedUserId,startsAt,endsAt}});
+      if(prior)return {appointment:prior,calendarEvent:await tx.calendarEvent.findUnique({where:{id:prior.calendarEventId!}})};
+      if(!['NEW','REVIEWING','CONTACTED','CONSULTATION_BOOKED'].includes(lead.status))throw new BadRequestException('This lead cannot be booked for consultation in its current state.');
+      const event=await this.calendar.create(user.firmId,user.id,{title:`Website consultation: ${lead.name}`,eventType:'CLIENT_MEETING',startAt:input.startsAt,endAt:input.endsAt,timezone:'Africa/Nairobi',allDay:false,location:input.location,assignedUserId:input.assignedUserId,participantUserIds:[input.assignedUserId],sourceType:'WEBSITE_LEAD',editPolicy:'CONFIRM',notes:`Lead ${lead.reference}`},tx);
+      const appointment=await tx.websiteLeadAppointment.create({data:{leadId:id,assignedUserId:input.assignedUserId,calendarEventId:event.id,startsAt,endsAt,location:input.location,notes:input.notes}});
+      await tx.websiteLead.update({where:{id},data:{status:'CONSULTATION_BOOKED',ownerUserId:lead.ownerUserId??input.assignedUserId}});
+      await tx.websiteLeadEvent.create({data:{leadId:id,actorUserId:user.id,type:'lead.consultation_booked',note:'Consultation recorded in the firm calendar',metadata:{calendarEventId:event.id}}});
+      return {appointment,calendarEvent:event};
+    },{timeout:30000});
   }
 
-  async startIntake(user: RequestUser, id: string) {
-    const lead = await this.get(user,id);
-    if (lead.intakeId) return lead.intake;
-    if (lead.status!=='QUALIFIED') throw new BadRequestException('Qualify this enquiry before starting formal intake.');
-    const area = lead.practiceAreaSlug ? await this.prisma.client.websitePracticeArea.findFirst({ where:{ firmId:user.firmId, slug:lead.practiceAreaSlug } }) : null;
-    const intake = await this.intake.create(user.firmId,user.id,{
-      source:`PUBLIC_SITE:${lead.reference}`,
-      clientName:lead.name,
-      phone:lead.phone,
-      email:lead.email ?? undefined,
-      briefDescription:lead.message,
-      practiceArea:area?.title ?? 'General Legal Enquiry',
-      matterType:area?.title ?? undefined,
-      assignedOwnerId:lead.ownerUserId ?? user.id,
-      notes:`Originated from website lead ${lead.reference}. Source: ${lead.source ?? 'DIRECT'}.`
-    });
-    await this.prisma.client.websiteLead.update({ where:{ id }, data:{ status:'INTAKE_STARTED', intakeId:intake.id } });
-    await this.event(user,id,'lead.intake_started',`Formal intake ${intake.intakeNumber ?? intake.id} created`,{ intakeId:intake.id, intakeNumber:intake.intakeNumber });
-    await this.audit.record({ firmId:user.firmId, actorUserId:user.id, action:'website.lead_to_intake', entityType:'website_lead', entityId:id, metadata:{ intakeId:intake.id, intakeNumber:intake.intakeNumber } });
-    return intake;
+  async startIntake(user:RequestUser,id:string){
+    return this.prisma.client.$transaction(async tx=>{
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.firmId+':website-intake:'+id}))`;
+      const lead=await tx.websiteLead.findFirst({where:{id,firmId:user.firmId},include:{intake:true}});
+      if(!lead)throw new NotFoundException('Website lead not found');
+      if(lead.intake)return lead.intake;
+      if(lead.status!=='QUALIFIED')throw new BadRequestException('Qualify this enquiry before starting formal intake.');
+      const area=lead.practiceAreaSlug?await tx.websitePracticeArea.findFirst({where:{firmId:user.firmId,slug:lead.practiceAreaSlug}}):null;
+      const intake=await this.intake.create(user.firmId,user.id,{
+        source:`PUBLIC_SITE:${lead.reference}`,clientName:lead.name,phone:lead.phone,email:lead.email??undefined,
+        briefDescription:lead.message,practiceArea:area?.title??'General Legal Enquiry',matterType:area?.title,
+        assignedOwnerId:lead.ownerUserId??user.id,notes:`Website enquiry ${lead.reference}`
+      },tx);
+      await tx.websiteLead.update({where:{id},data:{status:'INTAKE_STARTED',intakeId:intake.id}});
+      await tx.websiteLeadEvent.create({data:{leadId:id,actorUserId:user.id,type:'lead.intake_started',note:`Formal intake ${intake.intakeNumber} created`,metadata:{intakeId:intake.id}}});
+      await this.audit.record({firmId:user.firmId,actorUserId:user.id,action:'website.lead_to_intake',entityType:'website_lead',entityId:id,metadata:{intakeId:intake.id}},tx);
+      return intake;
+    },{timeout:30000});
   }
 
   async analytics(user: RequestUser, days = 30) {

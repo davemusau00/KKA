@@ -31,12 +31,13 @@ export class CalendarService {
     });
   }
 
-  async create(firmId: string, actorId: string, input: any) {
+  async create(firmId: string, actorId: string, input: any, transaction?: import("@kka/database").Prisma.TransactionClient) {
+    const client=transaction ?? this.prisma.client;
     const startAt = new Date(input.startAt);
     const endAt = new Date(input.endAt);
     if (endAt <= startAt) throw new BadRequestException("endAt must be after startAt");
 
-    const event = await this.prisma.client.calendarEvent.create({
+    const event = await client.calendarEvent.create({
       data: {
         firmId,
         matterId: input.matterId,
@@ -67,8 +68,8 @@ export class CalendarService {
       firmId, actorUserId: actorId, action: "calendar.event_created",
       entityType: "calendar_event", entityId: event.id, matterId: event.matterId ?? undefined,
       metadata: { eventType: event.eventType, startAt: event.startAt, editPolicy: event.editPolicy }
-    });
-    await this.queues.add(QUEUES.calendar, "calendar.sync", { eventId: event.id, action: "create" });
+    }, transaction);
+    if(!transaction)await this.queues.add(QUEUES.calendar, "calendar.sync", { eventId: event.id, action: "create" });
     return event;
   }
 

@@ -32,14 +32,15 @@ export class IntakeService {
     return intake;
   }
 
-  async create(firmId: string, actorId: string, input: Record<string, any>) {
+  async create(firmId: string, actorId: string, input: Record<string, any>, transaction?: import("@kka/database").Prisma.TransactionClient) {
+    const client=transaction ?? this.prisma.client;
     const intakeNumber = await this.numbering.next({
       firmId,
       entityType: "INTAKE",
       year: new Date().getFullYear(),
       pattern: "KKA/IN/{year}/{seq:5}"
-    });
-    const intake = await this.prisma.client.intake.create({
+    }, client);
+    const intake = await client.intake.create({
       data: {
         firmId,
         intakeNumber,
@@ -50,7 +51,7 @@ export class IntakeService {
     await this.audit.record({
       firmId, actorUserId: actorId, action: "intake.created",
       entityType: "intake", entityId: intake.id, metadata: { intakeNumber }
-    });
+    }, transaction);
     return intake;
   }
 
