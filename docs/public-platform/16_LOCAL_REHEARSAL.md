@@ -47,7 +47,7 @@ The OS Vite process needs `VITE_BACKEND_URL=http://127.0.0.1:3016`. The preview 
 
 ## Publishing and recovery
 
-Use Website & Growth in the OS to save a draft, preview, approve, and publish. A publish request captures a complete snapshot before queueing. The worker renders HTML and media, checks every artifact hash, then activates the completed release. The static server retains its last known release during a subsequent database outage. A cold start without a reachable database is still unavailable.
+Use Website & Growth in the OS to save a draft, preview, approve, and publish. A publish request captures a complete snapshot before queueing. The worker renders HTML and media, checks every artifact hash, then activates the completed release. The static server retains its last known release during a database outage, including cold starts from a persisted local release pointer whose file inventory matches the immutable artifact.
 
 Failed builds leave the prior release active. The publishing panel exposes errors and release status. Rollback creates a new release from the historical snapshot and preserves current editorial drafts. Retained releases keep their referenced media protected from deletion.
 
@@ -59,6 +59,9 @@ $env:RUN_WEBSITE_DATABASE_TESTS='1'
 node --env-file=.artifacts/public.env --test apps/api/test/website-integration.test.cjs
 node --env-file=.artifacts/public.env scripts/check-public-browser.mjs
 node scripts/check-public-boundary.mjs
+node --env-file=.artifacts/public.env scripts/check-public-editor.mjs
+node --env-file=.artifacts/public.env scripts/check-public-recovery.mjs
+node --env-file=.artifacts/public.env scripts/check-public-backup.mjs
 ```
 
 The integration test writes fixture drafts, releases, enquiries, appointments, and intakes in the isolated database. Do not run it against business data. Browser screenshots and results are under `.artifacts/public-browser`; release HTML, media, and checksums are under `.artifacts/public-releases`.

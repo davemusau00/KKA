@@ -67,3 +67,6 @@ picture{display:contents}.featured-media picture>img{width:100%;height:100%;obje
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 .publication-filter{display:flex;align-items:center;gap:1rem;margin:1.5rem 0}.publication-filter select,.pagination button{padding:.65rem 1rem;border:1px solid var(--site-gold-500);background:white;color:var(--site-ink-900)}.pagination{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-top:2rem}
+
+.hero-copy .hero-line:last-child{color:inherit}.hero-highlight{font-style:normal;color:var(--site-gold-400)}.mobile-copy{display:none}
+@media(max-width:767px){.hero-copy h1{max-width:none}.hero-copy .hero-line{display:inline}.hero-copy .hero-line:first-child:after{content:" "}.who-copy .ui-heading{max-width:none;line-height:1.08}.who-copy .desktop-copy{display:none}.who-copy .mobile-copy{display:inline;color:inherit}}

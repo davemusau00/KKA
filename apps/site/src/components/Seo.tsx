@@ -15,7 +15,8 @@ export function Seo({title,description,canonical,image,noindex,settings}:SeoProp
     const finalDescription=description||defaults.description||settings.tagline;
     document.title=finalTitle.includes(settings.firmName)?finalTitle:`${finalTitle} | ${settings.firmName}`;
     upsert('description',finalDescription);
-    upsert('robots',noindex?'noindex,nofollow':'index,follow,max-image-preview:large');
+    const privateOrSearch=['/preview','/search'].includes(location.pathname);
+    upsert('robots',noindex||privateOrSearch?'noindex,nofollow':'index,follow,max-image-preview:large');
     upsert('og:title',document.title,true);upsert('og:description',finalDescription,true);upsert('og:type','website',true);
     upsert('twitter:card','summary_large_image');upsert('twitter:title',document.title);upsert('twitter:description',finalDescription);
     if(image){upsert('og:image',new URL(image,location.origin).toString(),true);upsert('twitter:image',new URL(image,location.origin).toString())}
