@@ -19,7 +19,7 @@ export function Seo({title,description,canonical,image,noindex,settings}:SeoProp
     upsert('og:title',document.title,true);upsert('og:description',finalDescription,true);upsert('og:type','website',true);
     upsert('twitter:card','summary_large_image');upsert('twitter:title',document.title);upsert('twitter:description',finalDescription);
     if(image){upsert('og:image',new URL(image,location.origin).toString(),true);upsert('twitter:image',new URL(image,location.origin).toString())}
-    const href=canonical?new URL(canonical,location.origin).toString():location.href.split('#')[0];
+    const href=canonical?new URL(canonical,location.origin).toString():location.href.replace(/#.*$/, '');
     let link=document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement|null;
     if(!link){link=document.createElement('link');link.rel='canonical';document.head.appendChild(link)}link.href=href;
   },[title,description,canonical,image,noindex,settings]);

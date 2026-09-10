@@ -1,1 +1,11 @@
-{"extends":"../../tsconfig.base.json","compilerOptions":{"noEmit":true},"include":["src"]}
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": ["src"]
+}
