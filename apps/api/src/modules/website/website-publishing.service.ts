@@ -20,6 +20,8 @@ export class WebsitePublishingService implements OnModuleInit, OnModuleDestroy {
       const latest=await tx.websitePublishRelease.findFirst({where:{firmId:user.firmId},orderBy:{version:'desc'}});
       const frozen=snapshot??await this.content.capture(user.firmId,tx);
       frozen.bootstrap.releaseVersion=(latest?.version??0)+1;
+      await tx.websitePage.updateMany({where:{firmId:user.firmId,status:'SCHEDULED',scheduledFor:{lte:new Date()}},data:{status:'APPROVED'}});
+      await tx.websitePublication.updateMany({where:{firmId:user.firmId,status:'SCHEDULED',scheduledFor:{lte:new Date()}},data:{status:'APPROVED'}});
       return tx.websitePublishRelease.create({data:{firmId:user.firmId,version:(latest?.version??0)+1,status:'QUEUED',requestedById:user.id||null,manifest:JSON.parse(JSON.stringify({schemaVersion:1,snapshot:frozen,rollbackOf}))}});
     },{isolationLevel:'RepeatableRead',timeout:30000});
     await this.audit.record({firmId:user.firmId,actorUserId:user.id||undefined,action:rollbackOf?'website.rollback_requested':'website.publish_requested',entityType:'website_release',entityId:release.id,metadata:{version:release.version,rollbackOf}});
@@ -36,6 +38,9 @@ export class WebsitePublishingService implements OnModuleInit, OnModuleDestroy {
   async dispatch(){
     if(this.dispatching)return;this.dispatching=true;
     try {
+      const now=new Date();
+      const due=[...await this.prisma.client.websitePage.findMany({where:{status:'SCHEDULED',scheduledFor:{lte:now}},select:{firmId:true}}),...await this.prisma.client.websitePublication.findMany({where:{status:'SCHEDULED',scheduledFor:{lte:now}},select:{firmId:true}})];
+      for(const firmId of new Set(due.map(x=>x.firmId)))await this.publish({firmId,id:'',email:'',fullName:'Scheduled publisher',roleKeys:[],permissions:[]});
       const rows=await this.prisma.client.websitePublishRelease.findMany({where:{status:'QUEUED'},orderBy:{createdAt:'asc'},take:100});
       for(const row of rows)await this.queues.add(WEBSITE_PUBLISH_QUEUE,'website.publish',{firmId:row.firmId,releaseId:row.id},{jobId:row.id});
     }finally{this.dispatching=false;}
