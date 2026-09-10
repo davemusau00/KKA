@@ -30,7 +30,7 @@ const SeoSchema = z.object({
   canonical: z.string().url().optional().or(z.literal('')),
   imageId: z.string().optional().or(z.literal('')),
   noindex: z.boolean().optional(),
-}).passthrough();
+}).catchall(z.json());
 
 export const SiteSettingsSchema = z.object({
   firmName: z.string().min(2).max(250),
@@ -40,9 +40,9 @@ export const SiteSettingsSchema = z.object({
   address: z.string().max(800),
   socials: z.array(z.object({ label:z.string().max(60), url:z.string().max(500) })).max(20),
   navigation: z.array(z.object({ label:z.string().max(80), url:z.string().max(500) })).max(30),
-  footer: z.record(z.string(), z.unknown()).default({}),
+  footer: z.record(z.string(), z.json()).default({}),
   defaultSeo: SeoSchema.default({}),
-  theme: z.record(z.string(), z.unknown()).default({}),
+  theme: z.record(z.string(), z.json()).default({}),
 });
 
 export const SiteBlockSchema = z.object({
@@ -50,8 +50,8 @@ export const SiteBlockSchema = z.object({
   blockType: z.enum(['HERO','RICH_TEXT','QUOTE','IMAGE_TEXT','PRACTICE_GRID','PROFESSIONAL_GRID','INSIGHTS_GRID','METRICS','FAQ','CTA','SPACER']),
   variant: z.string().max(80).default('default'),
   theme: z.enum(['light','ivory','dark','gold']).default('light'),
-  content: z.record(z.string(), z.unknown()).default({}),
-  settings: z.record(z.string(), z.unknown()).default({}),
+  content: z.record(z.string(), z.json()).default({}),
+  settings: z.record(z.string(), z.json()).default({}),
   visible: z.boolean().default(true),
 });
 
@@ -132,7 +132,7 @@ export const SaveMetricSchema = z.object({
 
 export const SaveFormSchema = z.object({
   id:z.string().optional(), key:z.string().min(2).max(120), name:z.string().min(2).max(200),
-  schema:z.record(z.string(),z.unknown()).default({}), routing:z.record(z.string(),z.unknown()).default({}),
+  schema:z.record(z.string(),z.json()).default({}), routing:z.record(z.string(),z.json()).default({}),
   consentText:z.string().min(8).max(3000), active:z.boolean().default(true), version:z.coerce.number().int().min(1).default(1)
 });
 

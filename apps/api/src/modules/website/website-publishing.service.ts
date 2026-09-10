@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@kka/database';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { AuditService } from '../../platform/audit/audit.service';
@@ -35,13 +36,13 @@ export class WebsitePublishingService {
         await tx.websiteBlock.deleteMany({where:{pageId:page.id}});
         const blocks=Array.isArray(snap?.blocks)?snap.blocks:[];
         if(blocks.length)await tx.websiteBlock.createMany({data:blocks.map((b:any,i:number)=>({pageId:page.id,blockType:String(b.blockType||'RICH_TEXT'),variant:String(b.variant||'default'),displayOrder:i,theme:String(b.theme||'light'),content:b.content||{},settings:b.settings||{},visible:b.visible!==false}))});
-        await tx.websitePage.update({where:{id:page.id},data:{title:v.title,description:v.description,seo:v.seo,heroAssetId:snap?.heroAssetId||null,currentVersion:v.version,status:item.status||'PUBLISHED',publishedAt:item.publishedAt?new Date(item.publishedAt):new Date()}});
+        await tx.websitePage.update({where:{id:page.id},data:{title:v.title,description:v.description,seo:v.seo ?? Prisma.JsonNull,heroAssetId:snap?.heroAssetId||null,currentVersion:v.version,status:item.status||'PUBLISHED',publishedAt:item.publishedAt?new Date(item.publishedAt):new Date()}});
       }
       for(const item of manifest.publications??[]){
         const pub=await tx.websitePublication.findFirst({where:{id:item.id,firmId:user.firmId}});if(!pub)continue;
         const v=await tx.websitePublicationVersion.findFirst({where:{publicationId:pub.id,version:item.version}});if(!v)continue;
         const snap=v.snapshot as any;
-        await tx.websitePublication.update({where:{id:pub.id},data:{title:v.title,excerpt:v.excerpt,body:v.body,seo:v.seo,coverId:snap?.coverId||null,authorProfileId:snap?.authorProfileId||null,duration:snap?.duration||null,practiceAreaSlugs:snap?.practiceAreaSlugs||[],tags:snap?.tags||[],currentVersion:v.version,status:item.status||'PUBLISHED',publishedAt:item.publishedAt?new Date(item.publishedAt):new Date()}});
+        await tx.websitePublication.update({where:{id:pub.id},data:{title:v.title,excerpt:v.excerpt,body:v.body,seo:v.seo ?? Prisma.JsonNull,coverId:snap?.coverId||null,authorProfileId:snap?.authorProfileId||null,duration:snap?.duration||null,practiceAreaSlugs:snap?.practiceAreaSlugs||[],tags:snap?.tags||[],currentVersion:v.version,status:item.status||'PUBLISHED',publishedAt:item.publishedAt?new Date(item.publishedAt):new Date()}});
       }
       await tx.websitePublishRelease.updateMany({where:{firmId:user.firmId,status:'PUBLISHED'},data:{status:'ROLLED_BACK'}});
     });
