@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { appendFile } from 'node:fs/promises';
-const require=createRequire(new URL('../packages/database/package.json',import.meta.url));const {createPrismaClient}=require('../dist/src/index.js');
+const require=createRequire(new URL('../packages/database/package.json',import.meta.url));const {createPrismaClient}=require('./dist/src/index.js');
 const db=createPrismaClient(process.env.DATABASE_URL);
 if(!new URL(process.env.DATABASE_URL).pathname.endsWith('/kka_public_local'))throw new Error('Reference fixture is restricted to kka_public_local');
 const firm=await db.firm.findFirst({orderBy:{createdAt:'asc'}});if(!firm)throw new Error('Seed the OS first');

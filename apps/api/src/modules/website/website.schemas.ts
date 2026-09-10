@@ -40,6 +40,7 @@ export const SiteBlockSchema = z.object({
 });
 
 export const SavePageSchema = z.object({
+  currentVersion: z.number().int().min(0).optional(),
   id: z.string().optional(),
   slug: z.string().max(180).optional(),
   title: z.string().min(2).max(250),

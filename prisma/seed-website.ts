@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { createPrismaClient } from '@kka/database';
+import { createPrismaClient } from '../packages/database/src';
 
 const prisma=createPrismaClient(process.env.DATABASE_URL!);
 const slug=(v:string)=>v.toLowerCase().trim().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
