@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { SiteContentService } from './site-content.service';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { AuditService } from '../../platform/audit/audit.service';
@@ -30,16 +31,23 @@ export class WebsiteLeadsService {
     private readonly intake: IntakeService,
     private readonly calendar: CalendarService,
     private readonly audit: AuditService,
+    private readonly content: SiteContentService,
   ) {}
 
   async createPublic(input: unknown, meta: { ip?: string; userAgent?: string; referrer?: string }) {
     const parsed = PublicLeadSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const value = parsed.data;
-    if (value.website) return { reference: 'RECEIVED', status: 'NEW' }; // bot honeypot: do not reveal rejection
+    if (value.website) throw new BadRequestException('Unable to accept this enquiry.');
 
     const firmId = publicFirmId();
+    const publicData=await this.content.bootstrap();
+    const definition=publicData.forms?.find(f=>f.key==='general-enquiry');
+    if(!definition)throw new BadRequestException('The enquiry form is not available.');
+    if(value.formVersion && value.formVersion!==definition.version)throw new ConflictException('This form has changed. Reload the page before submitting.');
+    if(value.practiceAreaSlug && !publicData.practiceAreas.some(a=>a.slug===value.practiceAreaSlug))throw new BadRequestException('Choose an available practice area.');
     const phone = normalizeKenyanPhone(value.phone);
+    if(!/^\+[1-9]\d{7,14}$/.test(phone))throw new BadRequestException('Enter a valid phone number including its country code.');
     const email = value.email || null;
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const duplicate = await this.prisma.client.websiteLead.findFirst({
@@ -56,11 +64,21 @@ export class WebsiteLeadsService {
     const priority = score >= 80 ? 'URGENT' : score >= 55 ? 'HIGH' : score < 20 ? 'LOW' : 'NORMAL';
 
     const created = await this.prisma.client.$transaction(async tx => {
+      if(value.idempotencyKey){
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${firmId+':lead:'+value.idempotencyKey}))`;
+        const prior=await tx.websiteFormSubmission.findFirst({where:{firmId,payload:{path:['idempotencyKey'],equals:value.idempotencyKey}},include:{lead:true}});
+        if(prior){
+          const old=prior.payload as any;
+          if(old.requestHash!==hashSensitive(JSON.stringify(value)))throw new ConflictException('This submission key was already used for different information.');
+          if(!prior.lead)throw new ConflictException('The original submission is not available.');
+          return prior.lead;
+        }
+      }
       const lead = await tx.websiteLead.create({
         data: {
           firmId, reference, name:value.name, email, phone,
           practiceAreaSlug:value.practiceAreaSlug || null, message:value.message,
-          status:duplicate ? 'DUPLICATE' : 'NEW', priority, score, consent:true,
+          status:'NEW', priority, score, consent:true,
           source:value.source || value.utm?.utm_source || 'DIRECT', landingPage:value.landingPage || '/',
           dispositionReason:duplicate ? `Possible duplicate of ${duplicate.reference}` : null,
         }
@@ -84,14 +102,14 @@ export class WebsiteLeadsService {
       const form = await tx.websiteFormDefinition.findFirst({ where:{ firmId, key:'general-enquiry', active:true } });
       await tx.websiteFormSubmission.create({
         data:{
-          firmId, formId:form?.id, leadId:lead.id, payload:value,
+          firmId, formId:form?.id, leadId:lead.id, payload:{...value,requestHash:hashSensitive(JSON.stringify(value)),formVersion:definition.version,consentText:definition.consentText},
           ipHash:meta.ip ? hashSensitive(meta.ip) : null, userAgent:meta.userAgent || null,
           referrer:meta.referrer || null, landingPage:value.landingPage || null, status:'PROCESSED'
         }
       });
       return lead;
     });
-    return { id:created.id, reference:created.reference, status:created.status };
+    return { reference:created.reference, status:'RECEIVED' };
   }
 
   async list(user: RequestUser, query: { status?: string; ownerUserId?: string; q?: string; from?: string; to?: string; limit?: string; cursor?: string }) {
@@ -134,6 +152,7 @@ export class WebsiteLeadsService {
   async update(user: RequestUser, id: string, raw: unknown) {
     const input = UpdateLeadSchema.parse(raw);
     const lead = await this.get(user, id);
+    if(input.status==='CONVERTED' && !lead.intake?.convertedMatterId)throw new BadRequestException('Conversion requires a converted formal intake.');
     if (input.status && input.status !== lead.status) {
       const allowed = TRANSITIONS[lead.status];
       if (TERMINAL.has(lead.status) || (allowed && !allowed.has(input.status))) {
@@ -200,7 +219,7 @@ export class WebsiteLeadsService {
   async startIntake(user: RequestUser, id: string) {
     const lead = await this.get(user,id);
     if (lead.intakeId) return lead.intake;
-    if (['DECLINED','DUPLICATE','CONFLICT','OUT_OF_SCOPE'].includes(lead.status)) throw new BadRequestException(`Cannot start intake from ${lead.status}`);
+    if (lead.status!=='QUALIFIED') throw new BadRequestException('Qualify this enquiry before starting formal intake.');
     const area = lead.practiceAreaSlug ? await this.prisma.client.websitePracticeArea.findFirst({ where:{ firmId:user.firmId, slug:lead.practiceAreaSlug } }) : null;
     const intake = await this.intake.create(user.firmId,user.id,{
       source:`PUBLIC_SITE:${lead.reference}`,

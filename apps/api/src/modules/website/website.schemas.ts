@@ -5,24 +5,8 @@ export const PublicationKindSchema = z.enum(['ARTICLE','VIDEO']);
 export const LeadStatusSchema = z.enum(['NEW','REVIEWING','CONTACTED','CONSULTATION_BOOKED','CONSULTED','QUALIFIED','INTAKE_STARTED','CONVERTED','DECLINED','DUPLICATE','NO_RESPONSE','CONFLICT','OUT_OF_SCOPE']);
 export const LeadPrioritySchema = z.enum(['LOW','NORMAL','HIGH','URGENT']);
 
-export const PublicLeadSchema = z.object({
-  name: z.string().trim().min(2).max(200),
-  email: z.string().trim().email().max(250).optional().or(z.literal('')),
-  phone: z.string().trim().min(7).max(50),
-  practiceAreaSlug: z.string().trim().max(160).optional().or(z.literal('')),
-  message: z.string().trim().min(10).max(8000),
-  consent: z.literal(true),
-  source: z.string().trim().max(250).optional(),
-  landingPage: z.string().trim().max(800).optional(),
-  utm: z.object({
-    utm_source: z.string().max(250).optional(),
-    utm_medium: z.string().max(250).optional(),
-    utm_campaign: z.string().max(250).optional(),
-    utm_term: z.string().max(250).optional(),
-    utm_content: z.string().max(250).optional(),
-  }).optional(),
-  website: z.string().max(0).optional(), // honeypot
-});
+export { PublicLeadSchema } from '@kka/contracts';
+import { PublicLeadSchema } from '@kka/contracts';
 
 const SeoSchema = z.object({
   title: z.string().max(180).optional(),
@@ -47,7 +31,7 @@ export const SiteSettingsSchema = z.object({
 
 export const SiteBlockSchema = z.object({
   id: z.string().optional(),
-  blockType: z.enum(['HERO','RICH_TEXT','QUOTE','IMAGE_TEXT','PRACTICE_GRID','PROFESSIONAL_GRID','INSIGHTS_GRID','METRICS','FAQ','CTA','SPACER']),
+  blockType: z.enum(['HERO','RICH_TEXT','QUOTE','IMAGE_TEXT','PRACTICE_GRID','PROFESSIONAL_GRID','INSIGHTS_GRID','METRICS','FAQ','CTA','SPACER','HERO_JUSTICE','FIRM_INTRODUCTION','PARTNER_LEADERSHIP','MEDIA_FEATURE','TEAM_FEATURE','TESTIMONIALS','CONSULTATION']),
   variant: z.string().max(80).default('default'),
   theme: z.enum(['light','ivory','dark','gold']).default('light'),
   content: z.record(z.string(), z.json()).default({}),

@@ -47,7 +47,7 @@ async function bootstrap() {
     origin: cfg.WEB_ORIGIN.split(",").map((origin) => origin.trim()),
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Accept", "X-Request-Id", "X-Elevation-Token", "X-CSRF-Token"]
+    allowedHeaders: ["Content-Type", "Accept", "X-Request-Id", "X-Elevation-Token", "X-CSRF-Token", "X-Website-Preview"]
   });
   app.enableShutdownHooks();
   app.useGlobalFilters(new ZodExceptionFilter());

@@ -129,6 +129,9 @@ importers:
 
   apps/site:
     dependencies:
+      '@kka/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@kka/site-tokens':
         specifier: workspace:*
         version: link:../../packages/site-tokens

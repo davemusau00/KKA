@@ -2,6 +2,7 @@ import { apiClient } from './api/client';
 
 const root='/website/admin';
 export const websiteApi={
+ preview:()=>apiClient.post<{token:string;expiresAt:number}>(`${root}/preview`),
  dashboard:()=>apiClient.get<any>(`${root}/dashboard`),
  settings:()=>apiClient.get<any>(`${root}/settings`),
  saveSettings:(body:any)=>apiClient.put<any>(`${root}/settings`,body),

@@ -12,6 +12,9 @@ export class PublicSiteController {
     private readonly storage: StorageService,
   ) {}
 
+  @Get('release')
+  async release() { const r=await this.site.active(); return r ? {id:r.id,version:r.version} : {id:null,version:null}; }
+
   @Get('bootstrap')
   bootstrap() { return this.site.bootstrap(); }
 

@@ -72,6 +72,12 @@ export class WebsiteMediaService {
   async remove(user: RequestUser, id: string) {
     const asset = await this.prisma.client.websiteMediaAsset.findFirst({ where:{ id, firmId:user.firmId } });
     if (!asset) throw new NotFoundException('Media asset not found');
+    const [releases, blocks] = await Promise.all([
+      this.prisma.client.websitePublishRelease.findMany({where:{firmId:user.firmId}}),
+      this.prisma.client.websiteBlock.findMany({where:{page:{firmId:user.firmId}}})
+    ]);
+    if(releases.some(r=>JSON.stringify(r.manifest).includes(id)) || blocks.some(b=>JSON.stringify(b.content).includes(id)))
+      throw new BadRequestException('Media is retained by a page or website release');
     const [profiles,pubs,pages] = await Promise.all([
       this.prisma.client.websiteProfessionalProfile.count({ where:{ imageId:id } }),
       this.prisma.client.websitePublication.count({ where:{ coverId:id } }),

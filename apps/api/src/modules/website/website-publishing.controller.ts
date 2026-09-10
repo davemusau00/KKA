@@ -4,7 +4,7 @@ import type { RequestUser } from '../../platform/auth/auth.types';
 import { WebsitePublishingService } from './website-publishing.service';
 
 @Controller('website/admin/publishing')
-@RequirePermissions('admin.settings_manage')
+@RequirePermissions('website.publish')
 export class WebsitePublishingController {
   constructor(private readonly publishing:WebsitePublishingService){}
   @Get('releases') list(@CurrentUser() user:RequestUser){return this.publishing.list(user);}

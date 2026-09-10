@@ -15,34 +15,34 @@ export class WebsiteLeadsController {
   }
 
   @Get('admin/leads')
-  @RequirePermissions('module.clients')
+  @RequirePermissions('website.leads.view')
   list(@CurrentUser() user:RequestUser,@Query() query:any) { return this.leads.list(user,query); }
 
   @Get('admin/leads/analytics')
-  @RequirePermissions('module.clients')
+  @RequirePermissions('website.leads.view')
   analytics(@CurrentUser() user:RequestUser,@Query('days') days='30') { return this.leads.analytics(user,Number(days)); }
 
   @Get('admin/leads/:id')
-  @RequirePermissions('module.clients')
+  @RequirePermissions('website.leads.view')
   get(@CurrentUser() user:RequestUser,@Param('id') id:string) { return this.leads.get(user,id); }
 
   @Patch('admin/leads/:id')
-  @RequirePermissions('module.clients')
+  @RequirePermissions('website.leads.manage')
   update(@CurrentUser() user:RequestUser,@Param('id') id:string,@Body() body:unknown) { return this.leads.update(user,id,body); }
 
   @Post('admin/leads/:id/assign')
-  @RequirePermissions('module.clients')
+  @RequirePermissions('website.leads.manage')
   assign(@CurrentUser() user:RequestUser,@Param('id') id:string,@Body() body:unknown) { return this.leads.assign(user,id,body); }
 
   @Post('admin/leads/:id/contact-attempts')
-  @RequirePermissions('module.clients')
+  @RequirePermissions('website.leads.manage')
   contact(@CurrentUser() user:RequestUser,@Param('id') id:string,@Body() body:unknown) { return this.leads.contact(user,id,body); }
 
   @Post('admin/leads/:id/appointments')
-  @RequirePermissions('calendar.manage')
+  @RequirePermissions('website.leads.manage','calendar.manage')
   appointment(@CurrentUser() user:RequestUser,@Param('id') id:string,@Body() body:unknown) { return this.leads.appointment(user,id,body); }
 
   @Post('admin/leads/:id/start-intake')
-  @RequirePermissions('matter.create')
+  @RequirePermissions('website.leads.manage','matter.create')
   startIntake(@CurrentUser() user:RequestUser,@Param('id') id:string) { return this.leads.startIntake(user,id); }
 }

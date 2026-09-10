@@ -1,4 +1,5 @@
 export const permissionKeys = [
+  "website.view", "website.edit", "website.review", "website.publish", "website.media", "website.settings", "website.leads.view", "website.leads.manage",
   "module.dashboard", "module.matters", "module.clients", "module.tasks", "module.calendar", "module.documents",
   "module.comms", "module.finance", "module.reports", "module.admin", "module.integrations", "module.settings",
   "module.court", "module.approvals", "module.operations", "module.knowledge",

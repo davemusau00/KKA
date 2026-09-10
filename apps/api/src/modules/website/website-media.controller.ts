@@ -9,11 +9,11 @@ export class WebsiteMediaController {
   constructor(private readonly media: WebsiteMediaService) {}
 
   @Get()
-  @RequirePermissions('admin.settings_manage')
+  @RequirePermissions('website.media')
   list(@CurrentUser() user:RequestUser,@Query('q') q?:string) { return this.media.list(user,q); }
 
   @Post()
-  @RequirePermissions('admin.settings_manage')
+  @RequirePermissions('website.media')
   async upload(@CurrentUser() user:RequestUser,@Req() req:FastifyRequest) {
     const part = await req.file({ limits:{ fileSize:50*1024*1024, files:1 } });
     if (!part) throw new BadRequestException('Choose a media file');
@@ -27,10 +27,10 @@ export class WebsiteMediaController {
   }
 
   @Patch(':id')
-  @RequirePermissions('admin.settings_manage')
+  @RequirePermissions('website.media')
   update(@CurrentUser() user:RequestUser,@Param('id') id:string,@Body() body:unknown) { return this.media.update(user,id,body); }
 
   @Delete(':id')
-  @RequirePermissions('admin.settings_manage')
+  @RequirePermissions('website.media')
   remove(@CurrentUser() user:RequestUser,@Param('id') id:string) { return this.media.remove(user,id); }
 }

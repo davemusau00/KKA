@@ -28,13 +28,14 @@ export function issueCsrf(request: FastifyRequest, reply: FastifyReply, config: 
 }
 
 export function csrfHook(config: Config) {
-  return async (request: { method: string; headers: { origin?: string; 'x-csrf-token'?: string | string[] }; cookies?: Record<string, string | undefined> }, reply: { code(status: number): { send(payload: unknown): unknown } }) => {
+  return async (request: { url?: string; method: string; headers: { origin?: string; 'x-csrf-token'?: string | string[] }; cookies?: Record<string, string | undefined> }, reply: { code(status: number): { send(payload: unknown): unknown } }) => {
     if (!config.CSRF_ENABLED || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
     const origins = config.WEB_ORIGIN.split(',').map(origin => origin.trim());
     if (request.headers.origin && !origins.includes(request.headers.origin)) {
       reply.code(403).send({ code: 'ORIGIN_DENIED', message: 'Request origin is not permitted' });
       return;
     }
+    if(request.method==='POST' && request.url?.split('?')[0]==='/api/v1/website/public/leads')return;
     const cookie = request.cookies?.[config.CSRF_COOKIE_NAME];
     const header = request.headers['x-csrf-token'];
     if (!validCsrf(cookie, config) || typeof header !== 'string' || !equal(cookie!, header)) {

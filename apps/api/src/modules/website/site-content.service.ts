@@ -1,130 +1,92 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
+import type { SiteSnapshot } from '@kka/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { publicAssetUrl, publicFirmId } from './website.utils';
 
+/** Public reads never query mutable editorial records. */
 @Injectable()
 export class SiteContentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async bootstrap() {
-    const firmId = publicFirmId();
-    const now = new Date();
-    const [settings, profiles, areas, publications, testimonials, metrics] = await Promise.all([
-      this.prisma.client.websiteSiteSettings.findUnique({ where: { firmId } }),
-      this.prisma.client.websiteProfessionalProfile.findMany({
-        where: { firmId, status: 'PUBLISHED', OR: [{ publishedAt: null }, { publishedAt: { lte: now } }] },
-        include: { image: true }, orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
-      }),
-      this.prisma.client.websitePracticeArea.findMany({
-        where: { firmId, status: 'PUBLISHED', OR: [{ publishedAt: null }, { publishedAt: { lte: now } }] },
-        orderBy: [{ displayOrder: 'asc' }, { title: 'asc' }]
-      }),
-      this.prisma.client.websitePublication.findMany({
-        where: { firmId, status: 'PUBLISHED', OR: [{ publishedAt: null }, { publishedAt: { lte: now } }] },
-        include: { cover: true, author: { include: { image: true } } },
-        orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }], take: 60
-      }),
-      this.prisma.client.websiteTestimonial.findMany({
-        where: { firmId, status: 'PUBLISHED' }, orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }]
-      }),
-      this.prisma.client.websiteMetric.findMany({
-        where: { firmId, status: 'PUBLISHED' }, orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }]
-      })
-    ]);
-    if (!settings) throw new NotFoundException('Public website is not configured');
-    return {
-      settings: {
-        firmName: settings.firmName, tagline: settings.tagline, phone: settings.phone,
-        email: settings.email, address: settings.address, socials: settings.socials,
-        navigation: settings.navigation, footer: settings.footer, defaultSeo: settings.defaultSeo, theme: settings.theme
-      },
-      partners: profiles.map(p => this.profileDto(p)),
-      practiceAreas: areas.map(a => this.areaDto(a)),
-      publications: publications.map(p => this.publicationDto(p)),
-      testimonials: testimonials.map(t => ({ id:t.id, title:t.title, quote:t.quote, source:t.source, rating:t.rating })),
-      metrics: metrics.map(m => ({ id:m.id, value:m.value, label:m.label, icon:m.icon, sourceNote:m.sourceNote, verifiedAt:m.verifiedAt }))
-    };
+  async active(firmId = publicFirmId(), client: any = this.prisma.client) {
+    const releases = await client.websitePublishRelease.findMany({where:{firmId,status:'PUBLISHED'},orderBy:{version:'desc'}});
+    return releases.find((r:any) => r.manifest?.schemaVersion === 1 && r.manifest?.snapshot && r.manifest?.artifact) ?? null;
   }
-
-  async page(slug: string) {
-    const normalized = slug === '' || slug === '/' ? 'home' : slug;
-    const page = await this.prisma.client.websitePage.findFirst({
-      where: { firmId: publicFirmId(), slug: normalized, status: 'PUBLISHED' },
-      include: { heroAsset: true, blocks: { where: { visible: true }, orderBy: { displayOrder: 'asc' } } }
-    });
-    if (!page) throw new NotFoundException('Page not found');
-    return {
-      id: page.id, slug: page.slug, title: page.title, description: page.description, seo: page.seo,
-      heroAsset: page.heroAsset ? this.assetDto(page.heroAsset) : null,
-      blocks: page.blocks.map(b => ({ id:b.id, blockType:b.blockType, variant:b.variant, theme:b.theme, content:b.content, settings:b.settings }))
-    };
+  async snapshot() {
+    const release = await this.active();
+    if (!release) throw new ServiceUnavailableException('The website has no completed release yet.');
+    return release.manifest.snapshot as SiteSnapshot;
   }
-
-  async partner(slug: string) {
-    const p = await this.prisma.client.websiteProfessionalProfile.findFirst({
-      where: { firmId: publicFirmId(), slug, status: 'PUBLISHED' }, include: { image: true }
-    });
-    if (!p) throw new NotFoundException('Professional not found');
-    return this.profileDto(p);
-  }
-
-  async practice(slug: string) {
-    const area = await this.prisma.client.websitePracticeArea.findFirst({
-      where: { firmId: publicFirmId(), slug, status: 'PUBLISHED' }
-    });
-    if (!area) throw new NotFoundException('Practice area not found');
-    return this.areaDto(area);
-  }
-
-  async publication(slug: string) {
-    const p = await this.prisma.client.websitePublication.findFirst({
-      where: { firmId: publicFirmId(), slug, status: 'PUBLISHED' },
-      include: { cover: true, author: { include: { image: true } } }
-    });
-    if (!p) throw new NotFoundException('Publication not found');
-    return this.publicationDto(p);
-  }
-
-  async search(q: string) {
-    const query = q.trim();
-    if (query.length < 2) return [];
-    const firmId = publicFirmId();
-    const [areas, profiles, publications, pages] = await Promise.all([
-      this.prisma.client.websitePracticeArea.findMany({
-        where: { firmId, status:'PUBLISHED', OR:[
-          { title:{ contains:query, mode:'insensitive' } }, { summary:{ contains:query, mode:'insensitive' } }, { description:{ contains:query, mode:'insensitive' } }
-        ]}, take:8
-      }),
-      this.prisma.client.websiteProfessionalProfile.findMany({
-        where: { firmId, status:'PUBLISHED', OR:[
-          { name:{ contains:query, mode:'insensitive' } }, { summary:{ contains:query, mode:'insensitive' } }, { bio:{ contains:query, mode:'insensitive' } }
-        ]}, take:8
-      }),
-      this.prisma.client.websitePublication.findMany({
-        where: { firmId, status:'PUBLISHED', OR:[
-          { title:{ contains:query, mode:'insensitive' } }, { excerpt:{ contains:query, mode:'insensitive' } }, { body:{ contains:query, mode:'insensitive' } }
-        ]}, take:12, orderBy:{ publishedAt:'desc' }
-      }),
-      this.prisma.client.websitePage.findMany({
-        where: { firmId, status:'PUBLISHED', OR:[
-          { title:{ contains:query, mode:'insensitive' } }, { description:{ contains:query, mode:'insensitive' } }
-        ]}, take:8
-      })
-    ]);
-    return [
-      ...areas.map(x => ({ type:'Practice Area', title:x.title, url:`/practice-areas/${x.slug}`, excerpt:x.summary })),
-      ...profiles.map(x => ({ type:'Professional', title:x.name, url:`/team/${x.slug}`, excerpt:x.summary })),
-      ...publications.map(x => ({ type:x.kind === 'VIDEO' ? 'Video' : 'Insight', title:x.title, url:`/insights/${x.slug}`, excerpt:x.excerpt })),
-      ...pages.filter(x => x.slug !== 'home').map(x => ({ type:'Page', title:x.title, url:`/${x.slug}`, excerpt:x.description }))
+  async bootstrap() { const s=await this.snapshot(); return {...s.bootstrap,pages:s.pages}; }
+  async page(slug:string) { return this.required((await this.snapshot()).pages.find(p=>p.slug===(slug==='/'?'home':slug)), 'Page'); }
+  async partner(slug:string) { return this.required((await this.snapshot()).bootstrap.partners.find(p=>p.slug===slug), 'Professional'); }
+  async practice(slug:string) { return this.required((await this.snapshot()).bootstrap.practiceAreas.find(p=>p.slug===slug), 'Practice area'); }
+  async publication(slug:string) { return this.required((await this.snapshot()).bootstrap.publications.find(p=>p.slug===slug), 'Publication'); }
+  private required<T>(value:T|undefined, kind:string):T { if(!value) throw new NotFoundException(`${kind} not found`); return value; }
+  async search(q:string) {
+    const query=q.trim().toLocaleLowerCase(); if(query.length<2)return [];
+    const {bootstrap:b,pages}=await this.snapshot();
+    const items=[
+      ...b.practiceAreas.map(p=>({type:'Practice Area',title:p.title,url:`/practice-areas/${p.slug}`,excerpt:p.summary,body:p.description+' '+JSON.stringify(p.faqs)})),
+      ...b.partners.map(p=>({type:'Professional',title:p.name,url:`/team/${p.slug}`,excerpt:p.summary,body:p.bio})),
+      ...b.publications.map(p=>({type:p.kind==='VIDEO'?'Video':'Insight',title:p.title,url:`/insights/${p.slug}`,excerpt:p.excerpt,body:p.body})),
+      ...pages.filter(p=>!p.seo?.noindex).map(p=>({type:'Page',title:p.title,url:p.slug==='home'?'/':`/${p.slug}`,excerpt:p.description,body:JSON.stringify(p.blocks)}))
     ];
+    return items.filter(p=>`${p.title} ${p.excerpt} ${p.body}`.toLocaleLowerCase().includes(query)).slice(0,40).map(({body,...p})=>p);
+  }
+  async media(id:string) {
+    const releases=await this.prisma.client.websitePublishRelease.findMany({where:{firmId:publicFirmId(),status:{in:['PUBLISHED','ROLLED_BACK']}}});
+    if(!releases.some((r:any)=>r.manifest?.snapshot?.mediaIds?.includes(id)))throw new NotFoundException('Released media not found');
+    return this.required(await this.prisma.client.websiteMediaAsset.findFirst({where:{id,firmId:publicFirmId()}}) ?? undefined,'Media');
   }
 
-  async media(id: string) {
-    const asset = await this.prisma.client.websiteMediaAsset.findFirst({ where: { id, firmId: publicFirmId() } });
-    if (!asset) throw new NotFoundException('Media asset not found');
-    return asset;
+  /** Called inside the publisher's repeatable-read transaction. Draft edits retain the prior public revision. */
+  async capture(firmId:string, client:any = this.prisma.client, preview=false):Promise<SiteSnapshot> {
+    const previous=(await this.active(firmId,client))?.manifest?.snapshot as SiteSnapshot|undefined;
+    const now=new Date();
+    const [settings,profiles,areas,publications,testimonials,metrics,pages,forms,media]=await Promise.all([
+      client.websiteSiteSettings.findUnique({where:{firmId}}),
+      client.websiteProfessionalProfile.findMany({where:{firmId},include:{image:true},orderBy:{displayOrder:'asc'}}),
+      client.websitePracticeArea.findMany({where:{firmId},orderBy:{displayOrder:'asc'}}),
+      client.websitePublication.findMany({where:{firmId},include:{cover:true,author:{include:{image:true}}},orderBy:{publishedAt:'desc'}}),
+      client.websiteTestimonial.findMany({where:{firmId},orderBy:{displayOrder:'asc'}}),
+      client.websiteMetric.findMany({where:{firmId},orderBy:{displayOrder:'asc'}}),
+      client.websitePage.findMany({where:{firmId},include:{heroAsset:true,blocks:{where:{visible:true},orderBy:{displayOrder:'asc'}}}}),
+      client.websiteFormDefinition.findMany({where:{firmId,active:true}}),
+      client.websiteMediaAsset.findMany({where:{firmId}})
+    ]);
+    if(!settings)throw new BadRequestException('Configure website settings before publishing.');
+    const merge=(rows:any[],old:any[]=[],map:(r:any)=>any)=>rows.flatMap(r=>{
+      if(r.status==='ARCHIVED')return [];
+      const due=r.status==='SCHEDULED' && r.scheduledFor && r.scheduledFor<=now;
+      const publishable=['APPROVED','PUBLISHED'].includes(r.status) && (!r.publishedAt || r.publishedAt<=now);
+      const value=preview||due||publishable?map(r):old.find(p=>p.id===r.id);
+      return value?[value]:[];
+    });
+    const b=previous?.bootstrap;
+    const snapshot:SiteSnapshot={schemaVersion:1,bootstrap:{
+      settings:{firmName:settings.firmName,tagline:settings.tagline,phone:settings.phone,email:settings.email,address:settings.address,socials:settings.socials,navigation:settings.navigation,footer:settings.footer,defaultSeo:settings.defaultSeo,theme:settings.theme},
+      partners:merge(profiles,b?.partners,p=>this.profileDto(p)),
+      practiceAreas:merge(areas,b?.practiceAreas,p=>this.areaDto(p)),
+      publications:merge(publications,b?.publications,p=>this.publicationDto(p)),
+      testimonials:merge(testimonials,b?.testimonials,p=>({id:p.id,title:p.title,quote:p.quote,source:p.source,rating:p.rating})),
+      metrics:merge(metrics,b?.metrics,p=>({id:p.id,value:p.value,label:p.label,icon:p.icon,sourceNote:p.sourceNote,verifiedAt:p.verifiedAt})),
+      forms:forms.map((f:any)=>({id:f.id,key:f.key,version:f.version,consentText:f.consentText}))
+    },pages:merge(pages,previous?.pages,p=>({id:p.id,slug:p.slug,title:p.title,description:p.description,seo:p.seo,heroAsset:p.heroAsset?this.assetDto(p.heroAsset):null,blocks:p.blocks.map((x:any)=>({id:x.id,blockType:x.blockType,variant:x.variant,theme:x.theme,content:x.content,settings:x.settings}))})),mediaIds:[]};
+    // Resolve block asset IDs through the same firm-scoped DTO map; never trust a browser-supplied asset object.
+    const mediaMap=new Map(media.map((m:any)=>[m.id,m]));
+    const asset=(id:string)=>{const m=mediaMap.get(id);if(!m)throw new BadRequestException('Referenced media must belong to this firm');return this.assetDto(m);};
+    for(const p of snapshot.pages)for(const block of p.blocks){
+      const c=block.content;
+      if(c.assetId)c.asset=asset(c.assetId);
+      if(c.videoAssetId)c.videoUrl=asset(c.videoAssetId).url;
+    }
+    const json=JSON.stringify(snapshot);
+    snapshot.mediaIds=media.filter((m:any)=>json.includes(JSON.stringify(m.id)) || json.includes(`/media/${m.id}`)).map((m:any)=>m.id);
+    for(const p of snapshot.bootstrap.partners)if(p.image && !mediaMap.has(p.image.id))throw new BadRequestException('Profile image belongs to another firm');
+    for(const p of snapshot.bootstrap.publications)if(p.cover && !mediaMap.has(p.cover.id))throw new BadRequestException('Publication cover belongs to another firm');
+    return JSON.parse(JSON.stringify(snapshot));
   }
-
   private assetDto(asset: any) {
     return {
       id:asset.id, url:publicAssetUrl(asset.id, asset.checksum), alt:asset.alt, caption:asset.caption,
@@ -154,8 +116,8 @@ export class SiteContentService {
       id:p.id, slug:p.slug, kind:p.kind, title:p.title, excerpt:p.excerpt, body:p.body,
       cover:p.cover ? this.assetDto(p.cover) : null,
       publishedAt:(p.publishedAt ?? p.createdAt).toISOString(),
-      author:p.author ? this.profileDto(p.author) : undefined,
-      duration:p.duration ?? undefined, practiceAreas:p.practiceAreaSlugs, tags:p.tags, seo:p.seo
+      author:p.author && p.author.firmId === p.firmId && ['PUBLISHED','APPROVED'].includes(p.author.status) ? this.profileDto(p.author) : undefined,
+      duration:p.duration ?? undefined, videoUrl:p.seo?.videoUrl, captionsUrl:p.seo?.captionsUrl, practiceAreas:p.practiceAreaSlugs, tags:p.tags, seo:p.seo
     };
   }
 }

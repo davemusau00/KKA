@@ -1,3 +1,4 @@
+import { WebsitePreviewController } from './website-preview.controller';
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../platform/audit/audit.module';
 import { StorageModule } from '../../platform/storage/storage.module';
@@ -17,7 +18,7 @@ import { WebsitePublishingController } from './website-publishing.controller';
 
 @Module({
   imports:[AuditModule,StorageModule,NumberingModule,IntakeModule,CalendarModule],
-  controllers:[PublicSiteController,WebsiteAdminController,WebsiteLeadsController,WebsiteMediaController,WebsitePublishingController],
+  controllers:[WebsitePreviewController,PublicSiteController,WebsiteAdminController,WebsiteLeadsController,WebsiteMediaController,WebsitePublishingController],
   providers:[SiteContentService,WebsiteAdminService,WebsiteLeadsService,WebsiteMediaService,WebsitePublishingService],
   exports:[SiteContentService,WebsiteLeadsService]
 })
