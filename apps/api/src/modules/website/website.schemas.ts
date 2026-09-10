@@ -87,6 +87,7 @@ export const SavePracticeAreaSchema = z.object({
 });
 
 export const SavePublicationSchema = z.object({
+  currentVersion: z.number().int().min(0).optional(),
   id: z.string().optional(),
   slug: z.string().max(180).optional(),
   kind: PublicationKindSchema.default('ARTICLE'),

@@ -26,5 +26,5 @@ export function LeadForm({areas,definition,compact=false}:{areas:PracticeArea[];
  <Field label="Message" error={errors.message?.message}><Textarea rows={compact?4:6} {...register('message')}/></Field>
  <label className="honeypot" aria-hidden="true">Website<Input tabIndex={-1} autoComplete="off" {...register('website')}/></label>
  <label className="consent"><input type="checkbox" {...register('consent')}/><span>{definition?.consentText||'I consent to the firm using this information to review and respond to my enquiry.'}</span></label>{errors.consent&&<p role="alert">Please confirm your consent.</p>}
- {failure&&<div className="form-failure" role="alert">{failure}</div>}<Button type="submit" disabled={isSubmitting}>{isSubmitting?'Submitting?':'Submit Enquiry'}</Button></form>;
+ {failure&&<div className="form-failure" role="alert">{failure}</div>}<Button type="submit" disabled={isSubmitting}>{isSubmitting?'Submitting...':'Submit Enquiry'}</Button></form>;
 }

@@ -8,6 +8,9 @@ import { createSiteRouter } from './router';
 import type { SiteSnapshot } from './types';
 async function mount(snapshot?:SiteSnapshot,url?:string){
  const router=createSiteRouter(snapshot,url);const queryClient=new QueryClient();
+ // Static releases already contain the complete route data. Preserve the
+ // server boundary shape while the browser attaches to that rendered tree.
+ if(!snapshot&&document.getElementById('site-snapshot'))router.ssr={manifest:undefined};
  await router.load();
  const application=<React.StrictMode><QueryClientProvider client={queryClient}><RouterProvider router={router}/></QueryClientProvider></React.StrictMode>;
  const root=document.getElementById('root')!;
@@ -25,7 +28,7 @@ if(location.pathname==='/preview'){
    const snapshot:SiteSnapshot=await response.json();
    const urls=new Map<string,string>();
    for(const id of snapshot.mediaIds){const r=await fetch('/api/v1/website/public/preview/media/'+encodeURIComponent(id),{headers,credentials:'omit'});if(r.ok)urls.set(id,URL.createObjectURL(await r.blob()));}
-   function replace(value:any){if(!value||typeof value!=='object')return;if(value.id&&urls.has(value.id)&&value.url)value.url=urls.get(value.id);for(const v of Object.values(value))replace(v);}replace(snapshot);
+   function replace(value:any){if(!value||typeof value!=='object')return;if(value.id&&urls.has(value.id)&&value.url){value.url=urls.get(value.id);value.variants={};}for(const v of Object.values(value))replace(v);}replace(snapshot);
    await mount(snapshot,e.data.slug||'/');
   }catch(error){document.getElementById('root')!.textContent=error instanceof Error?error.message:'Preview failed';}
  };

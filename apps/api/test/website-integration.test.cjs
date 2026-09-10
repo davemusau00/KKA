@@ -22,6 +22,15 @@ test('public platform: persistent snapshots, real artifacts, rollback and idempo
  const publish=async()=>{const r=await publishing.publish(user);await processWebsitePublish({data:{firmId:user.firmId,releaseId:r.id}},db);return r;};
  const first=await publish();const initial=await content.snapshot();assert.ok(initial.pages.find(p=>p.slug==='home').blocks.length);
  const release=await db.websitePublishRelease.findUnique({where:{id:first.id}});assert.ok(release.manifest.artifact.files['index.html']);assert.ok(release.manifest.artifact.files['sitemap.xml']);
+ assert.ok(Object.keys(release.manifest.artifact.files).some(f=>f.startsWith('media/')),'Published media is copied into the release');
+ const originalPublication=await db.websitePublication.findFirst({where:{firmId:user.firmId}});
+ if(originalPublication){
+  const [left,right]=await Promise.allSettled([cms.savePublication(user,{...originalPublication,status:'DRAFT'}),cms.savePublication(user,{...originalPublication,status:'DRAFT'})]);
+  assert.equal([left,right].filter(r=>r.status==='fulfilled').length,1,'Only one concurrent publication edit can win');
+  assert.match([left,right].find(r=>r.status==='rejected').reason.message,/changed in another session/);
+  const current=await db.websitePublication.findUnique({where:{id:originalPublication.id}});
+  await cms.savePublication(user,{...originalPublication,currentVersion:current.currentVersion,status:'APPROVED'});
+ }
  const home=await cms.page(user,initial.pages.find(p=>p.slug==='home').id);const marker='Draft-only '+randomUUID();
  const draft=await cms.savePage(user,{...home,status:'DRAFT',description:marker});
  assert.notEqual((await content.page('home')).description,marker,'Draft save cannot change public content');

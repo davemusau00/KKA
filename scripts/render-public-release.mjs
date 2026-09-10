@@ -11,6 +11,21 @@ const {render}=await import(pathToFileURL(join(root,'apps/site/dist-server/entry
 const source=join(root,'apps/site/dist');
 await mkdir(destination,{recursive:true});
 await cp(source,destination,{recursive:true});
+const media=JSON.parse(await readFile(input+'.media.json','utf8'));
+for(const item of Object.values(media)){
+ const target=join(destination,item.target);await mkdir(join(destination,'media'),{recursive:true});
+ await cp(item.source,target);
+ if(createHash('sha256').update(await readFile(target)).digest('hex')!==item.checksum)throw new Error('Copied media checksum mismatch');
+}
+function localize(value){
+ if(!value||typeof value!=='object')return;
+ if(value.id&&media[value.id+':original']&&value.url){
+  value.url='/'+media[value.id+':original'].target;
+  for(const [key,variant]of Object.entries(value.variants||{}))if(media[value.id+':'+key])variant.url='/'+media[value.id+':'+key].target;
+ }
+ for(const nested of Object.values(value))localize(nested);
+}
+localize(snapshot);
 const template=await readFile(join(source,'index.html'),'utf8');
 const b=snapshot.bootstrap;
 const origin=process.env.PUBLIC_SITE_ORIGIN||'http://127.0.0.1:5175';

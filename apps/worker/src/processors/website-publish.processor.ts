@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq';
 import type { KkaPrismaClient } from '@kka/database';
 import { mkdir, writeFile, readFile, rename } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { resolve, join, sep } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 function render(script:string,input:string,output:string):Promise<void>{return new Promise((done,fail)=>{
@@ -23,6 +23,21 @@ export async function processWebsitePublish(job:Job,prisma:KkaPrismaClient){
  await prisma.websitePublishRelease.update({where:{id:releaseId},data:{status:'BUILDING',startedAt:new Date(),error:null}});
  try{
   await mkdir(work,{recursive:true});const input=join(work,'snapshot.json');await writeFile(input,JSON.stringify(manifest.snapshot));
+  // Copy only media referenced by this frozen release. Private storage paths
+  // stay in the build workspace and never enter the public snapshot.
+  if(process.env.STORAGE_DRIVER==='s3')throw new Error('Static media export for S3 must be configured before publishing');
+  const storageRoot=resolve(process.env.LOCAL_STORAGE_ROOT||'.storage');
+  const assets=await prisma.websiteMediaAsset.findMany({where:{firmId,id:{in:manifest.snapshot.mediaIds}}});
+  if(assets.length!==manifest.snapshot.mediaIds.length)throw new Error('A referenced release asset is unavailable');
+  const media:Record<string,{source:string;target:string;checksum:string}>={};
+  const extensions:Record<string,string>={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/avif':'avif','video/mp4':'mp4','video/webm':'webm','application/pdf':'pdf'};
+  for(const asset of assets)for(const [variant,value]of Object.entries({original:{storagePath:asset.storagePath,checksum:asset.checksum,mimeType:asset.mimeType},...(asset.variants as Record<string,any>)})){
+    const source=resolve(storageRoot,value.storagePath);
+    if(!source.startsWith(storageRoot+sep))throw new Error('Unsafe media storage path');
+    const bytes=await readFile(source);if(createHash('sha256').update(bytes).digest('hex')!==value.checksum)throw new Error('Media checksum mismatch');
+    media[asset.id+':'+variant]={source,target:`media/${asset.id}-${variant}-${value.checksum.slice(0,12)}.${extensions[value.mimeType]||'bin'}`,checksum:value.checksum};
+  }
+  await writeFile(input+'.media.json',JSON.stringify(media));
   await render(join(root,'scripts/render-public-release.mjs'),input,output);
   const artifact=JSON.parse(await readFile(join(output,'release.json'),'utf8'));
   for(const [file,checksum]of Object.entries(artifact.files)){
@@ -39,7 +54,7 @@ export async function processWebsitePublish(job:Job,prisma:KkaPrismaClient){
    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${firmId+':website-activate'}))`;
    const latest=await tx.websitePublishRelease.findFirst({where:{firmId,status:'PUBLISHED'},orderBy:{version:'desc'}});
    await tx.websitePublishRelease.update({where:{id:releaseId},data:{status:latest&&latest.version>release.version?'ROLLED_BACK':'PUBLISHED',publishedAt:new Date(),manifest:completed}});
-  });
+  },{maxWait:30000,timeout:30000});
   return {routeCount:artifact.routeCount};
  }catch(error){await prisma.websitePublishRelease.update({where:{id:releaseId},data:{status:'FAILED',error:error instanceof Error?error.message:String(error)}});throw error;}
 }
