@@ -1,10 +1,29 @@
 # Current gap audit — 10 September 2026
 
-Status: ongoing. This pass covers public publishing, release serving, generated SEO and deployment/CI coverage. Document-workflow runtime acceptance, broader permission combinations, lead concurrency and complete accessibility remain to be audited. The earlier menu and workspace-resolution fixes are not treated as proof of these other areas.
+Status: corrective changes implemented and locally verified. This pass covers public publishing, release serving, generated SEO and deployment/CI coverage. Document-workflow runtime acceptance, broader permission combinations, lead concurrency and complete accessibility remain to be audited. The earlier menu and workspace-resolution fixes are not treated as proof of these other areas.
 
-No corrective production changes were made in this pass. Renderer probes wrote separate artifacts. The scheduling probe used PostgreSQL but intentionally rolled back its entire transaction. Local release 14 remains active.
+The fixes in this pass are local source changes only; no production deployment is claimed. Renderer probes wrote separate artifacts. The scheduling probe used PostgreSQL but intentionally rolled back its entire transaction. Local release 14 remains active.
 
-## Confirmed findings
+## Current remediation state
+
+The original findings below are retained for traceability. Their current state is recorded here after the corrective changes and local probes:
+
+| Gap | Current state | Local evidence |
+| --- | --- | --- |
+| G01 worker image missing public publisher | Fixed in source; runtime image pending | Clean Docker `build` target packages the renderer, public app and bundles; the runtime target was blocked by the external Chromium download. |
+| G02 rollback consumes due scheduled content | Fixed locally | `audit-public-schedule-rollback.cjs` keeps the due page `SCHEDULED` and excludes it from the rollback snapshot. |
+| G03 retained hashed assets return 404 | Fixed locally | `audit-retained-assets.mjs` returns HTTP 200 for an asset found only in a retained release. |
+| G04 missing core pages become soft 404s | Fixed locally | `audit-public-release.mjs` reports `missingCorePageRejected: true`. |
+| G05 publication SEO overrides ignored | Fixed locally | The same renderer audit reports custom title, description and canonical applied. |
+| G06 scalar video URLs remain API-bound | Fixed locally | The renderer audit reports `scalarVideoUrlLocalized: true`. |
+| G07 CI skips public publishing coverage | Coverage added; remote run pending | Workflow now runs public SSR, boundary and worker-image checks. |
+| G08 worker install is not lockfile-reproducible | Fixed locally | Dockerfile uses `pnpm install --frozen-lockfile`; the clean Docker `build` target completed with the exact lockfile graph. |
+
+The local fixes do not claim a production deployment, provider-backed publishing, a registry/pilot image run, or a remote CI result.
+
+## Original findings (pre-fix baseline)
+
+The descriptions below capture the defects as originally reproduced. They are retained as historical evidence; use the remediation table above for the current implementation state.
 
 ### G01 — High: the production worker image cannot run the public publisher
 
@@ -76,7 +95,7 @@ Required fix: copy and enforce the lockfile and declare all required workspace m
 
 ## Renderer evidence
 
-`scripts/audit-public-release.mjs` generated `.artifacts/release-gap-audit/1789060160986/findings.json`. All six observed flags were true: missing core route accepted/listed, custom SEO title/description/canonical ignored, and scalar media URL still targeting the API. The generated site is an isolated test artifact and was not activated.
+`scripts/audit-public-release.mjs` generated `.artifacts/release-gap-audit/1789066868463/site` and reports `missingCorePageRejected`, `customSeoTitleApplied`, `customSeoDescriptionApplied`, `customCanonicalApplied` and `scalarVideoUrlLocalized` as true. The generated site is an isolated test artifact and was not activated.
 
 ## Next audit areas
 
