@@ -38,6 +38,7 @@ export class WebsitePublishingService implements OnModuleInit, OnModuleDestroy {
   async dispatch(){
     if(this.dispatching)return;this.dispatching=true;
     try {
+      await this.prisma.client.websiteLead.updateMany({where:{status:'INTAKE_STARTED',intake:{convertedMatterId:{not:null}}},data:{status:'CONVERTED',convertedAt:new Date()}});
       const now=new Date();
       const due=[...await this.prisma.client.websitePage.findMany({where:{status:'SCHEDULED',scheduledFor:{lte:now}},select:{firmId:true}}),...await this.prisma.client.websitePublication.findMany({where:{status:'SCHEDULED',scheduledFor:{lte:now}},select:{firmId:true}})];
       for(const firmId of new Set(due.map(x=>x.firmId)))await this.publish({firmId,id:'',email:'',fullName:'Scheduled publisher',roleKeys:[],permissions:[]});

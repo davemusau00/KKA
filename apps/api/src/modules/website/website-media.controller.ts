@@ -1,5 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { CurrentUser, RequirePermissions } from '../../platform/auth/decorators';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { WebsiteMediaService } from './website-media.service';
@@ -11,6 +11,10 @@ export class WebsiteMediaController {
   @Get()
   @RequirePermissions('website.media')
   list(@CurrentUser() user:RequestUser,@Query('q') q?:string) { return this.media.list(user,q); }
+
+  @Get(':id/content')
+  @RequirePermissions('website.media')
+  async content(@CurrentUser() user:RequestUser,@Param('id') id:string,@Res() reply:FastifyReply){const asset=await this.media.open(user,id);return reply.header('Cache-Control','no-store').type(asset.mimeType).send(asset.stream);}
 
   @Post()
   @RequirePermissions('website.media')

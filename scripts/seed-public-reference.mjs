@@ -19,4 +19,15 @@ const blocks=[
 ];
 const home=await db.websitePage.findFirst({where:{firmId:firm.id,slug:'home'},include:{blocks:true}});
 if(home&&!home.blocks.length){await db.websiteBlock.createMany({data:blocks.map((b,i)=>({...b,pageId:home.id,displayOrder:i,settings:{}}))});}
+const editorial={
+ about:[block('HERO',{eyebrow:'About the Firm',title:'PRACTICAL COUNSEL. HUMAN SERVICE. ENDURING TRUST.',description:'We combine disciplined legal work with a clear understanding of the people and businesses behind every instruction.'}),block('FIRM_INTRODUCTION',blocks[1].content),block('PROFESSIONAL_GRID',{eyebrow:'Leadership',title:'EXPERIENCED. TRUSTED. RESULTS DRIVEN.'}),block('METRICS',{}),block('CONSULTATION',blocks[8].content)],
+ 'practice-areas':[block('HERO',{eyebrow:'Areas of Practice',title:'LEGAL SOLUTIONS BUILT AROUND REAL-WORLD NEEDS.',description:'Explore the firm?s areas of practice.'}),block('PRACTICE_GRID',{eyebrow:'Our Services',title:'AREAS OF PRACTICE'}),block('CONSULTATION',blocks[8].content)],
+ team:[block('HERO',{eyebrow:'Our Team',title:'PEOPLE. EXPERIENCE. COMMITMENT.',description:'Meet the professionals behind the firm.'}),block('PROFESSIONAL_GRID',{eyebrow:'Our People',title:'MEET THE TEAM'}),block('CONSULTATION',blocks[8].content)],
+ insights:[block('HERO',{eyebrow:'Insights',title:'LEGAL INSIGHTS & UPDATES',description:'Articles, video and commentary from the firm.'}),block('INSIGHTS_GRID',{eyebrow:'From the Firm',title:'LATEST INSIGHTS'})],
+ contact:[block('HERO',{eyebrow:'Let?s Talk',title:'LET?S START A CONVERSATION.',description:'Tell us briefly how we can help.'}),block('CONSULTATION',blocks[8].content)]
+};
+for(const [slug,content]of Object.entries(editorial)){
+ const page=await db.websitePage.findFirst({where:{firmId:firm.id,slug},include:{blocks:true}});
+ if(page&&!page.blocks.length)await db.websiteBlock.createMany({data:content.map((b,i)=>({...b,pageId:page.id,displayOrder:i,settings:{}}))});
+}
 console.log('Reference homepage fixture prepared; business claims remain unverified development content.');await db.$disconnect();

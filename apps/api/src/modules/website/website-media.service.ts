@@ -26,9 +26,10 @@ export class WebsiteMediaService {
         { caption:{ contains:query, mode:'insensitive' } }, { credit:{ contains:query, mode:'insensitive' } }
       ] } : {}) }, orderBy:{ createdAt:'desc' }, take:500
     });
-    return items.map(x => ({ ...x, publicUrl:publicAssetUrl(x.id,x.checksum) }));
+    return items.map(x => ({ ...x, publicUrl:publicAssetUrl(x.id,x.checksum), previewUrl:`/api/v1/website/admin/media/${x.id}/content` }));
   }
 
+  async open(user:RequestUser,id:string){const asset=await this.prisma.client.websiteMediaAsset.findFirst({where:{id,firmId:user.firmId}});if(!asset)throw new NotFoundException('Media not found');return {mimeType:asset.mimeType,stream:await this.storage.openDocument(asset.storagePath)};}
   async upload(user: RequestUser, file: { filename:string; mimetype:string; buffer:Buffer }, rawMeta: unknown) {
     if (!file.buffer.length) throw new BadRequestException('Empty upload');
     if (file.buffer.length > env().MAX_UPLOAD_BYTES) throw new BadRequestException('Upload exceeds configured file-size limit');

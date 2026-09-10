@@ -20,3 +20,5 @@ data/backups/
 .artifacts/
 playwright-report/
 test-results/
+
+dist-server/

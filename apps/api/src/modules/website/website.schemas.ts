@@ -32,7 +32,7 @@ export const SiteSettingsSchema = z.object({
 export const SiteBlockSchema = z.object({
   id: z.string().optional(),
   blockType: z.enum(['HERO','RICH_TEXT','QUOTE','IMAGE_TEXT','PRACTICE_GRID','PROFESSIONAL_GRID','INSIGHTS_GRID','METRICS','FAQ','CTA','SPACER','HERO_JUSTICE','FIRM_INTRODUCTION','PARTNER_LEADERSHIP','MEDIA_FEATURE','TEAM_FEATURE','TESTIMONIALS','CONSULTATION']),
-  variant: z.string().max(80).default('default'),
+  variant: z.enum(['default','home','compact','featured','portrait','editorial','horizontal','split-left','split-right','double','full-bleed','editorial-overlay']).default('default'),
   theme: z.enum(['light','ivory','dark','gold']).default('light'),
   content: z.record(z.string(), z.json()).default({}),
   settings: z.record(z.string(), z.json()).default({}),

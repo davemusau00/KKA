@@ -31,6 +31,8 @@ test('public platform: persistent snapshots, real artifacts, rollback and idempo
  await cms.savePage(user,{...draft,status:'APPROVED'});
  const frozen=await publishing.publish(user);await db.websitePage.update({where:{id:home.id},data:{description:'Later unpublished edit',status:'DRAFT'}});
  await processWebsitePublish({data:{firmId:user.firmId,releaseId:frozen.id}},db);assert.equal((await content.page('home')).description,marker,'Release must build the requested revision');
+ const invalid=await publishing.publish(user);await db.websitePublishRelease.update({where:{id:invalid.id},data:{manifest:{schemaVersion:1,snapshot:{...initial,pages:[...initial.pages,{id:'invalid',slug:'invalid',title:'Invalid',description:'',seo:{},blocks:[{blockType:'UNSUPPORTED',content:{}}]}]}}}});
+ await assert.rejects(()=>processWebsitePublish({data:{firmId:user.firmId,releaseId:invalid.id}},db),/Unsupported block/);assert.equal((await content.page('home')).description,marker,'Failed build must preserve active release');
  const rollback=await publishing.rollback(user,first.version);await processWebsitePublish({data:{firmId:user.firmId,releaseId:rollback.id}},db);assert.deepEqual((await content.snapshot()).pages,initial.pages);
  assert.equal((await cms.page(user,home.id)).description,'Later unpublished edit','Rollback preserves drafts');
  const {readFile}=require('node:fs/promises');const path=require('node:path');const html=await readFile(path.join(process.env.WEBSITE_RELEASE_ROOT,rollback.id,'index.html'),'utf8');assert.match(html,/<h1/);assert.match(html,/A LAW FIRM THAT/);assert.match(html,/site-snapshot/);

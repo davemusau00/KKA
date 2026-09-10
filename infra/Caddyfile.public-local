@@ -1,0 +1,9 @@
+# Local-only rehearsal: public site and OS remain separate origins.
+:80 {
+  encode gzip zstd
+  reverse_proxy host.docker.internal:5175
+}
+:81 {
+  encode gzip zstd
+  reverse_proxy host.docker.internal:5173
+}

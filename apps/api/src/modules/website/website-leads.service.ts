@@ -47,7 +47,7 @@ export class WebsiteLeadsService {
     if(value.formVersion && value.formVersion!==definition.version)throw new ConflictException('This form has changed. Reload the page before submitting.');
     if(value.practiceAreaSlug && !publicData.practiceAreas.some(a=>a.slug===value.practiceAreaSlug))throw new BadRequestException('Choose an available practice area.');
     const phone = normalizeKenyanPhone(value.phone);
-    if(!/^\+[1-9]\d{7,14}$/.test(phone))throw new BadRequestException('Enter a valid phone number including its country code.');
+    if(!/^\+[1-9]\d{7,14}$/.test(phone))throw new BadRequestException({message:'Enter a valid phone number including its country code.',fieldErrors:{phone:['Use a Kenyan mobile number or an international number with its country code.']}});
     const email = value.email || null;
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const duplicate = await this.prisma.client.websiteLead.findFirst({
