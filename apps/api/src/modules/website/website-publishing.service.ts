@@ -43,6 +43,8 @@ export class WebsitePublishingService implements OnModuleInit, OnModuleDestroy {
       for(const firmId of new Set(due.map(x=>x.firmId)))await this.publish({firmId,id:'',email:'',fullName:'Scheduled publisher',roleKeys:[],permissions:[]});
       const rows=await this.prisma.client.websitePublishRelease.findMany({where:{status:'QUEUED'},orderBy:{createdAt:'asc'},take:100});
       for(const row of rows)await this.queues.add(WEBSITE_PUBLISH_QUEUE,'website.publish',{firmId:row.firmId,releaseId:row.id},{jobId:row.id});
+      const acknowledgements=await this.prisma.client.websiteLeadEvent.findMany({where:{type:'lead.ack_pending'},select:{id:true},take:100});
+      for(const event of acknowledgements)await this.queues.add('website-ack','website.ack',{eventId:event.id},{jobId:event.id});
     }finally{this.dispatching=false;}
   }
 }

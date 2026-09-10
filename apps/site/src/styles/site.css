@@ -48,3 +48,17 @@
 }
 
 picture{display:contents}.featured-media picture>img{width:100%;height:100%;object-fit:cover;filter:brightness(.72)}
+
+@media(min-width:768px){
+ :root{--section-space:clamp(3rem,4.2vw,4.5rem)}
+ .hero{height:clamp(35rem,42vw,43rem);min-height:35rem}.hero-layout{grid-template-columns:6fr 1.7fr 4.3fr}.hero-copy{padding-top:3rem}.hero-copy h1{font-size:clamp(2.8rem,3.8vw,4.8rem);line-height:1.04;max-width:none;letter-spacing:-.02em}.hero-copy .hero-line{white-space:nowrap}.hero-copy>p{max-width:31rem}.hero-art{width:52%;clip-path:none}.hero-art img{object-position:center;transform:scale(1.12);transform-origin:center 65%}.hero-values{margin-top:2.8rem}
+ .who-copy .ui-heading{font-size:clamp(1.7rem,2.25vw,2.5rem);max-width:none;line-height:1.06}.who-grid{grid-template-columns:4.8fr 5.4fr 1.3fr;gap:2rem}.who-copy>p{font-size:.94rem}.who-copy ul{margin:1rem 0 1.4rem;gap:.35rem}.who-aside{font-size:1.2rem}.partner-image{aspect-ratio:.86}
+ .practice-card{min-height:15rem;padding:1.15rem}.practice-icon{margin-bottom:1rem}.practice-card p{font-size:.85rem}.section-split-head{margin-bottom:1.6rem;gap:2rem}.section-split-head .ui-heading{font-size:clamp(1.8rem,2.5vw,2.7rem)}.ui-button{white-space:nowrap}
+ .media-section{padding-block:3rem}.media-copy .ui-heading{font-size:2.65rem}.featured-media{min-height:16rem}.team-layout .ui-heading{font-size:2.5rem}.team-pair .partner-image{aspect-ratio:1.3}.team-layout{grid-template-columns:3fr 5fr 2.5fr}
+ .testimonials>.ui-container{display:grid;grid-template-columns:3fr 7fr;align-items:center;gap:2rem}.testimonial-heading .ui-heading{font-size:2rem}.testimonial-track article{padding:1.2rem}.testimonial-heading{margin-bottom:0}
+ .consultation{padding-block:0}.consultation-layout{width:100%;max-width:none;grid-template-columns:2.5fr 5.5fr 3fr}.consult-form{padding:2rem}.consult-form .ui-heading{font-size:2.8rem}.consult-photo{min-height:0}.consult-statement{font-size:2.8rem}.lead-form{gap:.65rem}.ui-input{min-height:2.8rem;padding:.55rem .8rem}.ui-textarea{min-height:6rem}
+}
+@media(min-width:768px) and (max-width:1100px){.hero-copy h1{font-size:clamp(2.1rem,3.8vw,2.8rem)}.who-grid{grid-template-columns:1fr 1fr}.who-aside{display:none}.section-split-head>div:last-child{display:block}.testimonials>.ui-container{display:block}}
+
+@media(min-width:768px){.hero-art img{width:calc(100% + 7rem);height:calc(100% + 5rem);max-width:none;left:-1rem;top:-3rem;transform:none;object-fit:cover}}
+.carousel-dots button{min-width:24px;min-height:24px;position:relative;background:transparent!important;border:0}.carousel-dots button:after{content:"";display:block;width:9px;height:9px;border-radius:50%;background:#d5d5d5;margin:auto}.carousel-dots button.active:after{background:var(--site-gold-600)}

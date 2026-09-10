@@ -42,6 +42,7 @@ export class PublicSiteController {
     return reply
       .header('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
       .header('X-Content-Type-Options', 'nosniff')
+      .header('Cross-Origin-Resource-Policy', 'cross-origin')
       .header('Content-Disposition', 'inline')
       .type(selected.mimeType)
       .send(stream);

@@ -1,3 +1,4 @@
+import { processWebsiteAcknowledgement } from './processors/website-ack.processor';
 import "dotenv/config";
 import { Worker } from "bullmq";
 import Redis from "ioredis";
@@ -29,6 +30,7 @@ async function recordFailure(queue: string, job: any, error: Error) {
 }
 
 const workers = [
+  new Worker('website-ack',job=>processWebsiteAcknowledgement(job,prisma),{connection,concurrency:1}),
   new Worker("mail", (job) => processMail(job, prisma), {
     connection,
     concurrency: workerEnv.MAIL_QUEUE_CONCURRENCY

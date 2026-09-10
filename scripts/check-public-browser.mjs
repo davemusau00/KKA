@@ -7,6 +7,7 @@ try{
   await page.setViewportSize({width,height:1000});await page.goto('http://127.0.0.1:5175/',{waitUntil:'domcontentloaded'});
   await page.locator('.hero-copy h1').waitFor();await page.evaluate(()=>Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`Overflow at ${width}`);
+  await page.evaluate(async()=>{const images=[...document.images];images.forEach(i=>i.loading='eager');await Promise.all(images.map(i=>i.decode().catch(()=>{})));});
   await page.screenshot({path:`.artifacts/public-browser/home-${width}.png`,fullPage:true});
  }
  await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:5175/');
@@ -14,7 +15,8 @@ try{
  await page.locator('.lead-form button[type=submit]').click();await page.getByText('Please correct the highlighted fields.').waitFor();
  await page.locator('.lead-form [name=name]').fill('Browser acceptance enquiry');await page.locator('.lead-form [name=phone]').fill('0712345678');await page.locator('.lead-form [name=email]').fill('browser@example.test');await page.locator('.lead-form [name=message]').fill('Please review this local browser integration test enquiry.');await page.locator('.lead-form [name=consent]').check();
  await page.locator('.lead-form button[type=submit]').click();await page.locator('.lead-success strong').waitFor();const reference=await page.locator('.lead-success strong').innerText();
- const login=await context.request.post('http://127.0.0.1:3016/api/v1/auth/login',{data:{email:process.env.SEED_ADMIN_EMAIL,password:process.env.SEED_ADMIN_PASSWORD}});assert.equal(login.status(),201);
+ const csrf=await (await context.request.get('http://127.0.0.1:3016/api/v1/auth/csrf')).json();
+ const login=await context.request.post('http://127.0.0.1:3016/api/v1/auth/login',{headers:{'X-CSRF-Token':csrf.token},data:{email:process.env.SEED_ADMIN_EMAIL,password:process.env.SEED_ADMIN_PASSWORD}});assert.equal(login.status(),201);
  const leads=await context.request.get('http://127.0.0.1:3016/api/v1/website/admin/leads?q='+encodeURIComponent(reference));assert.equal(leads.status(),200);assert.ok((await leads.json()).some(l=>l.reference===reference));
  await page.reload();await page.locator('.lead-form').waitFor();
  const missing=await context.request.get('http://127.0.0.1:5175/does-not-exist');assert.equal(missing.status(),404);

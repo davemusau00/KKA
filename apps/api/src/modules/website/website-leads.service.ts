@@ -107,6 +107,9 @@ export class WebsiteLeadsService {
           referrer:meta.referrer || null, landingPage:value.landingPage || null, status:'PROCESSED'
         }
       });
+      const recipients=await tx.user.findMany({where:{firmId,status:'ACTIVE',roles:{some:{role:{permissions:{some:{permission:{key:'website.leads.view'}}}}}}},select:{id:true}});
+      if(recipients.length)await tx.notification.createMany({data:recipients.map(r=>({recipientUserId:r.id,category:'WEBSITE_LEAD',title:'New website enquiry',message:`Enquiry ${lead.reference} is ready for review.`,urgency:priority}))});
+      if(email)await tx.websiteLeadEvent.create({data:{leadId:lead.id,type:'lead.ack_pending',note:'Acknowledgement queued for local mail capture',metadata:{}}});
       return lead;
     });
     return { reference:created.reference, status:'RECEIVED' };
