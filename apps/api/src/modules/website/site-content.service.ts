@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ServiceUnavailableException, BadRequestE
 import type { SiteSnapshot } from '@kka/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { publicAssetUrl, publicFirmId } from './website.utils';
+import { normalizePublicFormFields } from './website.schemas';
 
 /** Public reads never query mutable editorial records. */
 @Injectable()
@@ -71,7 +72,7 @@ export class SiteContentService {
       publications:merge(publications,b?.publications,p=>this.publicationDto(p)),
       testimonials:merge(testimonials,b?.testimonials,p=>({id:p.id,title:p.title,quote:p.quote,source:p.source,rating:p.rating})),
       metrics:merge(metrics,b?.metrics,p=>({id:p.id,value:p.value,label:p.label,icon:p.icon,sourceNote:p.sourceNote,verifiedAt:p.verifiedAt})),
-      forms:forms.map((f:any)=>({id:f.id,key:f.key,version:f.version,consentText:f.consentText}))
+      forms:forms.map((f:any)=>({id:f.id,key:f.key,version:f.version,consentText:f.consentText,fields:normalizePublicFormFields(f.schema)}))
     },pages:merge(pages,previous?.pages,p=>({id:p.id,slug:p.slug,title:p.title,description:p.description,seo:p.seo,heroAsset:p.heroAsset?this.assetDto(p.heroAsset):null,blocks:p.blocks.map((x:any)=>({id:x.id,blockType:x.blockType,variant:x.variant,theme:x.theme,content:x.content,settings:x.settings}))})),mediaIds:[]};
     // Resolve block asset IDs through the same firm-scoped DTO map; never trust a browser-supplied asset object.
     const mediaMap=new Map(media.map((m:any)=>[m.id,m]));

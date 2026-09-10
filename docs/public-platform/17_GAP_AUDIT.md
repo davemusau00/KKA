@@ -21,6 +21,14 @@ The original findings below are retained for traceability. Their current state i
 
 The local fixes do not claim a production deployment, provider-backed publishing, a registry/pilot image run, or a remote CI result.
 
+## Website & Growth management UI remediation (11 September 2026)
+
+The lawyer-facing management slice is implemented locally in the internal web application. Settings, pages, content, forms, media, publishing, and the private preview now use structured controls and responsive cards. Visible JSON editors and raw block selectors were removed from these panels. The public enquiry snapshot carries normalized field configuration, and required lead fields plus the hidden honeypot are enforced by the API schema.
+
+The private preview now fetches a no-store snapshot once, overlays unsaved page or settings changes, and sends validated updates through the existing origin-checked message channel. Public visual tokens remain isolated in the preview iframe.
+
+The implementation plan and acceptance boundaries are recorded in [`18_LAWYER_FRIENDLY_MANAGEMENT_UI_PLAN.md`](18_LAWYER_FRIENDLY_MANAGEMENT_UI_PLAN.md). Local typechecks, API tests, and public client/SSR builds pass. Authenticated browser acceptance is opt-in because it requires a seeded local admin session; no staging or production behavior is claimed.
+
 ## Original findings (pre-fix baseline)
 
 The descriptions below capture the defects as originally reproduced. They are retained as historical evidence; use the remediation table above for the current implementation state.

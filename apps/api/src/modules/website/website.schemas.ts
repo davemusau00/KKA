@@ -116,9 +116,35 @@ export const SaveMetricSchema = z.object({
   displayOrder:z.coerce.number().int().min(0).default(0), status:ContentStatusSchema.default('PUBLISHED')
 });
 
+export const PublicFormFieldKeySchema = z.enum(['name','email','phone','practiceAreaSlug','message','consent','website']);
+export const PublicFormFieldSchema = z.object({
+  key: PublicFormFieldKeySchema,
+  label: z.string().min(1).max(160),
+  helpText: z.string().max(500).default(''),
+  placeholder: z.string().max(300).default(''),
+  visible: z.boolean().default(true),
+  required: z.boolean().default(false),
+  order: z.coerce.number().int().min(0).max(100).default(0),
+});
+const LegacyOrStructuredFormFieldSchema = z.union([z.string(), PublicFormFieldSchema]);
+export const WebsiteFormSchema = z.object({
+  fields: z.array(LegacyOrStructuredFormFieldSchema).max(7).optional(),
+}).catchall(z.json()).superRefine((value, context) => {
+  for (const [index, field] of (value.fields || []).entries()) {
+    if (typeof field === 'string') continue;
+    if (['name','phone','message','consent'].includes(field.key) && (field.visible === false || field.required === false)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['fields', index], message: 'Name, phone, message, and consent are always visible and required.' });
+    }
+    if (field.key === 'website' && (field.visible || field.required)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['fields', index], message: 'Spam protection remains hidden.' });
+    }
+  }
+});
+export const WebsiteFormRoutingSchema = z.object({ destination: z.string().max(120).optional() }).catchall(z.json());
+
 export const SaveFormSchema = z.object({
   id:z.string().optional(), key:z.string().min(2).max(120), name:z.string().min(2).max(200),
-  schema:z.record(z.string(),z.json()).default({}), routing:z.record(z.string(),z.json()).default({}),
+  schema:WebsiteFormSchema.default({}), routing:WebsiteFormRoutingSchema.default({}),
   consentText:z.string().min(8).max(3000), active:z.boolean().default(true), version:z.coerce.number().int().min(1).default(1)
 });
 
@@ -131,3 +157,33 @@ export const AssignLeadSchema = z.object({ userId:z.string().min(1), reason:z.st
 export const ContactAttemptSchema = z.object({ channel:z.enum(['PHONE','EMAIL','WHATSAPP','SMS','IN_PERSON']), direction:z.enum(['INBOUND','OUTBOUND']), outcome:z.string().min(2).max(250), notes:z.string().max(3000).optional() });
 export const AppointmentSchema = z.object({ startsAt:z.string().datetime(), endsAt:z.string().datetime(), location:z.string().max(500).optional(), notes:z.string().max(3000).optional(), assignedUserId:z.string().min(1) });
 export const MediaMetadataSchema = z.object({ alt:z.string().min(1).max(600), caption:z.string().max(2000).optional(), credit:z.string().max(500).optional(), focalX:z.coerce.number().min(0).max(1).default(.5), focalY:z.coerce.number().min(0).max(1).default(.5) });
+
+export const DEFAULT_PUBLIC_FORM_FIELDS = [
+  { key:'name', label:'Full name', helpText:'', placeholder:'Your full name', visible:true, required:true, order:0 },
+  { key:'phone', label:'Phone number', helpText:'', placeholder:'0712 345 678', visible:true, required:true, order:1 },
+  { key:'email', label:'Email address', helpText:'', placeholder:'you@example.com', visible:true, required:false, order:2 },
+  { key:'practiceAreaSlug', label:'Area of interest', helpText:'', placeholder:'Choose a practice area', visible:true, required:false, order:3 },
+  { key:'message', label:'How can we help?', helpText:'', placeholder:'Briefly tell us how we can help.', visible:true, required:true, order:4 },
+  { key:'consent', label:'Consent confirmation', helpText:'', placeholder:'', visible:true, required:true, order:5 },
+  { key:'website', label:'Spam protection', helpText:'', placeholder:'', visible:false, required:false, order:99 },
+] as const;
+
+export function normalizePublicFormFields(schema: any) {
+  const configured = Array.isArray(schema?.fields) ? schema.fields : [];
+  const fields = DEFAULT_PUBLIC_FORM_FIELDS.map(field => ({ ...field }));
+  const configuredKeys = new Set<string>();
+  for (const [index, raw] of configured.entries()) {
+    const key = typeof raw === 'string' ? raw : raw?.key;
+    const existing = fields.find(field => field.key === key);
+    if (!existing) continue;
+    configuredKeys.add(key);
+    if (typeof raw === 'string') { Object.assign(existing, { order: index }); continue; }
+    Object.assign(existing, raw, { order: Number.isFinite(Number(raw.order)) ? Number(raw.order) : index });
+  }
+  return fields.map((field, index) => ({
+    ...field,
+    order: configuredKeys.has(field.key) ? field.order : configured.length + index,
+    visible: ['name','phone','message','consent'].includes(field.key) ? true : field.key === 'website' ? false : Boolean(field.visible),
+    required: ['name','phone','message','consent'].includes(field.key) || field.required === true,
+  })).sort((a,b) => a.order - b.order);
+}

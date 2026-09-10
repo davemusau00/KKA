@@ -11,7 +11,8 @@ export type Page={id:string;slug:string;title:string;description:string;blocks:S
 export type SiteBootstrap={settings:SiteSettings;partners:Partner[];practiceAreas:PracticeArea[];publications:Publication[];testimonials:Testimonial[];metrics:Metric[];pages?:Page[];forms?:PublicForm[];releaseVersion?:number};
 export type LeadInput={name:string;email?:string;phone:string;practiceAreaSlug?:string;message:string;consent:true;source?:string;landingPage?:string;utm?:Record<string,string>;website?:string};
 
-export type PublicForm={id:string;key:string;version:number;consentText:string};
+export type PublicFormField={key:'name'|'email'|'phone'|'practiceAreaSlug'|'message'|'consent'|'website';label:string;helpText?:string;placeholder?:string;visible:boolean;required:boolean;order:number};
+export type PublicForm={id:string;key:string;version:number;consentText:string;fields?:PublicFormField[]};
 export type SiteSnapshot={schemaVersion:1;bootstrap:SiteBootstrap;pages:Page[];mediaIds:string[]};
 
 export const PublicLeadSchema = z.object({

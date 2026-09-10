@@ -40,3 +40,7 @@ The workspace-resolution repair adds composite references for contracts, databas
 The platform is not yet claimed fully launch-ready. Outstanding work includes clean original visual assets and final reference acceptance, exhaustive accessibility/performance checks, scheduled-publish and interrupted-worker recovery, redirect history, publication video/caption management and playback fixtures, complete role-by-role CMS acceptance, and a full retained-history/storage backup restoration. External delivery and all staging/production work remain outside this local scope.
 
 Use [the local rehearsal runbook](16_LOCAL_REHEARSAL.md) for startup, data isolation, publishing and recovery commands.
+
+## Lawyer-friendly Website & Growth slice (11 September 2026)
+
+The internal management workspace now has structured Settings, Pages, Content, Forms, Media, Publishing, and live preview controls. The work is documented in [the lawyer-friendly management UI plan](18_LAWYER_FRIENDLY_MANAGEMENT_UI_PLAN.md). Typechecking, API schema tests, and public client/SSR builds pass. Authenticated management-browser acceptance is prepared but requires a seeded local admin session and remains unclaimed here.
