@@ -33,7 +33,7 @@ The mobile navigation now renders outside the header's backdrop-filter containin
 
 `scripts/check-public-menu.mjs` passed on the published site at 360, 390, 430, 640, 768, 1024 and 1200 pixels, both at the top and after scrolling. It checks viewport coverage, opaque background, navigation visibility, scroll locking, Escape/focus restoration, landscape scrolling and desktop resize. Screenshots: `.artifacts/public-menu/1789059150286`.
 
-The workspace-resolution repair adds composite references for contracts, database and document-engine, with a dependency-ordered package build before root typechecking. A separately installed copy with no pre-existing `dist` directories passed `pnpm typecheck` and all six document-engine tests. The main checkout also passed the six API foundation/JSON tests and browser-test typechecking. See [document-engine build instructions](../../packages/document-engine/README.md). These local checks do not imply a completed remote CI run or document workflow acceptance against the CI database.
+The workspace-resolution repair adds composite references for contracts, database and document-engine, with a dependency-ordered package build before root typechecking. A separately installed copy with no pre-existing `dist` directories passed `pnpm typecheck`, the full `pnpm build`, and all six document-engine tests. After cleaning build output again, standalone document-engine typechecking also passed. The main checkout also passed the six API foundation/JSON tests and browser-test typechecking. See [document-engine build instructions](../../packages/document-engine/README.md). These local checks do not imply a completed remote CI run or document workflow acceptance against the CI database.
 
 ## Remaining acceptance work
 
