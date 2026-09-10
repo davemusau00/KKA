@@ -1,5 +1,5 @@
 import { createServer, request as proxyRequest } from 'node:http';
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import { readFile, writeFile, rename, readdir } from 'node:fs/promises';
 import { join, resolve, sep, extname } from 'node:path';
 import { createRequire } from 'node:module';
 const require=createRequire(new URL('../packages/database/package.json',import.meta.url));const {createPrismaClient}=require('./dist/src/index.js');
@@ -18,6 +18,14 @@ function refreshRelease(){
  }).finally(()=>{checkedAt=Date.now();refresh=undefined;});
  return refresh;
 }
+async function retainedAsset(relative){
+ if(!/^(?:assets|media)\/[A-Za-z0-9._/-]+$/.test(relative))return null;
+ for(const entry of await readdir(root,{withFileTypes:true})){
+  if(!entry.isDirectory()||entry.name===active?.id||!/^[A-Za-z0-9_-]+$/.test(entry.name))continue;
+  try{const manifest=JSON.parse(await readFile(join(root,entry.name,'release.json'),'utf8'));if(!manifest.files?.[relative])continue;return {directory:resolve(root,entry.name),version:entry.name,manifest};}catch{}
+ }
+ return null;
+}
 const server=createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,'http://localhost');
@@ -31,11 +39,16 @@ const server=createServer(async(req,res)=>{
   if(!active){res.writeHead(503,{'Content-Type':'text/plain'});res.end('No completed website release is available.');return;}
   const manifest=active.manifest;let relative=decodeURIComponent(url.pathname).replace(/^\/+|\/+$/g,'');
   if(!relative||!extname(relative))relative=(relative?relative+'/':'')+'index.html';
-  let status=200;if(!manifest.artifact.files[relative]){relative='404/index.html';status=404;}
-  const directory=resolve(root,active.id);const file=resolve(directory,relative);
+  let status=200;let directory=resolve(root,active.id);let releaseHeader=String(active.version);
+  if(!manifest.artifact.files[relative]){
+   const retained=await retainedAsset(relative);
+   if(retained){directory=retained.directory;releaseHeader=retained.version;}
+   else{relative='404/index.html';status=404;}
+  }
+  const file=resolve(directory,relative);
   if(!file.startsWith(directory+sep))throw new Error('Invalid public path');
   const bytes=await readFile(file);let body=bytes;
-  const headers={'Content-Type':mime[extname(file)]||'application/octet-stream','Content-Length':bytes.length,'X-Website-Release':String(active.version),'X-Content-Type-Options':'nosniff','Cache-Control':extname(file)==='.html'?'no-cache':'public, max-age=3600','Accept-Ranges':'bytes'};
+  const headers={'Content-Type':mime[extname(file)]||'application/octet-stream','Content-Length':bytes.length,'X-Website-Release':releaseHeader,'X-Content-Type-Options':'nosniff','Cache-Control':extname(file)==='.html'?'no-cache':'public, max-age=3600','Accept-Ranges':'bytes'};
   if(status===200&&req.headers.range){
    const match=/^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
    let start=match?.[1]?Number(match[1]):Math.max(0,bytes.length-Number(match?.[2]));

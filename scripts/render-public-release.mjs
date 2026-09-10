@@ -7,6 +7,9 @@ if(!input||!destination)throw new Error('Usage: render-public-release.mjs snapsh
 const root=resolve(import.meta.dirname,'..');
 const snapshot=JSON.parse(await readFile(input,'utf8'));
 if(snapshot.schemaVersion!==1)throw new Error('Unsupported snapshot version');
+const requiredPages=['home','about','practice-areas','team','insights','contact'];
+const pagesBySlug=new Map(snapshot.pages.map(page=>[page.slug,page]));
+for(const slug of requiredPages)if(!pagesBySlug.get(slug)?.blocks?.length)throw new Error(`Required public page is missing or empty: ${slug}`);
 const {render}=await import(pathToFileURL(join(root,'apps/site/dist-server/entry-server.js')).href);
 const source=join(root,'apps/site/dist');
 await mkdir(destination,{recursive:true});
@@ -19,6 +22,7 @@ for(const item of Object.values(media)){
 }
 function localize(value){
  if(!value||typeof value!=='object')return;
+ if(value.videoAssetId&&media[value.videoAssetId+':original'])value.videoUrl='/'+media[value.videoAssetId+':original'].target;
  if(value.id&&media[value.id+':original']&&value.url){
   value.url='/'+media[value.id+':original'].target;
   for(const [key,variant]of Object.entries(value.variants||{}))if(media[value.id+':'+key])variant.url='/'+media[value.id+':'+key].target;
@@ -35,14 +39,14 @@ const routes=new Map([['/',{title:b.settings.firmName,description:b.settings.tag
 for(const p of snapshot.pages){if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug))throw new Error('Invalid page slug');routes.set(p.slug==='home'?'/':`/${p.slug}`,{...p,...p.seo});}
 for(const [key,prefix]of [['partners','team'],['practiceAreas','practice-areas'],['publications','insights']])for(const p of b[key]){
  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug))throw new Error('Invalid content slug');
- routes.set(`/${prefix}/${p.slug}`,{...p,...p.seo,title:p.title||p.name,description:p.excerpt||p.summary});
+ const seo=p.seo||{};routes.set(`/${prefix}/${p.slug}`,{...p,...seo,title:seo.title||p.title||p.name,description:seo.description||p.excerpt||p.summary,canonical:seo.canonical,noindex:seo.noindex});
 }
 const supported=new Set(['HERO','RICH_TEXT','QUOTE','IMAGE_TEXT','PRACTICE_GRID','PROFESSIONAL_GRID','INSIGHTS_GRID','METRICS','FAQ','CTA','SPACER','HERO_JUSTICE','FIRM_INTRODUCTION','PARTNER_LEADERSHIP','MEDIA_FEATURE','TEAM_FEATURE','TESTIMONIALS','CONSULTATION']);
 for(const p of snapshot.pages)for(const block of p.blocks)if(!supported.has(block.blockType))throw new Error(`Unsupported block: ${block.blockType}`);
 for(const [url,meta]of [...routes,['/404',{title:'Page not found',noindex:true}]]){
  const body=await render(url,snapshot);
- if(!body.includes('<h1')||body.includes('Website temporarily unavailable'))throw new Error(`Incomplete render: ${url}`);
- const canonical=new URL(url,origin).href;
+ if(body.includes('Website temporarily unavailable')||(url!=='/404'&&body.includes('THIS PAGE HAS LEFT THE COURTROOM.')))throw new Error(`Incomplete render: ${url}`);
+ const canonical=meta.canonical?new URL(meta.canonical,origin).href:new URL(url,origin).href;
  const description=meta.description||b.settings.tagline;
  const structured={'@context':'https://schema.org','@type':meta.kind==='ARTICLE'?'Article':'LegalService',name:meta.title,url:canonical,...(meta.kind==='ARTICLE'?{headline:meta.title,datePublished:meta.publishedAt}:{telephone:b.settings.phone,email:b.settings.email})};
  const head=`<title>${escape(meta.title)}</title><meta name="description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical)}"><meta name="robots" content="${meta.noindex?'noindex,nofollow':'index,follow'}"><meta property="og:title" content="${escape(meta.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}"><script type="application/ld+json">${safeJson(structured)}</script>`;

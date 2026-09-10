@@ -53,6 +53,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm prisma:validate && pnpm typecheck && pnpm build
+      - run: pnpm --filter @kka/public-site build:ssr
+      - run: node scripts/check-public-boundary.mjs
+      - name: Build the publishing worker image
+        run: docker build --target runtime -f apps/worker/Dockerfile -t kka-worker-ci .
       - run: pnpm --filter @kka/web typecheck:tests
       - run: pnpm --filter @kka/api test && pnpm --filter @kka/document-engine test
       - name: Blank migrations and clean production bootstrap

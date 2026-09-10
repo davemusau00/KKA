@@ -20,8 +20,10 @@ export class WebsitePublishingService implements OnModuleInit, OnModuleDestroy {
       const latest=await tx.websitePublishRelease.findFirst({where:{firmId:user.firmId},orderBy:{version:'desc'}});
       const frozen=snapshot??await this.content.capture(user.firmId,tx);
       frozen.bootstrap.releaseVersion=(latest?.version??0)+1;
-      await tx.websitePage.updateMany({where:{firmId:user.firmId,status:'SCHEDULED',scheduledFor:{lte:new Date()}},data:{status:'APPROVED'}});
-      await tx.websitePublication.updateMany({where:{firmId:user.firmId,status:'SCHEDULED',scheduledFor:{lte:new Date()}},data:{status:'APPROVED'}});
+      if(!rollbackOf){
+        await tx.websitePage.updateMany({where:{firmId:user.firmId,status:'SCHEDULED',scheduledFor:{lte:new Date()}},data:{status:'APPROVED'}});
+        await tx.websitePublication.updateMany({where:{firmId:user.firmId,status:'SCHEDULED',scheduledFor:{lte:new Date()}},data:{status:'APPROVED'}});
+      }
       return tx.websitePublishRelease.create({data:{firmId:user.firmId,version:(latest?.version??0)+1,status:'QUEUED',requestedById:user.id||null,manifest:JSON.parse(JSON.stringify({schemaVersion:1,snapshot:frozen,rollbackOf}))}});
     },{isolationLevel:'RepeatableRead',timeout:30000});
     await this.audit.record({firmId:user.firmId,actorUserId:user.id||undefined,action:rollbackOf?'website.rollback_requested':'website.publish_requested',entityType:'website_release',entityId:release.id,metadata:{version:release.version,rollbackOf}});

@@ -117,7 +117,7 @@ export class SiteContentService {
       cover:p.cover ? this.assetDto(p.cover) : null,
       publishedAt:(p.publishedAt ?? p.createdAt).toISOString(),
       author:p.author && p.author.firmId === p.firmId && ['PUBLISHED','APPROVED'].includes(p.author.status) ? this.profileDto(p.author) : undefined,
-      duration:p.duration ?? undefined, videoUrl:p.seo?.videoUrl, captionsUrl:p.seo?.captionsUrl, practiceAreas:p.practiceAreaSlugs, tags:p.tags, seo:p.seo
+      duration:p.duration ?? undefined, videoUrl:p.seo?.videoUrl, videoAssetId:p.seo?.videoAssetId, captionsUrl:p.seo?.captionsUrl, practiceAreas:p.practiceAreaSlugs, tags:p.tags, seo:p.seo
     };
   }
 }
