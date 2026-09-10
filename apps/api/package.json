@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/foundation.test.ts",
+    "test": "tsx --test test/foundation.test.ts test/website-json.test.ts",
     "test:documents": "tsx --test test/document-workflows.test.ts"
   },
   "dependencies": {
