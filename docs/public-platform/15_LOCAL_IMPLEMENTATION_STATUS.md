@@ -8,7 +8,7 @@ The approved plan covers the public renderer, governed CMS, immutable static pub
 | --- | --- | --- |
 | Shared presentation boundary | Import check; public/OS builds | Public boundary check passed for 33 files; API, worker and public builds passed; OS typecheck passed |
 | Reference fidelity | Desktop/mobile screenshots and inspected responsive states | Nine widths passed without overflow; desktop/mobile inspected. Clean original hero and portrait assets and final visual acceptance remain open |
-| CMS and preview | Edit, review, isolated preview, conflict detection | Page/publication conflict detection and review permission verified against PostgreSQL. Private token, no-store and unauthenticated rejection passed; full editor acceptance tracked below |
+| CMS and preview | Edit, review, isolated preview, conflict detection | Page/publication conflict detection and review permission verified against PostgreSQL. Authenticated OS page editor and private iframe preview passed, including loaded portrait blobs and persistent noindex. Private token, no-store and unauthenticated rejection passed |
 | Publishing | Frozen snapshot, HTML artifacts, atomic activation, rollback | Real render, frozen capture, draft isolation, failed-build preservation and snapshot rollback passed |
 | Media | Variants, private drafts, retained release references | Approved portrait variants generated; static copies and file hashes verified; public byte-range response passed. S3 export remains explicitly blocked |
 | Leads | Validation, receipt, retries, ownership, calendar, qualified intake | Browser submission persisted and visible to authenticated staff. Replay, cross-firm rejection, concurrent appointments/intakes and conversion gate passed. Local SMTP capture verified |
@@ -21,6 +21,7 @@ Existing website migration history is preserved. Manifest JSON can hold complete
 
 - `apps/api/test/website-integration.test.cjs`: passed against `kka_public_local`, including a deliberate unsupported-block build failure and rollback. These failed fixture releases remain in the local release history as evidence.
 - API foundation/JSON suite: six tests passed, covering scoped permissions, CSRF and JSON preservation/validation.
+- `scripts/check-public-editor.mjs`: authenticated OS navigation to Pages, saved-draft preview, private portrait decoding and noindex passed. Ordinary page links target the configured local public origin.
 - `scripts/check-public-browser.mjs`: passed at 360, 390, 430, 640, 768, 1024, 1280, 1440 and 1920 pixels. No browser page errors; menu, validation, persisted receipt, staff visibility, reload, 404, preview token access and media ranges passed.
 - Browser evidence: `.artifacts/public-browser/result.json`, with a dated screenshot directory. Public JavaScript: approximately 136.84 KB gzip in the checked build.
 - `scripts/check-public-recovery.mjs`: cold-started a separate site process with an unreachable database and verified the cached release HTML and its static media.
