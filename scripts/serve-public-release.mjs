@@ -1,13 +1,21 @@
 import { createServer, request as proxyRequest } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import { join, resolve, sep, extname } from 'node:path';
 import { createRequire } from 'node:module';
 const require=createRequire(new URL('../packages/database/package.json',import.meta.url));const {createPrismaClient}=require('./dist/src/index.js');
 const db=createPrismaClient(process.env.DATABASE_URL);const root=resolve(process.env.WEBSITE_RELEASE_ROOT||'.artifacts/public-releases');
 let active;const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.xml':'application/xml','.txt':'text/plain','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.avif':'image/avif','.svg':'image/svg+xml','.mp4':'video/mp4','.woff2':'font/woff2'};
+const cache=join(root,'last-served-release.json');
+try{const previous=JSON.parse(await readFile(cache,'utf8'));if(previous.firmId===process.env.PUBLIC_BRANDING_FIRM_ID&&/^[a-zA-Z0-9_-]+$/.test(previous.id)&&previous.manifest?.artifact){
+ const artifact=JSON.parse(await readFile(join(root,previous.id,'release.json'),'utf8'));
+ if(Object.keys(artifact.files).length===Object.keys(previous.manifest.artifact.files).length&&Object.entries(artifact.files).every(([path,hash])=>previous.manifest.artifact.files[path]===hash))active=previous;
+}}catch{}
 let refresh,checkedAt=0;
 function refreshRelease(){
- if(!refresh)refresh=db.websitePublishRelease.findMany({where:{firmId:process.env.PUBLIC_BRANDING_FIRM_ID,status:'PUBLISHED'},orderBy:{version:'desc'}}).then(rows=>{active=rows.find(r=>r.manifest?.schemaVersion===1&&r.manifest?.artifact)||active;}).finally(()=>{checkedAt=Date.now();refresh=undefined;});
+ if(!refresh)refresh=db.websitePublishRelease.findMany({where:{firmId:process.env.PUBLIC_BRANDING_FIRM_ID,status:'PUBLISHED'},orderBy:{version:'desc'}}).then(async rows=>{
+  const next=rows.find(r=>r.manifest?.schemaVersion===1&&r.manifest?.artifact);
+  if(next&&next.id!==active?.id){const temp=cache+'.'+process.pid+'.tmp';await writeFile(temp,JSON.stringify(next));await rename(temp,cache);active=next;}
+ }).finally(()=>{checkedAt=Date.now();refresh=undefined;});
  return refresh;
 }
 const server=createServer(async(req,res)=>{
