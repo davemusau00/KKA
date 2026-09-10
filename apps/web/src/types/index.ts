@@ -413,6 +413,7 @@ export type CalendarEventType =
   | 'medical'
   | 'filing'
   | 'deadline'
+  | 'task_block'
   | 'other';
 
 export type CourtEventStatus = 'scheduled' | 'attended' | 'adjourned' | 'completed' | 'cancelled';
