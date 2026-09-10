@@ -1,0 +1,3 @@
+import {readdir,readFile} from 'node:fs/promises';import {join}from'node:path';
+let count=0;async function check(path){for(const item of await readdir(path,{withFileTypes:true})){const file=join(path,item.name);if(item.isDirectory())await check(file);else if(/\.(tsx?|css)$/.test(item.name)){count++;const source=await readFile(file,'utf8');if(/(?:from|import)\s*['"][^'"]*(?:apps\/web|@kka\/web|web\/src)/.test(source))throw new Error('OS presentation import in '+file);}}}
+await check('apps/site/src');await check('packages/site-ui/src');await check('packages/site-tokens/src');console.log(`Public presentation boundary checked: ${count} files.`);

@@ -1,0 +1,8 @@
+const {createRequire}=require('node:module');const {resolve,join}=require('node:path');const {readFile}=require('node:fs/promises');const apiRequire=createRequire(resolve('apps/api/package.json'));apiRequire('reflect-metadata');
+const {PrismaService}=require('../apps/api/dist/platform/prisma/prisma.service');const {StorageService}=require('../apps/api/dist/platform/storage/storage.service');const {AuditService}=require('../apps/api/dist/platform/audit/audit.service');const {WebsiteMediaService}=require('../apps/api/dist/modules/website/website-media.service');
+(async()=>{if(!new URL(process.env.DATABASE_URL).pathname.endsWith('/kka_public_local'))throw new Error('Only the isolated fixture database is allowed');const prisma=new PrismaService();try{const db=prisma.client;const user=await db.user.findFirst({where:{firmId:process.env.PUBLIC_BRANDING_FIRM_ID}});const media=new WebsiteMediaService(prisma,new StorageService(),new AuditService(prisma));
+for(const [slug,file]of [['kariuki-kagunda','partner-kariuki.png'],['wanjiru-kagunda','partner-wanjiru.png']]){
+ const profile=await db.websiteProfessionalProfile.findFirst({where:{firmId:user.firmId,slug}});if(!profile||profile.imageId)continue;
+ const asset=await media.upload(user,{filename:file,mimetype:'image/png',buffer:await readFile(join('apps/site/public/assets',file))},{alt:profile.name,credit:'Concept-derived development fixture; original approval required',focalX:.5,focalY:.25});
+ await db.websiteProfessionalProfile.update({where:{id:profile.id},data:{imageId:asset.id,status:'APPROVED'}});
+}console.log('Reference portraits imported with responsive variants.');}finally{await prisma.onModuleDestroy();}})().catch(error=>{console.error(error.message);process.exitCode=1;});

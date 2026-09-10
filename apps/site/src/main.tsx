@@ -15,7 +15,7 @@ async function mount(snapshot?:SiteSnapshot,url?:string){
 }
 if(location.pathname==='/preview'){
  document.title='Private website preview';const meta=document.createElement('meta');meta.name='robots';meta.content='noindex,nofollow';document.head.appendChild(meta);
- const allowed=(import.meta.env.VITE_OS_PREVIEW_ORIGINS||'http://127.0.0.1:5173,http://localhost:5173').split(',');
+ const allowed:string[]=(import.meta.env.VITE_OS_PREVIEW_ORIGINS||'http://127.0.0.1:5173,http://localhost:5173').split(',');
  const receive=async(e:MessageEvent)=>{
   if(e.source!==parent||!allowed.includes(e.origin)||e.data?.type!=='website.preview.session')return;
   removeEventListener('message',receive);clearInterval(ready);

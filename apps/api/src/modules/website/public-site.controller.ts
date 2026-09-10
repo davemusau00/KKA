@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Res } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res, NotFoundException } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { Public } from '../../platform/auth/decorators';
 import { StorageService } from '../../platform/storage/storage.service';
@@ -34,14 +34,16 @@ export class PublicSiteController {
   search(@Query('q') q = '') { return this.site.search(q); }
 
   @Get('media/:id')
-  async media(@Param('id') id: string, @Res() reply: FastifyReply) {
+  async media(@Param('id') id: string, @Query('variant') variant:string|undefined, @Res() reply: FastifyReply) {
     const asset = await this.site.media(id);
-    const stream = await this.storage.openDocument(asset.storagePath);
+    const selected=variant?(asset.variants as any)?.[variant]:asset;
+    if(!selected?.storagePath)throw new NotFoundException('Media variant not found');
+    const stream = await this.storage.openDocument(selected.storagePath);
     return reply
       .header('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
       .header('X-Content-Type-Options', 'nosniff')
       .header('Content-Disposition', 'inline')
-      .type(asset.mimeType)
+      .type(selected.mimeType)
       .send(stream);
   }
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { validateImage } from '@kka/document-engine';
+import sharp from 'sharp';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { StorageService } from '../../platform/storage/storage.service';
@@ -40,11 +40,20 @@ export class WebsiteMediaService {
     let buffer = file.buffer;
     let mimeType = file.mimetype;
     if (file.mimetype.startsWith('image/')) {
-      const validated = await validateImage(file.buffer,file.mimetype);
-      width = validated.width;
-      height = validated.height;
-      buffer = validated.buffer;
-      mimeType = validated.mimeType;
+      try{
+        const image=sharp(file.buffer,{limitInputPixels:4096*4096,animated:false});const metadata=await image.metadata();
+        const expected:Record<string,string>={jpeg:'image/jpeg',png:'image/png',webp:'image/webp',avif:'image/avif',heif:'image/avif'};
+        if(expected[metadata.format||'']!==file.mimetype || (metadata.pages??1)>1)throw new Error('Image type does not match its content');
+        const normalized=await image.rotate().png().toBuffer({resolveWithObject:true});buffer=normalized.data;width=normalized.info.width;height=normalized.info.height;mimeType='image/png';
+      }catch{throw new BadRequestException('Upload a valid, non-animated image within the image size limit.');}
+    }
+    const variants:Record<string,any>={};
+    if(width&&height){
+      for(const w of [...new Set([320,640,960,1440,1920,width].filter(w=>w<=width!))])for(const format of ['avif','webp','jpeg'] as const){
+        const output=await sharp(buffer).resize({width:w,withoutEnlargement:true}).toFormat(format,{quality:format==='avif'?55:80}).toBuffer({resolveWithObject:true});
+        const storedVariant=await this.storage.putDocument({filename:`${w}.${format}`,mimeType:`image/${format}`,buffer:output.data});
+        variants[`w${w}-${format}`]={width:output.info.width,height:output.info.height,mimeType:`image/${format}`,storagePath:storedVariant.path,checksum:storedVariant.checksumSha256};
+      }
     }
 
     const stored = await this.storage.putDocument({ filename:file.filename, mimeType, buffer });
@@ -53,7 +62,7 @@ export class WebsiteMediaService {
         firmId:user.firmId, filename:file.filename, originalName:file.filename, mimeType:stored.mimeType,
         sizeBytes:buffer.length, storagePath:stored.path, alt:meta.alt, caption:meta.caption, credit:meta.credit,
         width, height, focalX:meta.focalX, focalY:meta.focalY, checksum:stored.checksumSha256,
-        variants:{ original:{ id:'original', mimeType:stored.mimeType, width, height } }, createdById:user.id
+        variants, createdById:user.id
       }
     });
     await this.audit.record({ firmId:user.firmId, actorUserId:user.id, action:'website.media_uploaded', entityType:'website_media_asset', entityId:asset.id, metadata:{ mimeType:asset.mimeType, sizeBytes:asset.sizeBytes, originalName:asset.originalName } });

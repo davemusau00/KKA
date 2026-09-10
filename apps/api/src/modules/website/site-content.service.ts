@@ -91,7 +91,7 @@ export class SiteContentService {
     return {
       id:asset.id, url:publicAssetUrl(asset.id, asset.checksum), alt:asset.alt, caption:asset.caption,
       credit:asset.credit, mimeType:asset.mimeType, width:asset.width, height:asset.height,
-      focalX:asset.focalX, focalY:asset.focalY, variants:asset.variants
+      focalX:asset.focalX, focalY:asset.focalY, variants:Object.fromEntries(Object.entries(asset.variants||{}).map(([key,v]:[string,any])=>[key,{width:v.width,height:v.height,mimeType:v.mimeType,url:publicAssetUrl(asset.id,asset.checksum)+(asset.checksum?'&':'?')+'variant='+encodeURIComponent(key)}]))
     };
   }
 

@@ -234,10 +234,16 @@ function Textarea(props) {
   return /* @__PURE__ */ jsx("textarea", { className: "ui-input ui-textarea", ...props });
 }
 function SafeImage({ asset, fallback, alt, className = "", style, ...rest }) {
+  const [failed, setFailed] = useState(false);
   const src = asset?.url || fallback;
-  const objectPosition = asset ? `${Math.round((asset.focalX ?? 0.5) * 100)}% ${Math.round((asset.focalY ?? 0.5) * 100)}%` : void 0;
-  if (!src) return /* @__PURE__ */ jsx("div", { className: `image-unavailable ${className}`, role: "img", "aria-label": alt || "Portrait unavailable", children: "Portrait unavailable" });
-  return /* @__PURE__ */ jsx("img", { loading: "lazy", decoding: "async", src, alt: alt ?? asset?.alt ?? "", className, style: { objectPosition, ...style }, ...rest });
+  if (!src || failed) return /* @__PURE__ */ jsx("div", { className: `image-unavailable ${className}`, role: "img", "aria-label": alt || "Image unavailable", children: "Image unavailable" });
+  const position = asset ? `${(asset.focalX ?? 0.5) * 100}% ${(asset.focalY ?? 0.5) * 100}%` : void 0;
+  const variants = Object.values(asset?.variants || {});
+  const srcset = (type) => variants.filter((v) => v.mimeType === type && v.url && v.width).map((v) => `${v.url} ${v.width}w`).join(", ");
+  return /* @__PURE__ */ jsxs("picture", { children: [
+    ["image/avif", "image/webp"].map((type) => srcset(type) ? /* @__PURE__ */ jsx("source", { type, srcSet: srcset(type), sizes: rest.sizes || "(max-width: 767px) 100vw, 50vw" }, type) : null),
+    /* @__PURE__ */ jsx("img", { src, alt: alt ?? asset?.alt ?? "", width: asset?.width ?? void 0, height: asset?.height ?? void 0, loading: "lazy", decoding: "async", className, style: { objectPosition: position, ...style }, onError: () => setFailed(true), ...rest })
+  ] });
 }
 function PartnerCard({ partner, variant = "standard" }) {
   const fallback = "";
