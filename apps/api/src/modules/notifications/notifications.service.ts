@@ -2,22 +2,27 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { QueueService, QUEUES } from "../../platform/queue/queue.service";
 import { RealtimeGateway } from "../../platform/realtime/realtime.gateway";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queues: QueueService,
-    private readonly realtime: RealtimeGateway
+    private readonly realtime: RealtimeGateway,
+    private readonly access: RecordAccessService
   ) {}
 
-  list(userId: string, unreadOnly = false) {
-    return this.prisma.client.notification.findMany({
-      where: { recipientUserId: userId, ...(unreadOnly ? { readAt: null } : {}) },
+  async list(user: RequestUser, unreadOnly = false) {
+    const rows = await this.prisma.client.notification.findMany({
+      where: { recipientUserId: user.id, ...(unreadOnly ? { readAt: null } : {}) },
       include: { deliveries: true },
       orderBy: { createdAt: "desc" },
       take: 500
     });
+    const visible = await Promise.all(rows.map(async row => !row.matterId || await this.access.canViewMatter(user, row.matterId) ? row : null));
+    return visible.filter((row): row is NonNullable<typeof row> => row !== null);
   }
 
   async create(input: {
@@ -65,9 +70,11 @@ export class NotificationsService {
     return notification;
   }
 
-  markRead(userId: string, id: string) {
+  async markRead(user: RequestUser, id: string) {
+    const row = await this.prisma.client.notification.findFirst({ where: { id, recipientUserId: user.id }, select: { matterId: true } });
+    if (!row || (row.matterId && !await this.access.canViewMatter(user, row.matterId))) return { count: 0 };
     return this.prisma.client.notification.updateMany({
-      where: { id, recipientUserId: userId },
+      where: { id, recipientUserId: user.id },
       data: { readAt: new Date() }
     });
   }

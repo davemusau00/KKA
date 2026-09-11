@@ -9,11 +9,11 @@ export class NotificationsController {
 
   @Get()
   list(@CurrentUser() user: RequestUser, @Query("unread") unread?: string) {
-    return this.notifications.list(user.id, unread === "true");
+    return this.notifications.list(user, unread === "true");
   }
 
   @Post(":id/read")
   read(@CurrentUser() user: RequestUser, @Param("id") id: string) {
-    return this.notifications.markRead(user.id, id);
+    return this.notifications.markRead(user, id);
   }
 }
