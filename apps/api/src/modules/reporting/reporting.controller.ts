@@ -8,6 +8,6 @@ export class ReportingController {
   @Get("management-dashboard")
   @RequirePermissions("reports.firm.read")
   dashboard(@CurrentUser() user: RequestUser) {
-    return this.reporting.managementDashboard(user.firmId);
+    return this.reporting.managementDashboard(user);
   }
 }
