@@ -15,6 +15,7 @@
 - Password reset and self-service logout-all were exercised against the local compiled API, PostgreSQL, and Redis; valid reset tokens are single-use and reset revokes existing sessions.
 - A shared `RecordAccessService` now scopes matter lists/details/timelines, search results, clients, tasks, and document access by firm, explicit matter access, and team membership, with `matter.access_manage` as the server-side override. Focused policy tests pass; multi-user browser acceptance remains open.
 - Matter-derived management dashboard counts, court metrics, and portal grant creation/listing now use the same access policy. Approval and expense dashboard totals remain firm-scoped because those current records do not carry a direct matter relation and require a later data-model/policy decision.
+- Notification listing and read-state mutations now re-check matter visibility, preventing restricted matter content from being returned or acknowledged by an unauthorized recipient. Creation-time delivery filtering and multi-user browser acceptance remain open.
 
 ## Implemented, acceptance incomplete
 
@@ -28,7 +29,7 @@
 ## Not implemented or not proven
 
 - Password-recovery browser journey, MFA, administrative session inspection/revocation, and end-to-end invite acceptance journey remain incomplete. The password-reset API and self-service logout-all slice are locally accepted; browser automation and mail delivery remain open.
-- One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants. Matter/client/task/document/search reads plus matter-derived reports and portal administration are implemented locally; exports, notification matter filtering, approval/expense report scope, and multi-user browser acceptance remain open.
+- One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants. Matter/client/task/document/search reads, matter-derived reports, portal administration, and notification reads are implemented locally; exports, notification creation-time filtering, approval/expense report scope, and multi-user browser acceptance remain open.
 - Complete PI legal lifecycle with empty-state truthfulness, persisted stage gates, approvals, transitions, and cross-user verification.
 - Ledger-grade client-money operations and settlement reconciliation.
 - Production deployment, staging isolation, provider configuration, reviewed imports, monitoring/alerting proof, encrypted off-site backup proof, replacement-VPS restore proof, staff pilot, and firm-wide UAT.
