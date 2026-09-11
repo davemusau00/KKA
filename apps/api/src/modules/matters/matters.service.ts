@@ -7,13 +7,16 @@ import {
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { NumberingService } from "../numbering/numbering.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
 export class MattersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly numbering: NumberingService
+    private readonly numbering: NumberingService,
+    private readonly access: RecordAccessService
   ) {}
 
   /** Creates the matter and its opening records inside a caller-owned transaction. */
@@ -83,13 +86,15 @@ export class MattersService {
     return created;
   }
 
-  list(
+  async list(
     firmId: string,
-    filters: { q?: string; status?: string; branchId?: string; practiceArea?: string; stageOwnerId?: string }
-  ) {
+    filters: { q?: string; status?: string; branchId?: string; practiceArea?: string; stageOwnerId?: string },
+    user: RequestUser
+  ): Promise<any[]> {
+    const matterScope = await this.access.matterWhere(user);
     return this.prisma.client.matter.findMany({
       where: {
-        firmId,
+        ...matterScope,
         ...(filters.status ? { status: filters.status as any } : {}),
         ...(filters.branchId ? { responsibleBranchId: filters.branchId } : {}),
         ...(filters.practiceArea ? { practiceArea: filters.practiceArea } : {}),
@@ -113,9 +118,10 @@ export class MattersService {
     });
   }
 
-  async get(firmId: string, id: string) {
+  async get(firmId: string, id: string, user?: RequestUser) {
+    const matterScope = user ? await this.access.matterWhere(user) : { firmId };
     const matter = await this.prisma.client.matter.findFirst({
-      where: { id, firmId },
+      where: { id, ...matterScope },
       include: {
         client: true,
         originatingBranch: true,
@@ -517,7 +523,10 @@ export class MattersService {
     return updated;
   }
 
-  timeline(firmId: string, matterId: string) {
+  async timeline(firmId: string, matterId: string, user: RequestUser) {
+    const matterScope = await this.access.matterWhere(user);
+    const visible = await this.prisma.client.matter.findFirst({ where: { id: matterId, ...matterScope }, select: { id: true } });
+    if (!visible) throw new NotFoundException("Matter not found");
     return this.prisma.client.auditEvent.findMany({
       where: { firmId, matterId },
       orderBy: { occurredAt: "desc" },

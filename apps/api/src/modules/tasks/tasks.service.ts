@@ -1,18 +1,22 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
 export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly access: RecordAccessService
   ) {}
 
-  list(firmId: string, filters: { matterId?: string; assignedToId?: string; status?: string }) {
+  async list(firmId: string, filters: { matterId?: string; assignedToId?: string; status?: string }, user: RequestUser) {
+    const matterScope = await this.access.matterWhere(user);
     return this.prisma.client.task.findMany({
       where: {
-        matter: filters.matterId ? { id: filters.matterId, firmId } : { firmId },
+        matter: filters.matterId ? { id: filters.matterId, ...matterScope } : matterScope,
         ...(filters.assignedToId ? { assignedToId: filters.assignedToId } : {}),
         ...(filters.status ? { status: filters.status as any } : {})
       },

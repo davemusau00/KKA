@@ -18,13 +18,13 @@ export class MattersController {
     @Query("practiceArea") practiceArea?: string,
     @Query("stageOwnerId") stageOwnerId?: string
   ) {
-    return this.matters.list(user.firmId, { q, status, branchId, practiceArea, stageOwnerId });
+    return this.matters.list(user.firmId, { q, status, branchId, practiceArea, stageOwnerId }, user);
   }
 
   @Get(":id")
   @RequirePermissions("matter.view")
   get(@CurrentUser() user: RequestUser, @Param("id") id: string) {
-    return this.matters.get(user.firmId, id);
+    return this.matters.get(user.firmId, id, user);
   }
 
   @Post()
@@ -64,6 +64,6 @@ export class MattersController {
   @Get(":id/timeline")
   @RequirePermissions("matter.view")
   timeline(@CurrentUser() user: RequestUser, @Param("id") id: string) {
-    return this.matters.timeline(user.firmId, id);
+    return this.matters.timeline(user.firmId, id, user);
   }
 }

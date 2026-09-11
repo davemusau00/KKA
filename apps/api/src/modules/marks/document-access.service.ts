@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import type { RequestUser } from '../../platform/auth/auth.types';
+import { RecordAccessService } from '../../platform/auth/record-access.service';
 @Injectable()
 export class DocumentAccessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: RecordAccessService) {}
   async document(user: RequestUser, id: string) {
     const document = await this.prisma.client.document.findFirst({ where: { id, matter: { firmId: user.firmId } }, include: { matter: true } });
     if (!document) throw new NotFoundException('Document not found');
@@ -14,12 +15,8 @@ export class DocumentAccessService {
     return document;
   }
   async matter(user: RequestUser, id: string) {
-    const matter = await this.prisma.client.matter.findFirst({ where: { id, firmId: user.firmId } });
+    const matter = await this.prisma.client.matter.findFirst({ where: { id, ...(await this.access.matterWhere(user)) } });
     if (!matter) throw new NotFoundException('Matter not found');
-    if (!user.roleKeys.some(r => ['managing_partner','technical_admin'].includes(r))) {
-      const branch = await this.prisma.client.userBranch.findFirst({ where: { userId: user.id, branchId: matter.responsibleBranchId } });
-      if (!branch) throw new ForbiddenException('Matter branch access required');
-    }
     return matter;
   }
 }

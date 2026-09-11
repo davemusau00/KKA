@@ -16,7 +16,7 @@ export class TasksController {
     @Query("assignedToId") assignedToId?: string,
     @Query("status") status?: string
   ) {
-    return this.tasks.list(user.firmId, { matterId, assignedToId, status });
+    return this.tasks.list(user.firmId, { matterId, assignedToId, status }, user);
   }
 
   @Post()

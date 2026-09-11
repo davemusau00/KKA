@@ -10,6 +10,6 @@ export class SearchController {
   @Get()
   search(@CurrentUser() user: RequestUser, @Query("q") q?: string) {
     if (!q) throw new BadRequestException("q is required");
-    return this.searchService.search(user.firmId, q);
+    return this.searchService.search(user, q);
   }
 }

@@ -1,16 +1,20 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: RecordAccessService) {}
 
-  async search(firmId: string, q: string) {
+  async search(user: RequestUser, q: string) {
     const term = q.trim();
     if (term.length < 2) return { matters: [], clients: [], documents: [], tasks: [], proceedings: [], directory: [] };
+    const matterScope = await this.access.matterWhere(user);
+    const matterWhere = { ...matterScope };
     const [matters, clients, documents, tasks, proceedings, directory] = await Promise.all([
       this.prisma.client.matter.findMany({
-        where: { firmId, OR: [
+        where: { ...matterWhere, OR: [
           { internalReference: { contains: term, mode: "insensitive" } },
           { title: { contains: term, mode: "insensitive" } },
           { summary: { contains: term, mode: "insensitive" } }
@@ -19,7 +23,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.client.findMany({
-        where: { firmId, OR: [
+        where: { firmId: user.firmId, matters: { some: matterWhere }, OR: [
           { displayName: { contains: term, mode: "insensitive" } },
           { clientNumber: { contains: term, mode: "insensitive" } },
           { phone: { contains: term } },
@@ -29,7 +33,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.document.findMany({
-        where: { matter: { firmId }, OR: [
+        where: { matter: matterWhere, OR: [
           { title: { contains: term, mode: "insensitive" } },
           { documentType: { contains: term, mode: "insensitive" } }
         ] },
@@ -37,7 +41,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.task.findMany({
-        where: { matter: { firmId }, OR: [
+        where: { matter: matterWhere, OR: [
           { title: { contains: term, mode: "insensitive" } },
           { description: { contains: term, mode: "insensitive" } }
         ] },
@@ -45,7 +49,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.courtProceeding.findMany({
-        where: { matter: { firmId }, OR: [
+        where: { matter: matterWhere, OR: [
           { caseNumber: { contains: term, mode: "insensitive" } },
           { courtName: { contains: term, mode: "insensitive" } }
         ] },
@@ -53,7 +57,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.directoryContact.findMany({
-        where: { firmId, OR: [
+        where: { firmId: user.firmId, OR: [
           { displayName: { contains: term, mode: "insensitive" } },
           { organizationName: { contains: term, mode: "insensitive" } },
           { phone: { contains: term } }

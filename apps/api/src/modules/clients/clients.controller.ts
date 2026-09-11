@@ -11,13 +11,13 @@ export class ClientsController {
   @Get()
   @RequirePermissions("module.clients")
   list(@CurrentUser() user: RequestUser, @Query("q") q?: string) {
-    return this.clients.list(user.firmId, q);
+    return this.clients.list(user.firmId, q, user);
   }
 
   @Get(":id")
   @RequirePermissions("module.clients")
   get(@CurrentUser() user: RequestUser, @Param("id") id: string) {
-    return this.clients.get(user.firmId, id);
+    return this.clients.get(user.firmId, id, user);
   }
 
   @Post()

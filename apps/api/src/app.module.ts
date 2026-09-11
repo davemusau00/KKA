@@ -9,6 +9,7 @@ import { StorageModule } from "./platform/storage/storage.module";
 import { RealtimeModule } from "./platform/realtime/realtime.module";
 import { SessionGuard } from "./platform/auth/session.guard";
 import { PermissionsGuard } from "./platform/auth/permissions.guard";
+import { RecordAccessModule } from "./platform/auth/record-access.module";
 import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -52,6 +53,7 @@ import { WebsiteModule } from "./modules/website/website.module";
     QueueModule,
     StorageModule,
     RealtimeModule,
+    RecordAccessModule,
     NumberingModule,
     HealthModule,
     AuthModule,

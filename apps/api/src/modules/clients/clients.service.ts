@@ -2,19 +2,24 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { NumberingService } from "../numbering/numbering.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
 export class ClientsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly numbering: NumberingService
+    private readonly numbering: NumberingService,
+    private readonly access: RecordAccessService
   ) {}
 
-  async list(firmId: string, q?: string) {
+  async list(firmId: string, q: string | undefined, user: RequestUser) {
+    const matterScope = await this.access.matterWhere(user);
     return this.prisma.client.client.findMany({
       where: {
         firmId,
+        matters: { some: matterScope },
         ...(q ? {
           OR: [
             { displayName: { contains: q, mode: "insensitive" } },
@@ -30,9 +35,10 @@ export class ClientsService {
     });
   }
 
-  async get(firmId: string, id: string) {
+  async get(firmId: string, id: string, user: RequestUser) {
+    const matterScope = await this.access.matterWhere(user);
     const client = await this.prisma.client.client.findFirst({
-      where: { id, firmId },
+      where: { id, firmId, matters: { some: matterScope } },
       include: {
         matters: {
           select: {

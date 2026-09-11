@@ -13,6 +13,7 @@
 - Provider and backup/integration fallbacks are required to report unavailable, manual, failed, or unimplemented states; local checks do not prove external delivery, payment, filing, synchronization, backup, or restore.
 - Password-reset request and token-consumption API paths now exist with expiring single-use hashed tokens, generic request behavior, local-only token exposure behind an explicit flag, audit events, and revocation of indexed sessions. Mail delivery remains unconfigured.
 - Password reset and self-service logout-all were exercised against the local compiled API, PostgreSQL, and Redis; valid reset tokens are single-use and reset revokes existing sessions.
+- A shared `RecordAccessService` now scopes matter lists/details/timelines, search results, clients, tasks, and document access by firm, explicit matter access, and team membership, with `matter.access_manage` as the server-side override. Focused policy tests pass; multi-user browser acceptance remains open.
 
 ## Implemented, acceptance incomplete
 
@@ -26,7 +27,7 @@
 ## Not implemented or not proven
 
 - Password-recovery browser journey, MFA, administrative session inspection/revocation, and end-to-end invite acceptance journey remain incomplete. The password-reset API and self-service logout-all slice are locally accepted; browser automation and mail delivery remain open.
-- One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants.
+- One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants. The first API slice now covers matter/client/task/document/search reads; exports, reports, notifications, and portal grants remain open.
 - Complete PI legal lifecycle with empty-state truthfulness, persisted stage gates, approvals, transitions, and cross-user verification.
 - Ledger-grade client-money operations and settlement reconciliation.
 - Production deployment, staging isolation, provider configuration, reviewed imports, monitoring/alerting proof, encrypted off-site backup proof, replacement-VPS restore proof, staff pilot, and firm-wide UAT.
