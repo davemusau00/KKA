@@ -1,22 +1,32 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import { roleContext } from "../../platform/auth/role-context";
 
 @Injectable()
 export class PersonalInjuryService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly recordAccess: RecordAccessService) {}
 
-  private async assertMatter(firmId: string, matterId: string) {
+  private async assertMatter(firmId: string, actorId: string, matterId: string) {
     const matter = await this.prisma.client.matter.findFirst({ where: { id: matterId, firmId } });
     if (!matter) throw new NotFoundException("Matter not found");
+    const actor = await this.prisma.client.user.findFirst({
+      where: { id: actorId, firmId },
+      include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } }
+    });
+    if (!actor) throw new NotFoundException("Matter not found");
+    const context = roleContext(firmId, actor.roles);
+    const canView = await this.recordAccess.canViewMatter({ id: actor.id, firmId, email: actor.email, fullName: actor.fullName, homeBranchId: actor.homeBranchId, ...context }, matterId);
+    if (!canView) throw new NotFoundException("Matter not found");
     if (matter.practiceArea.toLowerCase() !== "personal injury") {
       throw new BadRequestException("Structured personal-injury data is only available for Personal Injury matters");
     }
     return matter;
   }
 
-  private async profile(firmId: string, matterId: string) {
-    await this.assertMatter(firmId, matterId);
+  private async profile(firmId: string, actorId: string, matterId: string) {
+    await this.assertMatter(firmId, actorId, matterId);
     return this.prisma.client.personalInjuryCase.upsert({
       where: { matterId },
       create: { matterId },
@@ -24,8 +34,8 @@ export class PersonalInjuryService {
     });
   }
 
-  async get(firmId: string, matterId: string) {
-    await this.profile(firmId, matterId);
+  async get(firmId: string, actorId: string, matterId: string) {
+    await this.profile(firmId, actorId, matterId);
     return this.prisma.client.personalInjuryCase.findUnique({
       where: { matterId },
       include: {
@@ -41,7 +51,7 @@ export class PersonalInjuryService {
   }
 
   async updateProfile(firmId: string, actorId: string, matterId: string, input: any) {
-    await this.profile(firmId, matterId);
+    await this.profile(firmId, actorId, matterId);
     const data = { ...input };
     if (data.incidentDate) data.incidentDate = new Date(data.incidentDate);
     const updated = await this.prisma.client.personalInjuryCase.update({ where: { matterId }, data });
@@ -50,14 +60,14 @@ export class PersonalInjuryService {
   }
 
   async addVehicle(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piVehicle.create({ data: { personalInjuryId: p.id, ...input } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.vehicle_added", entityType: "pi_vehicle", entityId: row.id, matterId, metadata: { registrationNo: row.registrationNo } });
     return row;
   }
 
   async addWitness(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const data = { ...input, statementDate: input.statementDate ? new Date(input.statementDate) : undefined };
     const row = await this.prisma.client.piWitness.create({ data: { personalInjuryId: p.id, ...data } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.witness_added", entityType: "pi_witness", entityId: row.id, matterId, metadata: { name: row.name } });
@@ -65,21 +75,21 @@ export class PersonalInjuryService {
   }
 
   async addEvidence(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piEvidenceItem.create({ data: { personalInjuryId: p.id, ...input, obtainedAt: input.obtainedAt ? new Date(input.obtainedAt) : undefined } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.evidence_added", entityType: "pi_evidence", entityId: row.id, matterId, metadata: { category: row.category, documentId: row.documentId } });
     return row;
   }
 
   async addInjury(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piInjury.create({ data: { personalInjuryId: p.id, ...input } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.injury_added", entityType: "pi_injury", entityId: row.id, matterId, metadata: { description: row.description } });
     return row;
   }
 
   async addTreatment(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piTreatmentEpisode.create({ data: {
       personalInjuryId: p.id, ...input,
       admissionDate: input.admissionDate ? new Date(input.admissionDate) : undefined,
@@ -90,7 +100,7 @@ export class PersonalInjuryService {
   }
 
   async addMedicalReport(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piMedicalReportRequest.create({ data: {
       personalInjuryId: p.id, ...input,
       requestedAt: input.requestedAt ? new Date(input.requestedAt) : undefined,
@@ -101,7 +111,7 @@ export class PersonalInjuryService {
   }
 
   async updateMedicalReport(firmId: string, actorId: string, matterId: string, id: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const found = await this.prisma.client.piMedicalReportRequest.findFirst({ where: { id, personalInjuryId: p.id } });
     if (!found) throw new NotFoundException("Medical report request not found");
     const data: any = { ...input };
@@ -112,7 +122,7 @@ export class PersonalInjuryService {
   }
 
   async updateLiability(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const { specialDamages = [], ...data } = input;
     const row = await this.prisma.client.$transaction(async (tx) => {
       const liability = await tx.piLiabilityAssessment.upsert({
@@ -131,14 +141,14 @@ export class PersonalInjuryService {
   }
 
   async addNegotiation(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piNegotiationEntry.create({ data: { personalInjuryId: p.id, recordedById: actorId, ...input, occurredAt: input.occurredAt ? new Date(input.occurredAt) : new Date() } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.negotiation_recorded", entityType: "pi_negotiation", entityId: row.id, matterId, metadata: { party: row.party, direction: row.direction, amount: row.amount?.toString() } });
     return row;
   }
 
   async updateHearingBrief(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piHearingBrief.upsert({
       where: { personalInjuryId: p.id },
       create: { personalInjuryId: p.id, ...input, readyAt: input.ready ? new Date() : undefined, readyById: input.ready ? actorId : undefined },
@@ -149,7 +159,7 @@ export class PersonalInjuryService {
   }
 
   async updateJudgment(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const defendantPercent = input.liabilityDefendantPercent ?? input.liabilityPercent;
     const claimantPercent = input.liabilityClaimantPercent ?? (defendantPercent === undefined ? undefined : 100 - Number(defendantPercent));
     const data: any = {
@@ -176,7 +186,7 @@ export class PersonalInjuryService {
   }
 
   async addRecovery(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const row = await this.prisma.client.piRecoveryAction.create({ data: {
       personalInjuryId: p.id, createdById: actorId, ...input,
       dueAt: input.dueAt ? new Date(input.dueAt) : undefined,
@@ -187,7 +197,7 @@ export class PersonalInjuryService {
   }
 
   async updateSettlement(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const { deductions = [], ...data } = input;
     if (data.paidAt) data.paidAt = new Date(data.paidAt);
     const row = await this.prisma.client.$transaction(async (tx) => {
@@ -203,7 +213,7 @@ export class PersonalInjuryService {
   }
 
   async updateClosure(firmId: string, actorId: string, matterId: string, input: any) {
-    const p = await this.profile(firmId, matterId);
+    const p = await this.profile(firmId, actorId, matterId);
     const data = { ...input, approvedAt: input.supervisorApproved ? new Date() : undefined, approvedById: input.supervisorApproved ? actorId : undefined, archivedAt: input.archivedAt ? new Date(input.archivedAt) : undefined };
     const row = await this.prisma.client.piClosureRecord.upsert({ where: { personalInjuryId: p.id }, create: { personalInjuryId: p.id, ...data }, update: data });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.closure_record_updated", entityType: "pi_closure", entityId: row.id, matterId, metadata: { supervisorApproved: row.supervisorApproved, financeReconciled: row.financeReconciled } });

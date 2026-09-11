@@ -10,7 +10,7 @@ export class PersonalInjuryController {
   constructor(private readonly pi: PersonalInjuryService) {}
 
   @Get(":matterId") @RequirePermissions("matter.view")
-  get(@CurrentUser() u: RequestUser, @Param("matterId") id: string) { return this.pi.get(u.firmId, id); }
+  get(@CurrentUser() u: RequestUser, @Param("matterId") id: string) { return this.pi.get(u.firmId, u.id, id); }
 
   @Put(":matterId/profile") @RequirePermissions("matter.edit")
   profile(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Body() body: unknown) {
