@@ -12,6 +12,7 @@ import {
   Box,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { MatterClosureAuditData, Matter } from '../../../types';
 
 interface MatterClosureWizardProps {
@@ -37,7 +38,11 @@ export const MatterClosureWizard: React.FC<MatterClosureWizardProps> = ({ matter
     archivedAt: new Date().toISOString(),
   };
 
-  const [localData, setLocalData] = useState<MatterClosureAuditData>(data);
+  const safeData: MatterClosureAuditData = runtimeConfig.enableDemoMode ? data : {
+    matterId: matter.id, isJudgmentSettlementComplete: false, isClientFundsReconciled: false, isOutstandingExpensesResolved: false,
+    isFinalPaymentMade: false, isClientInformedAndDischarged: false, areAllDocumentsFiled: false, physicalFileLocation: '', closingNote: '', supervisorApproved: false,
+  };
+  const [localData, setLocalData] = useState<MatterClosureAuditData>(safeData);
   const [closedSuccess, setClosedSuccess] = useState(false);
 
   const canClose =
@@ -51,7 +56,7 @@ export const MatterClosureWizard: React.FC<MatterClosureWizardProps> = ({ matter
 
   const handleExecuteClosure = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canClose) return;
+    if (!canClose || !runtimeConfig.enableDemoMode) return;
 
     finalizeMatterClosureWizard(matter.id, localData);
     setClosedSuccess(true);
@@ -59,6 +64,7 @@ export const MatterClosureWizard: React.FC<MatterClosureWizardProps> = ({ matter
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server closure record is connected. Completion, reconciliation, approval, and archive status are not assumed.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>

@@ -16,6 +16,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { IncidentEvidenceData, Matter, VehicleRecord, WitnessRecord, IncidentExhibit } from '../../../types';
 
 interface IncidentEvidenceWorkspaceProps {
@@ -96,7 +97,11 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
     ],
   };
 
-  const [localData, setLocalData] = useState<IncidentEvidenceData>(data);
+  const safeData: IncidentEvidenceData = runtimeConfig.enableDemoMode ? data : {
+    incident: { date: '', time: '', location: '', description: '', obNumber: '', policeStation: '', investigatingOfficer: '', officerPhone: '', roadConditions: '' },
+    vehicles: [], witnesses: [], exhibits: [],
+  };
+  const [localData, setLocalData] = useState<IncidentEvidenceData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // New vehicle form state
@@ -107,7 +112,7 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
     driverName: '',
     driverLicenseNo: '',
     ownerName: '',
-    insuranceCompany: 'Directline Assurance Ltd',
+    insuranceCompany: '',
     policyNumber: '',
     ntsaSearchObtained: false,
     notes: '',
@@ -124,6 +129,7 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
   });
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updateIncidentEvidence(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -138,7 +144,7 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
       driverName: vehForm.driverName || 'Unknown Driver',
       driverLicenseNo: vehForm.driverLicenseNo || '',
       ownerName: vehForm.ownerName || 'Unknown Owner',
-      insuranceCompany: vehForm.insuranceCompany || 'Directline Assurance Ltd',
+    insuranceCompany: vehForm.insuranceCompany || '',
       policyNumber: vehForm.policyNumber || '',
       ntsaSearchObtained: Boolean(vehForm.ntsaSearchObtained),
       ntsaSearchRef: vehForm.ntsaSearchRef || '',
@@ -155,7 +161,7 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
       driverName: '',
       driverLicenseNo: '',
       ownerName: '',
-      insuranceCompany: 'Directline Assurance Ltd',
+      insuranceCompany: '',
       policyNumber: '',
       ntsaSearchObtained: false,
       notes: '',
@@ -203,6 +209,7 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server incident or evidence record is connected to this workspace. Example facts are hidden and no browser-only save is available.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -228,6 +235,7 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

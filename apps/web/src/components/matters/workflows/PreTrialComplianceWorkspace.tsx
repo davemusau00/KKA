@@ -10,6 +10,7 @@ import {
   Scale,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { PreTrialComplianceData, Matter } from '../../../types';
 
 interface PreTrialComplianceWorkspaceProps {
@@ -21,22 +22,15 @@ export const PreTrialComplianceWorkspace: React.FC<PreTrialComplianceWorkspacePr
 
   const data: PreTrialComplianceData = preTrialCompliances[matter.id] || {
     matterId: matter.id,
-    listOfWitnesses: true,
-    witnessStatements: true,
-    listOfDocuments: true,
-    documentBundle: true,
-    agreedIssues: true,
-    preTrialQuestionnaire: true,
-    expertDocuments: true,
-    courtDirections: 'Defendants admit occurrence of accident but dispute quantum of damages. Trial set for 1 full day with all witness statements adopted.',
-    complianceDeadline: new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10),
-    isCompliant: true,
+    listOfWitnesses: false, witnessStatements: false, listOfDocuments: false, documentBundle: false,
+    agreedIssues: false, preTrialQuestionnaire: false, expertDocuments: false, courtDirections: '', complianceDeadline: '', isCompliant: false,
   };
 
   const [localData, setLocalData] = useState<PreTrialComplianceData>(data);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updatePreTrialCompliance(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -58,6 +52,7 @@ export const PreTrialComplianceWorkspace: React.FC<PreTrialComplianceWorkspacePr
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server pre-trial compliance record is connected. No filing, direction, witness, or disclosure status is assumed.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -83,6 +78,7 @@ export const PreTrialComplianceWorkspace: React.FC<PreTrialComplianceWorkspacePr
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

@@ -14,6 +14,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { PleadingsBundleData, Matter } from '../../../types';
 
 interface PleadingsBundleWorkspaceProps {
@@ -39,7 +40,11 @@ export const PleadingsBundleWorkspace: React.FC<PleadingsBundleWorkspaceProps> =
     readyForFilingPackage: false,
   };
 
-  const [localData, setLocalData] = useState<PleadingsBundleData>(data);
+  const safeData: PleadingsBundleData = runtimeConfig.enableDemoMode ? data : {
+    id: `plb-${matter.id}`, matterId: matter.id, plaintStatus: 'draft', verifyingAffidavitStatus: 'draft', witnessStatements: [],
+    listOfWitnesses: false, listOfDocuments: false, supportingDocumentsAttached: false, bundleReviewStatus: 'draft', readyForFilingPackage: false,
+  };
+  const [localData, setLocalData] = useState<PleadingsBundleData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // New witness statement form
@@ -47,6 +52,7 @@ export const PleadingsBundleWorkspace: React.FC<PleadingsBundleWorkspaceProps> =
   const [newWitnessName, setNewWitnessName] = useState('');
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updatePleadingsBundle(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -101,6 +107,7 @@ export const PleadingsBundleWorkspace: React.FC<PleadingsBundleWorkspaceProps> =
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

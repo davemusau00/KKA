@@ -12,6 +12,7 @@ import {
   Building,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { HearingBriefData, Matter } from '../../../types';
 
 interface HearingPreparationWorkspaceProps {
@@ -46,10 +47,15 @@ export const HearingPreparationWorkspace: React.FC<HearingPreparationWorkspacePr
     isReadyForHearing: true,
   };
 
-  const [localData, setLocalData] = useState<HearingBriefData>(data);
+  const safeData: HearingBriefData = runtimeConfig.enableDemoMode ? data : {
+    matterId: matter.id, courtName: '', hearingDate: '', assignedAdvocateId: '', witnesses: [], documents: [],
+    issues: { liability: '', quantum: '' }, opposingCounsel: '', currentSettlementOffer: '', advocateNotes: '', isReadyForHearing: false,
+  };
+  const [localData, setLocalData] = useState<HearingBriefData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updateHearingBrief(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -82,6 +88,7 @@ export const HearingPreparationWorkspace: React.FC<HearingPreparationWorkspacePr
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { MedicalCaseData, Matter, InjuryRecord, MedicalReportRequest } from '../../../types';
 
 interface MedicalManagementWorkspaceProps {
@@ -96,7 +97,13 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
     totalMedicalExpensesIncurred: 285400,
   };
 
-  const [localData, setLocalData] = useState<MedicalCaseData>(data);
+  const safeData: MedicalCaseData = runtimeConfig.enableDemoMode ? data : {
+    injuries: [], medicalProviders: [], treatmentEpisodes: [],
+    p3Form: { issuedByDoctor: '', policeStationRef: '', dateExamined: '', degreeOfHarm: 'Harm', status: 'requested' },
+    imagingAndRecords: [], medicalReportRequests: [], permanentDisabilityOverallPercent: 0,
+    futureTreatmentEstimateTotal: 0, totalMedicalExpensesIncurred: 0,
+  };
+  const [localData, setLocalData] = useState<MedicalCaseData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // New injury form
@@ -114,14 +121,15 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
     doctorName: '',
     specialty: 'Consultant Orthopaedic Surgeon',
     facility: 'Nairobi',
-    feeAmount: 25000,
-    status: 'complete',
-    permanentDisabilityPercent: 20,
-    futureTreatmentEstimate: 150000,
+    feeAmount: 0,
+    status: 'requested',
+    permanentDisabilityPercent: 0,
+    futureTreatmentEstimate: 0,
     futureTreatmentNotes: '',
   });
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updateMedicalCase(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -196,6 +204,7 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server medical record is connected to this workspace. Example injuries, treatment, reports, and disability findings are hidden.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -221,6 +230,7 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

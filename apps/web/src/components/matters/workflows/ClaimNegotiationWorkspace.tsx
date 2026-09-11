@@ -14,6 +14,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { ClaimNegotiationData, Matter, NegotiationLedgerItem } from '../../../types';
 
 interface ClaimNegotiationWorkspaceProps {
@@ -65,7 +66,12 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
     },
   };
 
-  const [localData, setLocalData] = useState<ClaimNegotiationData>(data);
+  const safeData: ClaimNegotiationData = runtimeConfig.enableDemoMode ? data : {
+    insurer: { name: '', policyNumber: '', claimReference: '', contactPerson: '', contactPhone: '', contactEmail: '', status: 'notice_sent' },
+    negotiationLedger: [],
+    settlementApproval: { recommendedAmount: 0, clientAuthorized: false, partnerApproved: false, dischargeVoucherSigned: false },
+  };
+  const [localData, setLocalData] = useState<ClaimNegotiationData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // New negotiation entry state
@@ -76,11 +82,12 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
     notes: string;
   }>({
     party: 'insurer',
-    offerAmount: 1350000,
+    offerAmount: 0,
     notes: '',
   });
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updateClaimNegotiation(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -130,6 +137,7 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server negotiation or settlement-authority record is connected. Example insurer offers and approvals are hidden.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -155,6 +163,7 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
