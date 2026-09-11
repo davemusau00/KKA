@@ -691,72 +691,72 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Domain legal workflow states
   const [incidentEvidence, setIncidentEvidence] = useState<Record<string, IncidentEvidenceData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_incident_evidence`);
-    return saved ? JSON.parse(saved) : SEED_INCIDENT_EVIDENCE;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_INCIDENT_EVIDENCE : {});
   });
 
   const [medicalCases, setMedicalCases] = useState<Record<string, MedicalCaseData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_medical_cases`);
-    return saved ? JSON.parse(saved) : SEED_MEDICAL_CASES;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_MEDICAL_CASES : {});
   });
 
   const [liabilityQuantums, setLiabilityQuantums] = useState<Record<string, LiabilityQuantumData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_liability_quantum`);
-    return saved ? JSON.parse(saved) : SEED_LIABILITY_QUANTUM;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_LIABILITY_QUANTUM : {});
   });
 
   const [claimNegotiations, setClaimNegotiations] = useState<Record<string, ClaimNegotiationData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_claim_negotiations`);
-    return saved ? JSON.parse(saved) : SEED_CLAIM_NEGOTIATION;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_CLAIM_NEGOTIATION : {});
   });
 
   const [pleadingsBundles, setPleadingsBundles] = useState<Record<string, PleadingsBundleData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_pleadings_bundles`);
-    return saved ? JSON.parse(saved) : SEED_PLEADINGS_BUNDLES;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_PLEADINGS_BUNDLES : {});
   });
 
   const [courtFilingPackages, setCourtFilingPackages] = useState<CourtFilingPackage[]>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_court_filings`);
-    return saved ? JSON.parse(saved) : SEED_COURT_FILING_PACKAGES;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_COURT_FILING_PACKAGES : []);
   });
 
   const [serviceQueue, setServiceQueue] = useState<ServiceQueueItem[]>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_service_queue`);
-    return saved ? JSON.parse(saved) : SEED_SERVICE_QUEUE;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_SERVICE_QUEUE : []);
   });
 
   const [preTrialCompliances, setPreTrialCompliances] = useState<Record<string, PreTrialComplianceData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_pretrial_compliance`);
-    return saved ? JSON.parse(saved) : SEED_PRE_TRIAL_COMPLIANCE;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_PRE_TRIAL_COMPLIANCE : {});
   });
 
   const [hearingBriefs, setHearingBriefs] = useState<Record<string, HearingBriefData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_hearing_briefs`);
-    return saved ? JSON.parse(saved) : SEED_HEARING_BRIEFS;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_HEARING_BRIEFS : {});
   });
 
   const [judgmentAwards, setJudgmentAwards] = useState<Record<string, JudgmentAwardData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_judgment_awards`);
-    return saved ? JSON.parse(saved) : SEED_JUDGMENT_AWARDS;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_JUDGMENT_AWARDS : {});
   });
 
   const [recoveryExecutions, setRecoveryExecutions] = useState<Record<string, RecoveryExecutionData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_recovery_executions`);
-    return saved ? JSON.parse(saved) : SEED_RECOVERY_EXECUTION;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_RECOVERY_EXECUTION : {});
   });
 
   const [settlementDistributions, setSettlementDistributions] = useState<Record<string, SettlementDistributionData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_settlement_distributions`);
-    return saved ? JSON.parse(saved) : SEED_SETTLEMENT_DISTRIBUTIONS;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_SETTLEMENT_DISTRIBUTIONS : {});
   });
 
   const [closureAudits, setClosureAudits] = useState<Record<string, MatterClosureAuditData>>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_closure_audits`);
-    return saved ? JSON.parse(saved) : SEED_CLOSURE_AUDITS;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_CLOSURE_AUDITS : {});
   });
 
   const [directoryContacts, setDirectoryContacts] = useState<DirectoryContact[]>(() => {
     const saved = demoStorage.getItem(`${LOCAL_STORAGE_KEY}_directory_contacts`);
-    return saved ? JSON.parse(saved) : SEED_DIRECTORY_CONTACTS;
+    return saved ? JSON.parse(saved) : (runtimeConfig.enableDemoMode ? SEED_DIRECTORY_CONTACTS : []);
   });
 
   // Production must never render or persist browser seed records. The server is the
@@ -2101,6 +2101,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const updateLiabilityQuantum = useCallback((matterId: string, updates: Partial<LiabilityQuantumData>) => {
+    if (!runtimeConfig.enableDemoMode) return;
     setLiabilityQuantums((prev) => ({
       ...prev,
       [matterId]: {
@@ -2320,6 +2321,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Judgment, Recovery, Settlement, Closure
   const updateJudgmentAward = useCallback((matterId: string, updates: Partial<JudgmentAwardData>) => {
+    if (!runtimeConfig.enableDemoMode) return;
     setJudgmentAwards((prev) => ({
       ...prev,
       [matterId]: {
@@ -2330,6 +2332,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const triggerRecoveryFromJudgment = useCallback((matterId: string) => {
+    if (!runtimeConfig.enableDemoMode) return;
     setJudgmentAwards((prev) => {
       const cur = prev[matterId];
       if (!cur) return prev;
@@ -2365,6 +2368,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [notify]);
 
   const updateRecoveryExecution = useCallback((matterId: string, updates: Partial<RecoveryExecutionData>) => {
+    if (!runtimeConfig.enableDemoMode) return;
     setRecoveryExecutions((prev) => ({
       ...prev,
       [matterId]: {
@@ -2375,6 +2379,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const updateSettlementDistribution = useCallback((matterId: string, updates: Partial<SettlementDistributionData>) => {
+    if (!runtimeConfig.enableDemoMode) return;
     setSettlementDistributions((prev) => ({
       ...prev,
       [matterId]: {
@@ -2385,6 +2390,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const disburseClientSettlement = useCallback((matterId: string, paymentMethod: 'M-Pesa B2C' | 'Bank Wire' | 'Cheque', ref: string) => {
+    if (!runtimeConfig.enableDemoMode) return;
     const now = new Date().toISOString();
     setSettlementDistributions((prev) => {
       const cur = prev[matterId];

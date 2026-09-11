@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { SettlementDistributionData, Matter } from '../../../types';
 
 interface SettlementDistributionWorkspaceProps {
@@ -26,24 +27,10 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
 
   const data: SettlementDistributionData = settlementDistributions[matter.id] || {
     matterId: matter.id,
-    grossSettlementAmount: 1741000,
-    fundsReceivedDate: new Date().toISOString().slice(0, 10),
-    account: 'Client Trust Account (Co-op Bank - 01129384819000)',
-    outstandingDisbursements: [
-      { id: 'disb-1', head: 'Medical Reports & P3 Form Fee', amount: 25000, voucherRef: 'VOUCH-082' },
-      { id: 'disb-2', head: 'Court Filing & Process Server Fees', amount: 23500, voucherRef: 'VOUCH-104' },
-    ],
-    totalDisbursements: 48500,
-    professionalFees: 348200,
-    vatOnFees: 55712,
+    grossSettlementAmount: 0, fundsReceivedDate: '', account: 'Client Trust Account', outstandingDisbursements: [],
+    totalDisbursements: 0, professionalFees: 0, vatOnFees: 0,
     otherDeductions: [],
-    netClientAmount: 1288588,
-    settlementStatementProduced: true,
-    clientApprovalStatus: 'disbursed',
-    clientApprovedAt: new Date().toISOString(),
-    paymentMethod: 'Bank Wire',
-    paymentReference: 'EFT-KK-2026-00481',
-    disbursedAt: new Date().toISOString(),
+    netClientAmount: 0, settlementStatementProduced: false, clientApprovalStatus: 'pending', paymentMethod: 'M-Pesa B2C',
   };
 
   const [localData, setLocalData] = useState<SettlementDistributionData>(data);
@@ -58,6 +45,7 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
   const netPayout = gross - (calculatedFee + vat + disbursements + otherDed);
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     const updated: SettlementDistributionData = {
       ...localData,
       totalDisbursements: disbursements,
@@ -71,6 +59,7 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
   };
 
   const handleDisburseNow = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     disburseClientSettlement(matter.id, localData.paymentMethod, localData.paymentReference || 'TX-DISBURSE-01');
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -78,6 +67,7 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server settlement ledger is available for this matter. Cleared funds, deductions, approval, and payout are not represented here.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -103,6 +93,7 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
@@ -118,7 +109,7 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
           <div className="text-lg font-bold font-mono text-slate-100 mt-1">
             KES {gross.toLocaleString()}
           </div>
-          <span className="text-[10px] text-slate-500">From Directline Assurance RTGS</span>
+          <span className="text-[10px] text-slate-500">{runtimeConfig.enableDemoMode ? 'Demo funds source' : 'No server receipt loaded'}</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
@@ -142,7 +133,7 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
           <div className="text-xl font-bold font-mono text-emerald-300 mt-1">
             KES {netPayout.toLocaleString()}
           </div>
-          <span className="text-[10px] text-slate-400">Payable to {client?.displayName}</span>
+          <span className="text-[10px] text-slate-400">{runtimeConfig.enableDemoMode ? `Payable to ${client?.displayName || 'client'}` : 'Awaiting server ledger evidence'}</span>
         </div>
       </div>
 
@@ -276,7 +267,8 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
               <div className="flex items-end">
                 <button
                   type="button"
-                  onClick={handleDisburseNow}
+            onClick={handleDisburseNow}
+            disabled={!runtimeConfig.enableDemoMode}
                   className="w-full px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-lg transition"
                 >
                   Execute Disburse

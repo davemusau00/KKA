@@ -12,6 +12,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { RecoveryExecutionData, Matter } from '../../../types';
 
 interface RecoveryExecutionWorkspaceProps {
@@ -23,29 +24,20 @@ export const RecoveryExecutionWorkspace: React.FC<RecoveryExecutionWorkspaceProp
 
   const data: RecoveryExecutionData = recoveryExecutions[matter.id] || {
     matterId: matter.id,
-    decreeExtracted: true,
-    certificateOfCosts: true,
-    billOfCosts: true,
-    billAmount: 185000,
-    taxationComplete: true,
-    taxedAmount: 165000,
-    insurerDemandSent: true,
-    demandSentDate: matter.openedAt.slice(0, 10),
-    paymentPromiseReceived: true,
-    paymentPromiseNotes: 'Insurer claims committee approved full payment via direct RTGS transfer.',
+    decreeExtracted: false, certificateOfCosts: false, billOfCosts: false, billAmount: 0,
+    taxationComplete: false, taxedAmount: 0, insurerDemandSent: false,
+    demandSentDate: '', paymentPromiseReceived: false, paymentPromiseNotes: '',
     executionWarrantsIssued: false,
     garnisheeProceedings: false,
     auctioneerInstructed: false,
-    auctioneerName: 'Keysian Auctioneers (Licensed Class B)',
-    paymentReceived: true,
-    paymentReceivedAmount: 1741000,
-    status: 'fully_recovered',
+    auctioneerName: '', paymentReceived: false, paymentReceivedAmount: 0, status: 'pending_decree',
   };
 
   const [localData, setLocalData] = useState<RecoveryExecutionData>(data);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     updateRecoveryExecution(matter.id, localData);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -53,6 +45,7 @@ export const RecoveryExecutionWorkspace: React.FC<RecoveryExecutionWorkspaceProp
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server recovery record is available for this matter. Filing, service, payment, and enforcement outcomes are not represented here.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -78,6 +71,7 @@ export const RecoveryExecutionWorkspace: React.FC<RecoveryExecutionWorkspaceProp
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

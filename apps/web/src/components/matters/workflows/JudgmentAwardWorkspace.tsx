@@ -12,6 +12,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { JudgmentAwardData, Matter } from '../../../types';
 
 interface JudgmentAwardWorkspaceProps {
@@ -23,18 +24,9 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
 
   const data: JudgmentAwardData = judgmentAwards[matter.id] || {
     matterId: matter.id,
-    judgmentDate: new Date().toISOString().slice(0, 10),
-    liabilityClaimantPercent: 20,
-    liabilityDefendantPercent: 80,
-    generalDamages: 1350000,
-    specialDamages: 295000,
-    futureMedical: 180000,
-    costsAwarded: 185000,
-    interestRatePercent: 14,
-    interestFromDate: matter.openedAt.slice(0, 10),
-    totalAward: 1556000,
-    paymentDeadline: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-    appealDeadline: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    judgmentDate: '', liabilityClaimantPercent: 0, liabilityDefendantPercent: 0,
+    generalDamages: 0, specialDamages: 0, futureMedical: 0, costsAwarded: 0,
+    interestRatePercent: 0, interestFromDate: '', totalAward: 0, paymentDeadline: '', appealDeadline: '',
     appealRecommended: false,
     appealJustification: '',
     recoveryTriggered: true,
@@ -53,6 +45,7 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
   const totalPayableWithCosts = net + (Number(localData.costsAwarded) || 0);
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     const updated = {
       ...localData,
       totalAward: totalPayableWithCosts,
@@ -64,6 +57,7 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server judgment record is available for this matter. This workspace is read-only until the judgment API is connected; no legal finding or award is assumed.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -89,6 +83,7 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

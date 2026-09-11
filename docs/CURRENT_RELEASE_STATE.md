@@ -16,6 +16,7 @@
 - A shared `RecordAccessService` now scopes matter lists/details/timelines, search results, clients, tasks, and document access by firm, explicit matter access, and team membership, with `matter.access_manage` as the server-side override. Focused policy tests pass; multi-user browser acceptance remains open.
 - Matter-derived management dashboard counts, court metrics, and portal grant creation/listing now use the same access policy. Approval and expense dashboard totals remain firm-scoped because those current records do not carry a direct matter relation and require a later data-model/policy decision.
 - Notification listing and read-state mutations now re-check matter visibility, preventing restricted matter content from being returned or acknowledged by an unauthorized recipient. Creation-time delivery filtering and multi-user browser acceptance remain open.
+- PI judgment, liability/quantum, recovery, and settlement workspaces no longer surface seeded legal, recovery, payment, or client-money outcomes in normal mode. Their browser-only save/disbursement paths are disabled unless the explicit local demo flag is enabled; empty screens now state that server-backed evidence is unavailable. This is a truthfulness remediation, not acceptance of the PI lifecycle.
 
 ## Implemented, acceptance incomplete
 
@@ -30,7 +31,7 @@
 
 - Password-recovery browser journey, MFA, administrative session inspection/revocation, and end-to-end invite acceptance journey remain incomplete. The password-reset API and self-service logout-all slice are locally accepted; browser automation and mail delivery remain open.
 - One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants. Matter/client/task/document/search reads, matter-derived reports, portal administration, and notification reads are implemented locally; exports, notification creation-time filtering, approval/expense report scope, and multi-user browser acceptance remain open.
-- Complete PI legal lifecycle with empty-state truthfulness, persisted stage gates, approvals, transitions, and cross-user verification.
+- Complete PI legal lifecycle with persisted stage gates, approvals, transitions, server-backed workspace hydration, and cross-user verification. Empty-state truthfulness for the four remediation workspaces above is locally verified; the broader PI lifecycle remains open.
 - Ledger-grade client-money operations and settlement reconciliation.
 - Production deployment, staging isolation, provider configuration, reviewed imports, monitoring/alerting proof, encrypted off-site backup proof, replacement-VPS restore proof, staff pilot, and firm-wide UAT.
 

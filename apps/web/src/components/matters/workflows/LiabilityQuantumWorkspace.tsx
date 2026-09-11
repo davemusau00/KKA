@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
+import { runtimeConfig } from '../../../config/runtime';
 import { LiabilityQuantumData, Matter, SpecialDamageItem } from '../../../types';
 
 interface LiabilityQuantumWorkspaceProps {
@@ -24,29 +25,16 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
   const data: LiabilityQuantumData = liabilityQuantums[matter.id] || {
     liability: {
       claimantPercent: 0,
-      defendantPercent: 100,
+      defendantPercent: 0,
       contributoryNegligenceAlleged: false,
-      contributoryNotes: 'Client was passenger seated inside vehicle; zero negligence imputable.',
-      supportingEvidence: ['Certified Police Abstract placing blame on 3rd party', 'Witness statement from passenger'],
-      weaknesses: ['Speed calculation not formally certified by mechanical inspector'],
-      advocateOpinion: 'Clear 100% liability against defendant insured under doctrine of res ipsa loquitur.',
+      contributoryNotes: '', supportingEvidence: [], weaknesses: [], advocateOpinion: '',
     },
     damages: {
-      generalDamages: 1200000,
-      generalDamagesJustification: 'Compound fracture of right tibia/fibula with surgical fixation (HCCC 192/2021).',
-      specialDamages: [
-        { id: 'sp-1', head: 'Emergency Admission & Surgery (Avenue Hospital)', amount: 285400, receiptRef: 'REC-AVE-8819', isEvidenced: true },
-        { id: 'sp-2', head: 'Police Abstract Fee & Search', amount: 3500, receiptRef: 'REV-NPS-019', isEvidenced: true },
-        { id: 'sp-3', head: 'Orthopaedic Medicolegal Report (Dr. Patel)', amount: 25000, receiptRef: 'DRP-INV-2026', isEvidenced: true },
-      ],
-      futureMedicalExpenses: 180000,
-      futureMedicalJustification: 'Hardware removal and arthroscopic debridement estimated at 12 months post-op.',
-      lossOfEarnings: 150000,
-      lossOfEarningsMonths: 3,
-      monthlyEarningsBasis: 50000,
+      generalDamages: 0, generalDamagesJustification: '', specialDamages: [], futureMedicalExpenses: 0,
+      futureMedicalJustification: '', lossOfEarnings: 0, lossOfEarningsMonths: 0, monthlyEarningsBasis: 0,
       lossOfEarningCapacity: 0,
       otherHeads: [],
-      totalEstimatedClaimValue: 1843900,
+      totalEstimatedClaimValue: 0,
     },
   };
 
@@ -78,6 +66,7 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
   );
 
   const handleSave = () => {
+    if (!runtimeConfig.enableDemoMode) return;
     const updated: LiabilityQuantumData = {
       ...localData,
       damages: {
@@ -127,6 +116,7 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server quantum record is available for this matter. Entered values are not authoritative until the liability and quantum API is connected.</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -152,6 +142,7 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
           )}
           <button
             onClick={handleSave}
+            disabled={!runtimeConfig.enableDemoMode}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
