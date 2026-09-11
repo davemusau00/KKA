@@ -139,6 +139,51 @@ const EMPTY_USER: UserProfile = {
   homeBranchId: 'branch-nairobi', isActive: false,
 };
 
+const calendarEventTypeToApi: Record<CalendarEventType, string> = {
+  court: 'COURT', client_meeting: 'CLIENT_MEETING', internal_meeting: 'INTERNAL_MEETING', medical: 'MEDICAL',
+  filing: 'FILING', deadline: 'DEADLINE', task_block: 'TASK_BLOCK', other: 'OTHER',
+};
+const calendarEditPolicyToApi: Record<CalendarEditPolicy, string> = {
+  free: 'FREE', confirm: 'CONFIRM', reason_required: 'REASON_REQUIRED', approval_required: 'APPROVAL_REQUIRED', locked: 'LOCKED',
+};
+const calendarSourceTypeToApi: Record<NonNullable<CalendarEvent['sourceType']>, string> = {
+  manual: 'MANUAL', court_order: 'COURT_ORDER', workflow: 'WORKFLOW', task: 'TASK', deadline: 'DEADLINE',
+};
+
+function mapCalendarEventFromApi(event: any): CalendarEvent {
+  const eventTypeMap: Record<string, CalendarEventType> = {
+    COURT: 'court', CLIENT_MEETING: 'client_meeting', INTERNAL_MEETING: 'internal_meeting', MEDICAL: 'medical',
+    FILING: 'filing', DEADLINE: 'deadline', TASK_BLOCK: 'task_block', OTHER: 'other',
+  };
+  const policyMap: Record<string, CalendarEditPolicy> = {
+    FREE: 'free', CONFIRM: 'confirm', REASON_REQUIRED: 'reason_required', APPROVAL_REQUIRED: 'approval_required', LOCKED: 'locked',
+  };
+  const sourceMap: Record<string, CalendarEvent['sourceType']> = {
+    MANUAL: 'manual', COURT_ORDER: 'court_order', WORKFLOW: 'workflow', TASK: 'task', DEADLINE: 'deadline',
+  };
+  return {
+    id: event.id,
+    matterId: event.matterId || undefined,
+    title: event.title,
+    eventType: eventTypeMap[event.eventType] || 'other',
+    startAt: event.startAt,
+    endAt: event.endAt,
+    allDay: event.allDay,
+    location: event.location || '',
+    virtualMeetingUrl: event.virtualMeetingUrl || undefined,
+    assignedUserId: event.assignedUserId,
+    organizerId: event.organizerId,
+    courtProceedingId: event.courtProceedingId || undefined,
+    notes: event.notes || undefined,
+    linkedDocumentIds: (event.documents || []).map((link: any) => link.documentId || link.document?.id).filter(Boolean),
+    courtStatus: event.status?.toLowerCase() as CourtEventStatus | undefined,
+    syncState: event.syncState?.toLowerCase() as CalendarEvent['syncState'],
+    editPolicy: policyMap[event.editPolicy] || 'confirm',
+    sourceType: sourceMap[event.sourceType] || 'manual',
+    revisions: event.revisions || [],
+  };
+}
+
 export interface ActiveTimerState {
   matterId: string;
   activityType: TimeEntry['activityType'];
@@ -346,7 +391,7 @@ interface AppContextType {
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task;
   updateTask: (id: string, updates: Partial<Task>, force?: boolean) => { success: boolean; error?: string };
   completeTask: (id: string, force?: boolean) => { success: boolean; error?: string };
-  createCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
+  createCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<CalendarEvent | null>;
   recordCourtOutcome: (
     eventId: string,
     status: CourtEventStatus,
@@ -365,8 +410,8 @@ interface AppContextType {
     newEndAt: string,
     reason: string,
     source: 'court_order' | 'consent' | 'administrative' | 'adjourned' | 'client_request'
-  ) => { success: boolean; error?: string };
-  linkDocumentToCalendarEvent: (eventId: string, documentId: string) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
+  linkDocumentToCalendarEvent: (eventId: string, documentId: string) => Promise<void>;
   createDocument: (doc: Omit<LegalDocument, 'id' | 'createdAt' | 'updatedAt' | 'currentVersionId' | 'versions'> & { initialFile?: { filename?: string; size?: number; mimeType?: string; fileDataUrl?: string; changeSummary?: string } }) => LegalDocument;
   uploadDocumentVersion: (documentId: string, file: { name: string; size: number; mimeType?: string; changeSummary?: string; contentSnippet?: string; fileDataUrl?: string }, notes?: string) => void;
   submitDocumentForReview: (documentId: string, versionId: string, reviewNotes?: string) => void;
@@ -1018,37 +1063,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
 
         if (isMounted && calendarRes.status === 'fulfilled' && Array.isArray(calendarRes.value)) {
-          const eventTypeMap: Record<string, CalendarEventType> = {
-            COURT: 'court', CLIENT_MEETING: 'client_meeting', INTERNAL_MEETING: 'internal_meeting',
-            MEDICAL: 'medical', FILING: 'filing', DEADLINE: 'deadline', TASK_BLOCK: 'task_block', OTHER: 'other',
-          };
-          const policyMap: Record<string, CalendarEditPolicy> = {
-            FREE: 'free', CONFIRM: 'confirm', REASON_REQUIRED: 'reason_required', APPROVAL_REQUIRED: 'approval_required', LOCKED: 'locked',
-          };
-          const sourceMap: Record<string, CalendarEvent['sourceType']> = {
-            MANUAL: 'manual', COURT_ORDER: 'court_order', WORKFLOW: 'workflow', TASK: 'task', DEADLINE: 'deadline',
-          };
-          setCalendarEvents(calendarRes.value.map((event: any) => ({
-            id: event.id,
-            matterId: event.matterId || undefined,
-            title: event.title,
-            eventType: eventTypeMap[event.eventType] || 'other',
-            startAt: event.startAt,
-            endAt: event.endAt,
-            allDay: event.allDay,
-            location: event.location || '',
-            virtualMeetingUrl: event.virtualMeetingUrl || undefined,
-            assignedUserId: event.assignedUserId,
-            organizerId: event.organizerId,
-            courtProceedingId: event.courtProceedingId || undefined,
-            notes: event.notes || undefined,
-            linkedDocumentIds: (event.documents || []).map((link: any) => link.documentId || link.document?.id),
-            courtStatus: event.status?.toLowerCase() as CourtEventStatus | undefined,
-            syncState: event.syncState?.toLowerCase() as CalendarEvent['syncState'],
-            editPolicy: policyMap[event.editPolicy] || 'confirm',
-            sourceType: sourceMap[event.sourceType] || 'manual',
-            revisions: event.revisions || [],
-          })));
+          setCalendarEvents(calendarRes.value.map(mapCalendarEventFromApi));
         }
       } catch (err) {
         if (runtimeConfig.enableDemoMode) console.debug('Backend unavailable, using local storage demo state:', err);
@@ -2671,7 +2686,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [tasks, currentUser.id, logAudit, notify]);
 
   // Calendar Operations
-  const createCalendarEvent = useCallback((eventData: Omit<CalendarEvent, 'id'>) => {
+  const createCalendarEvent = useCallback(async (eventData: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> => {
+    if (!runtimeConfig.enableDemoMode) {
+      try {
+        const serverEvent = await calendarApi.create({
+          matterId: eventData.matterId,
+          title: eventData.title,
+          eventType: calendarEventTypeToApi[eventData.eventType] as any,
+          startAt: eventData.startAt,
+          endAt: eventData.endAt,
+          allDay: eventData.allDay,
+          location: eventData.location,
+          virtualMeetingUrl: eventData.virtualMeetingUrl,
+          assignedUserId: eventData.assignedUserId,
+          sourceType: eventData.sourceType ? calendarSourceTypeToApi[eventData.sourceType] : undefined,
+          editPolicy: eventData.editPolicy ? calendarEditPolicyToApi[eventData.editPolicy] as any : undefined,
+          notes: eventData.notes,
+        });
+        const persisted = mapCalendarEventFromApi(serverEvent);
+        setCalendarEvents((prev) => [persisted, ...prev.filter((event) => event.id !== persisted.id)]);
+        return persisted;
+      } catch (error) {
+        notify(currentUser.id, 'Calendar event was not saved', error instanceof Error ? error.message : 'The server rejected this calendar event.', 'system', eventData.matterId, 'urgent');
+        return null;
+      }
+    }
     const newEvent: CalendarEvent = {
       ...eventData,
       id: `evt-${Date.now()}`,
@@ -2691,7 +2730,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
     }
     return newEvent;
-  }, [googleConnected, logAudit, notify]);
+  }, [currentUser.id, googleConnected, logAudit, notify]);
 
   const recordCourtOutcome = useCallback(
     (
@@ -2822,13 +2861,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   );
 
   const rescheduleCalendarEvent = useCallback(
-    (
+    async (
       eventId: string,
       newStartAt: string,
       newEndAt: string,
       reason: string,
       source: 'court_order' | 'consent' | 'administrative' | 'adjourned' | 'client_request'
-    ): { success: boolean; error?: string } => {
+    ): Promise<{ success: boolean; error?: string }> => {
       const event = calendarEvents.find((e) => e.id === eventId);
       if (!event) return { success: false, error: 'Event not found' };
 
@@ -2844,6 +2883,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           success: false,
           error: 'Official reason is required to reschedule a court appearance or hearing.',
         };
+      }
+
+      if (!runtimeConfig.enableDemoMode) {
+        try {
+          const response = await calendarApi.reschedule(eventId, { startAt: newStartAt, endAt: newEndAt, reason, source });
+          const persisted = mapCalendarEventFromApi(response.event);
+          setCalendarEvents((prev) => prev.map((current) => current.id === persisted.id ? persisted : current));
+          return { success: true };
+        } catch (error) {
+          return { success: false, error: error instanceof Error ? error.message : 'The server rejected the reschedule.' };
+        }
       }
 
       const revision: CalendarEventRevision = {
@@ -2892,7 +2942,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [calendarEvents, currentUser.id, logAudit, notify]
   );
 
-  const linkDocumentToCalendarEvent = useCallback((eventId: string, documentId: string) => {
+  const linkDocumentToCalendarEvent = useCallback(async (eventId: string, documentId: string): Promise<void> => {
+    if (!runtimeConfig.enableDemoMode) {
+      try {
+        await calendarApi.linkDocument(eventId, documentId);
+      } catch (error) {
+        notify(currentUser.id, 'Calendar document link was not saved', error instanceof Error ? error.message : 'The server rejected this document link.', 'system', undefined, 'urgent');
+        return;
+      }
+    }
     setCalendarEvents((prev) =>
       prev.map((e) =>
         e.id === eventId
@@ -2904,7 +2962,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       )
     );
     logAudit('calendar.document_linked', 'court_event', eventId, undefined, { documentId });
-  }, [logAudit]);
+  }, [currentUser.id, logAudit, notify]);
 
   // Create a new LegalDocument record
   const createDocument = useCallback(

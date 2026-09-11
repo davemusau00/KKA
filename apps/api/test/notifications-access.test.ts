@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { ForbiddenException } from "@nestjs/common";
 import { NotificationsService } from "../src/modules/notifications/notifications.service";
 import type { RequestUser } from "../src/platform/auth/auth.types";
 
@@ -33,4 +34,43 @@ test("marking a restricted notification read is a no-op", async () => {
 
   assert.deepEqual(await service.markRead(user, "restricted"), { count: 0 });
   assert.equal(updates, 0);
+});
+
+test("notification creation rejects a recipient without matter access before persistence", async () => {
+  let creates = 0;
+  const service = new NotificationsService({ client: {
+    user: { findFirst: async () => ({ id: "user-a", firmId: "firm-a", email: user.email, fullName: user.fullName, homeBranchId: null, roles: [] }) },
+    notification: { create: async () => { creates += 1; return {}; } }
+  } } as any, {} as any, {} as any, {
+    canViewMatter: async () => false
+  } as any);
+
+  await assert.rejects(
+    service.create({ recipientUserId: user.id, matterId: "matter-restricted", category: "TASK", title: "Restricted", message: "Do not deliver" }),
+    (error: unknown) => error instanceof ForbiddenException
+  );
+  assert.equal(creates, 0);
+});
+
+test("notification creation rechecks matter access before external queueing", async () => {
+  let checks = 0;
+  let queued = 0;
+  let emitted = 0;
+  const notification = { id: "notification-1", deliveries: [{ id: "delivery-1", channel: "EMAIL" }] };
+  const service = new NotificationsService({ client: {
+    user: { findFirst: async () => ({ id: "user-a", firmId: "firm-a", email: user.email, fullName: user.fullName, homeBranchId: null, roles: [] }) },
+    notification: {
+      create: async () => notification,
+      delete: async () => notification
+    }
+  } } as any, { add: async () => { queued += 1; } } as any, { emitToUser: () => { emitted += 1; } } as any, {
+    canViewMatter: async () => ++checks < 3
+  } as any);
+
+  await assert.rejects(
+    service.create({ recipientUserId: user.id, matterId: "matter-restricted", category: "TASK", title: "Revoked", message: "Do not queue", channels: ["EMAIL"] }),
+    /cannot access this matter/
+  );
+  assert.equal(emitted, 1);
+  assert.equal(queued, 0);
 });

@@ -1937,6 +1937,8 @@ model PaymentReceipt {
   referenceNumber          String
   description              String
   receivedAt               DateTime
+  clearedAt                DateTime?
+  clearingReference        String?
   allocatedToFees          Decimal  @default(0) @db.Decimal(18, 2)
   allocatedToDisbursements Decimal  @default(0) @db.Decimal(18, 2)
   createdById              String
@@ -2067,6 +2069,21 @@ model ReconciliationItem {
   notes            String?
 
   reconciliation Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+
+  @@unique([reconciliationId, sourceReference])
+}
+
+model LedgerPeriodLock {
+  id          String   @id @default(cuid())
+  firmId      String
+  periodStart DateTime
+  periodEnd   DateTime
+  reason      String?
+  lockedById  String
+  lockedAt    DateTime @default(now())
+
+  @@unique([firmId, periodStart, periodEnd])
+  @@index([firmId, periodStart, periodEnd])
 }
 
 model ApprovalRequest {

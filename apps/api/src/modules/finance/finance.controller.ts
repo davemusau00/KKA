@@ -27,6 +27,23 @@ export class FinanceController {
     return this.finance.reconciliations(user.firmId);
   }
 
+  @Get("period-locks")
+  @RequirePermissions("finance.view")
+  periodLocks(@CurrentUser() user: RequestUser) {
+    return this.finance.periodLocks(user.firmId);
+  }
+
+  @Post("period-locks")
+  @RequirePermissions("finance.reconciliation_manage")
+  periodLock(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const input = z.object({
+      periodStart: z.string().datetime(),
+      periodEnd: z.string().datetime(),
+      reason: z.string().min(3).max(2000).optional()
+    }).parse(body);
+    return this.finance.lockPeriod(user.firmId, user.id, input);
+  }
+
   @Post("reconciliations")
   @RequirePermissions("finance.reconciliation_manage")
   reconciliation(@CurrentUser() user: RequestUser, @Body() body: unknown) {
@@ -44,6 +61,19 @@ export class FinanceController {
   @RequirePermissions("finance.reconciliation_manage")
   completeReconciliation(@CurrentUser() user: RequestUser, @Param("id") id: string) {
     return this.finance.completeReconciliation(user.firmId, user.id, id);
+  }
+
+  @Post("reconciliations/:id/items")
+  @RequirePermissions("finance.reconciliation_manage")
+  reconciliationItem(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({
+      sourceReference: z.string().min(1).max(200),
+      sourceDate: z.string().datetime(),
+      amount: z.coerce.number().nonnegative(),
+      journalEntryId: z.string().optional(),
+      notes: z.string().max(2000).optional()
+    }).parse(body);
+    return this.finance.addReconciliationItem(user.firmId, user.id, id, input);
   }
 
   @Post("journals")
@@ -83,6 +113,13 @@ export class FinanceController {
   @RequirePermissions("finance.trust_ledger")
   receipt(@CurrentUser() user: RequestUser, @Body() body: unknown) {
     return this.finance.recordReceipt(user.firmId, user.id, RecordReceiptSchema.parse(body));
+  }
+
+  @Post("receipts/:id/clear")
+  @RequirePermissions("finance.reconciliation_manage")
+  clearReceipt(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ clearingReference: z.string().trim().min(1).max(200) }).parse(body);
+    return this.finance.clearReceipt(user.firmId, user.id, id, input.clearingReference);
   }
 
   @Post("transfers")

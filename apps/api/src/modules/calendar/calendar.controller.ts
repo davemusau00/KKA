@@ -23,7 +23,8 @@ export class CalendarController {
       from ? new Date(from) : undefined,
       to ? new Date(to) : undefined,
       userId,
-      matterId
+      matterId,
+      user
     );
   }
 

@@ -1,6 +1,41 @@
 import type { Job } from "bullmq";
 import type { KkaPrismaClient } from "@kka/database";
 
+export async function recipientCanReceiveNotification(
+  prisma: KkaPrismaClient,
+  recipientUserId: string,
+  matterId?: string | null
+) {
+  const recipient = await prisma.user.findUnique({
+    where: { id: recipientUserId },
+    include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } }
+  });
+  if (!recipient || recipient.status !== "ACTIVE") return false;
+  if (!matterId) return true;
+
+  const permissionKeys = new Set(recipient.roles.flatMap((membership) =>
+    membership.role.active && membership.role.firmId === recipient.firmId
+      ? membership.role.permissions.map(({ permission }) => permission.key)
+      : []
+  ));
+  if (permissionKeys.has("matter.access_manage")) return true;
+
+  const memberships = await prisma.userTeam.findMany({ where: { userId: recipient.id }, select: { teamId: true } });
+  const matter = await prisma.matter.findFirst({
+    where: {
+      id: matterId,
+      firmId: recipient.firmId,
+      OR: [
+        { accesses: { none: {} } },
+        { accesses: { some: { userId: recipient.id } } },
+        ...(memberships.length ? [{ accesses: { some: { teamId: { in: memberships.map(({ teamId }) => teamId) } } } }] : [])
+      ]
+    },
+    select: { id: true }
+  });
+  return Boolean(matter);
+}
+
 export async function processNotification(job: Job, prisma: KkaPrismaClient) {
   if (job.name !== "notification.deliver") return;
   const deliveryId = String(job.data.deliveryId);
@@ -9,6 +44,14 @@ export async function processNotification(job: Job, prisma: KkaPrismaClient) {
     include: { notification: true }
   });
   if (!delivery) throw new Error("Notification delivery not found");
+
+  if (!await recipientCanReceiveNotification(prisma, delivery.notification.recipientUserId, delivery.notification.matterId)) {
+    await prisma.notificationDelivery.update({
+      where: { id: delivery.id },
+      data: { status: "CANCELLED", lastError: "Recipient no longer has access to this matter or is inactive" }
+    });
+    return { cancelled: true, reason: "recipient_access_revoked" };
+  }
 
   if (delivery.channel === "EMAIL") {
     const recipient = await prisma.user.findUnique({

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrandingProvider } from './context/BrandingContext';
 import { ServerStateProvider } from './context/ServerStateProvider';
 import { AppProvider, useApp } from './context/AppContext';
@@ -17,9 +17,48 @@ import { ReportsWorkspace } from './components/reports/ReportsWorkspace';
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { IntegrationsWorkspace } from './components/integrations/IntegrationsWorkspace';
 import { WebsiteGrowthWorkspace } from './components/website/WebsiteGrowthWorkspace';
+import { parseWorkspaceLocation, serializeWorkspaceRoute } from './lib/routing/workspaceRoutes';
 
 const MainWorkspaceRouter: React.FC = () => {
-  const { activeWorkspace } = useApp();
+  const {
+    activeWorkspace,
+    setActiveWorkspace,
+    selectedMatterId,
+    setSelectedMatterId,
+    selectedMatterTab,
+    setSelectedMatterTab,
+  } = useApp();
+  const [routeReady, setRouteReady] = useState(false);
+  const currentLocation = useRef('');
+
+  const applyLocation = useCallback((pathname: string, search: string) => {
+    const route = parseWorkspaceLocation(pathname, search);
+    setActiveWorkspace(route.workspace);
+    setSelectedMatterId(route.matterId ?? null);
+    setSelectedMatterTab(route.matterTab ?? 'overview');
+    currentLocation.current = `${pathname}${search}`;
+  }, [setActiveWorkspace, setSelectedMatterId, setSelectedMatterTab]);
+
+  useLayoutEffect(() => {
+    applyLocation(window.location.pathname, window.location.search);
+    setRouteReady(true);
+  }, [applyLocation]);
+
+  useEffect(() => {
+    if (!routeReady) return;
+    const target = serializeWorkspaceRoute({ workspace: activeWorkspace, matterId: selectedMatterId ?? undefined, matterTab: selectedMatterTab });
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (target !== current && currentLocation.current !== current) {
+      window.history.pushState({}, '', target);
+      currentLocation.current = target;
+    }
+  }, [activeWorkspace, routeReady, selectedMatterId, selectedMatterTab]);
+
+  useEffect(() => {
+    const onPopState = () => applyLocation(window.location.pathname, window.location.search);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [applyLocation]);
 
   return (
     <AppShell>

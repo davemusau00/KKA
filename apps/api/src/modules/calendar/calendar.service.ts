@@ -1,18 +1,41 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { QueueService, QUEUES } from "../../platform/queue/queue.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import { roleContext } from "../../platform/auth/role-context";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
 export class CalendarService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly queues: QueueService
+    private readonly queues: QueueService,
+    @Optional() private readonly access?: RecordAccessService
   ) {}
 
-  list(firmId: string, from?: Date, to?: Date, userId?: string, matterId?: string) {
-    return this.prisma.client.calendarEvent.findMany({
+  private async actor(firmId: string, actorId: string): Promise<RequestUser> {
+    const user = await this.prisma.client.user.findFirst({
+      where: { id: actorId, firmId, status: "ACTIVE" },
+      include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } }
+    });
+    if (!user) throw new NotFoundException("Calendar actor not found");
+    return {
+      id: user.id, firmId: user.firmId, email: user.email, fullName: user.fullName,
+      homeBranchId: user.homeBranchId, ...roleContext(user.firmId, user.roles)
+    };
+  }
+
+  private async assertMatterAccess(firmId: string, actorId: string, matterId?: string | null) {
+    if (!matterId) return;
+    if (!this.access) throw new BadRequestException("Calendar access policy is unavailable");
+    const user = await this.actor(firmId, actorId);
+    if (!(await this.access.canViewMatter(user, matterId))) throw new NotFoundException("Calendar event not found");
+  }
+
+  async list(firmId: string, from?: Date, to?: Date, userId?: string, matterId?: string, actor?: RequestUser) {
+    const events = await this.prisma.client.calendarEvent.findMany({
       where: {
         firmId,
         ...(from || to ? {
@@ -29,6 +52,9 @@ export class CalendarService {
       orderBy: { startAt: "asc" },
       take: 5000
     });
+    if (!actor || !this.access) return events;
+    const visible = await Promise.all(events.map(async (event) => !event.matterId || await this.access!.canViewMatter(actor, event.matterId) ? event : null));
+    return visible.filter((event): event is NonNullable<typeof event> => event !== null);
   }
 
   async create(firmId: string, actorId: string, input: any, transaction?: import("@kka/database").Prisma.TransactionClient) {
@@ -36,6 +62,7 @@ export class CalendarService {
     const startAt = new Date(input.startAt);
     const endAt = new Date(input.endAt);
     if (endAt <= startAt) throw new BadRequestException("endAt must be after startAt");
+    await this.assertMatterAccess(firmId, actorId, input.matterId);
 
     const event = await client.calendarEvent.create({
       data: {
@@ -76,6 +103,7 @@ export class CalendarService {
   async reschedule(firmId: string, actorId: string, eventId: string, input: any) {
     const event = await this.prisma.client.calendarEvent.findFirst({ where: { id: eventId, firmId } });
     if (!event) throw new NotFoundException("Calendar event not found");
+    await this.assertMatterAccess(firmId, actorId, event.matterId);
     if (event.editPolicy === "LOCKED") {
       throw new BadRequestException("This event is locked. Record an amended legal/court source instead.");
     }
@@ -151,6 +179,8 @@ export class CalendarService {
     const event = await this.prisma.client.calendarEvent.findFirst({ where: { id: eventId, firmId } });
     const document = await this.prisma.client.document.findFirst({ where: { id: documentId, matter: { firmId } } });
     if (!event || !document) throw new NotFoundException("Event or document not found");
+    await this.assertMatterAccess(firmId, actorId, event.matterId);
+    await this.assertMatterAccess(firmId, actorId, document.matterId);
     if (event.matterId && document.matterId !== event.matterId) {
       throw new BadRequestException("Document belongs to a different matter");
     }
@@ -175,6 +205,7 @@ export class CalendarService {
   ) {
     const event = await this.prisma.client.calendarEvent.findFirst({ where: { id: eventId, firmId } });
     if (!event) throw new NotFoundException("Event not found");
+    await this.assertMatterAccess(firmId, actorId, event.matterId);
     if (event.eventType !== "COURT") throw new BadRequestException("Court outcome applies only to court events");
 
     const updated = await this.prisma.client.calendarEvent.update({

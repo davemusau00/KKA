@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/foundation.test.ts test/website-json.test.ts",
-    "test:access": "tsx --test test/record-access.test.ts test/notifications-access.test.ts test/personal-injury-access.test.ts test/audit-access.test.ts test/finance-access.test.ts",
+    "test:access": "tsx --test test/record-access.test.ts test/notifications-access.test.ts test/personal-injury-access.test.ts test/audit-access.test.ts test/finance-access.test.ts test/calendar-access.test.ts",
     "test:documents": "tsx --test test/document-workflows.test.ts",
     "test:website": "node --test test/website-integration.test.cjs"
   },

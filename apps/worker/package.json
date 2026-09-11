@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"console.log('worker: no standalone tests yet')\""
+    "test": "tsx --test test/notification-processor.test.ts"
   },
   "dependencies": {
     "@kka/database": "workspace:*",

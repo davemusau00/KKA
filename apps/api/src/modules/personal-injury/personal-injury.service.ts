@@ -215,7 +215,7 @@ export class PersonalInjuryService {
     }
     const clientAccounts = await this.prisma.client.ledgerAccount.findMany({ where: { firmId, fundType: "CLIENT", active: true }, select: { id: true } });
     const clientAccountIds = clientAccounts.map((account) => account.id);
-    const receipts = clientAccountIds.length ? await this.prisma.client.paymentReceipt.findMany({ where: { firmId, matterId, accountId: { in: clientAccountIds } }, select: { amount: true } }) : [];
+    const receipts = clientAccountIds.length ? await this.prisma.client.paymentReceipt.findMany({ where: { firmId, matterId, accountId: { in: clientAccountIds }, clearedAt: { not: null } }, select: { amount: true } }) : [];
     const recordedClientFunds = receipts.reduce((sum, receipt) => sum + Number(receipt.amount), 0);
     if (Number(clientFundsReceived) > recordedClientFunds + 0.01) throw new BadRequestException("Settlement claims more client funds than recorded receipts");
 

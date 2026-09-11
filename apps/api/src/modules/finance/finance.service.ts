@@ -3,6 +3,7 @@ import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { NumberingService } from "../numbering/numbering.service";
 import { RecordAccessService } from "../../platform/auth/record-access.service";
+import { Prisma } from "@kka/database";
 import type { RequestUser } from "../../platform/auth/auth.types";
 
 type JournalLineInput = {
@@ -16,6 +17,10 @@ type JournalLineInput = {
 
 function money(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
 @Injectable()
@@ -41,6 +46,35 @@ export class FinanceService {
       orderBy: { createdAt: "desc" },
       take: 200
     });
+  }
+
+  periodLocks(firmId: string) {
+    return this.prisma.client.ledgerPeriodLock.findMany({ where: { firmId }, orderBy: { periodStart: "desc" }, take: 200 });
+  }
+
+  async lockPeriod(firmId: string, actorId: string, input: { periodStart: string; periodEnd: string; reason?: string }) {
+    const periodStart = new Date(input.periodStart);
+    const periodEnd = new Date(input.periodEnd);
+    if (!(periodStart <= periodEnd)) throw new BadRequestException("Ledger period must have an end on or after its start");
+    const overlap = await this.prisma.client.ledgerPeriodLock.findFirst({
+      where: { firmId, periodStart: { lte: periodEnd }, periodEnd: { gte: periodStart } }
+    });
+    if (overlap) throw new BadRequestException("Ledger period overlaps an existing lock");
+    const lock = await this.prisma.client.ledgerPeriodLock.create({ data: { firmId, periodStart, periodEnd, reason: input.reason, lockedById: actorId } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "finance.period_locked", entityType: "ledger_period_lock", entityId: lock.id, metadata: { periodStart, periodEnd, reason: input.reason } });
+    return lock;
+  }
+
+  private async assertPeriodOpen(firmId: string, transactionDate: Date) {
+    const lock = await this.prisma.client.ledgerPeriodLock.findFirst({ where: { firmId, periodStart: { lte: transactionDate }, periodEnd: { gte: transactionDate } } });
+    if (lock) throw new BadRequestException("Ledger period is locked; post a current-period reversal or adjustment instead");
+  }
+
+  private async assertNoOpenReconciliation(firmId: string, transactionDate: Date, accountIds: string[]) {
+    const reconciliation = await this.prisma.client.reconciliation.findFirst({
+      where: { firmId, status: "OPEN", accountId: { in: accountIds }, periodStart: { lte: transactionDate }, periodEnd: { gte: transactionDate } }
+    });
+    if (reconciliation) throw new BadRequestException("Account is locked by an open reconciliation; complete it before posting");
   }
 
   private async accountBalanceAt(firmId: string, accountId: string, at: Date, before?: Date) {
@@ -100,6 +134,8 @@ export class FinanceService {
     const reconciliation = await this.prisma.client.reconciliation.findFirst({ where: { id: reconciliationId, firmId } });
     if (!reconciliation) throw new NotFoundException("Reconciliation not found");
     if (reconciliation.status !== "OPEN") throw new BadRequestException("Only open reconciliations can be completed");
+    const unmatchedItems = await this.prisma.client.reconciliationItem.count({ where: { reconciliationId, matched: false } });
+    if (unmatchedItems > 0) throw new BadRequestException("All reconciliation items must be matched before completion");
     const ledgerClosingBalance = await this.accountBalanceAt(firmId, reconciliation.accountId, reconciliation.periodEnd, undefined);
     if (Math.abs(Number(reconciliation.statementClosingBalance) - ledgerClosingBalance) > 0.01) {
       throw new BadRequestException("Statement closing balance does not match the posted ledger");
@@ -112,6 +148,38 @@ export class FinanceService {
     const completed = await this.prisma.client.reconciliation.findUnique({ where: { id: reconciliationId }, include: { items: true } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "finance.reconciliation_completed", entityType: "reconciliation", entityId: reconciliationId, metadata: { ledgerClosingBalance } });
     return completed;
+  }
+
+  async addReconciliationItem(firmId: string, actorId: string, reconciliationId: string, input: {
+    sourceReference: string;
+    sourceDate: string;
+    amount: number;
+    journalEntryId?: string;
+    notes?: string;
+  }) {
+    const reconciliation = await this.prisma.client.reconciliation.findFirst({ where: { id: reconciliationId, firmId } });
+    if (!reconciliation) throw new NotFoundException("Reconciliation not found");
+    if (reconciliation.status !== "OPEN") throw new BadRequestException("Only open reconciliations can receive items");
+    const sourceDate = new Date(input.sourceDate);
+    if (sourceDate < reconciliation.periodStart || sourceDate > reconciliation.periodEnd) throw new BadRequestException("Statement item is outside the reconciliation period");
+    let matched = false;
+    if (input.journalEntryId) {
+      const account = await this.prisma.client.ledgerAccount.findFirst({ where: { id: reconciliation.accountId, firmId, active: true } });
+      if (!account) throw new NotFoundException("Account not found");
+      const journal = await this.prisma.client.journalEntry.findFirst({
+        where: { id: input.journalEntryId, firmId, status: "POSTED", transactionDate: { gte: reconciliation.periodStart, lte: reconciliation.periodEnd }, lines: { some: { accountId: reconciliation.accountId } } },
+        include: { lines: { where: { accountId: reconciliation.accountId }, select: { debit: true, credit: true } } }
+      });
+      if (!journal) throw new BadRequestException("Journal entry is not posted to this account within the reconciliation period");
+      const signed = journal.lines.reduce((sum, line) => sum + Number(line.debit) - Number(line.credit), 0);
+      if (Math.abs(Math.abs(signed) - Number(input.amount)) > 0.01) throw new BadRequestException("Statement item amount does not match the journal entry");
+      matched = true;
+    }
+    const item = await this.prisma.client.reconciliationItem.create({
+      data: { reconciliationId, sourceReference: input.sourceReference, sourceDate, amount: input.amount, journalEntryId: input.journalEntryId, matched, notes: input.notes }
+    });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "finance.reconciliation_item_added", entityType: "reconciliation_item", entityId: item.id, metadata: { reconciliationId, sourceReference: input.sourceReference, matched } });
+    return item;
   }
 
   async transfer(firmId: string, actorId: string, input: {
@@ -216,6 +284,8 @@ export class FinanceService {
       if (existing) return existing;
     }
 
+    await this.assertPeriodOpen(firmId, new Date(input.transactionDate));
+
     const accountIds = Array.from(new Set(input.lines.map((line) => line.accountId)));
     const accounts = await this.prisma.client.ledgerAccount.findMany({
       where: { firmId, id: { in: accountIds }, active: true }
@@ -225,6 +295,7 @@ export class FinanceService {
     if (fundTypes.size > 1 && input.sourceType !== "FUND_TRANSFER") {
       throw new BadRequestException("A journal cannot mix client and office funds unless it is an explicit fund transfer");
     }
+    await this.assertNoOpenReconciliation(firmId, new Date(input.transactionDate), accountIds);
 
     const reference = await this.numbering.next({
       firmId,
@@ -233,34 +304,46 @@ export class FinanceService {
       pattern: "KKA/JV/{year}/{seq:6}"
     });
 
-    const entry = await this.prisma.client.journalEntry.create({
-      data: {
-        firmId,
-        branchId: input.branchId,
-        matterId: input.matterId,
-        clientId: input.clientId,
-        reference,
-        description: input.description,
-        status: "POSTED",
-        transactionDate: new Date(input.transactionDate),
-        postedAt: new Date(),
-        postedById: actorId,
-        createdById: actorId,
-        sourceType: input.sourceType,
-        sourceId: input.sourceId,
-        lines: {
-          create: input.lines.map((line) => ({
-            accountId: line.accountId,
-            debit: line.debit,
-            credit: line.credit,
-            matterId: line.matterId ?? input.matterId,
-            clientId: line.clientId ?? input.clientId,
-            memo: line.memo
-          }))
-        }
-      },
-      include: { lines: { include: { account: true } } }
-    });
+    let entry;
+    try {
+      entry = await this.prisma.client.journalEntry.create({
+        data: {
+          firmId,
+          branchId: input.branchId,
+          matterId: input.matterId,
+          clientId: input.clientId,
+          reference,
+          description: input.description,
+          status: "POSTED",
+          transactionDate: new Date(input.transactionDate),
+          postedAt: new Date(),
+          postedById: actorId,
+          createdById: actorId,
+          sourceType: input.sourceType,
+          sourceId: input.sourceId,
+          lines: {
+            create: input.lines.map((line) => ({
+              accountId: line.accountId,
+              debit: line.debit,
+              credit: line.credit,
+              matterId: line.matterId ?? input.matterId,
+              clientId: line.clientId ?? input.clientId,
+              memo: line.memo
+            }))
+          }
+        },
+        include: { lines: { include: { account: true } } }
+      });
+    } catch (error) {
+      if (input.sourceType && input.sourceId && isUniqueConstraintError(error)) {
+        const concurrent = await this.prisma.client.journalEntry.findFirst({
+          where: { firmId, sourceType: input.sourceType, sourceId: input.sourceId },
+          include: { lines: { include: { account: true } } }
+        });
+        if (concurrent) return concurrent;
+      }
+      throw error;
+    }
 
     await this.audit.record({
       firmId, actorUserId: actorId, action: "finance.journal_posted",
@@ -405,11 +488,13 @@ export class FinanceService {
       where: { firmId, referenceNumber: input.referenceNumber }
     });
     if (existing) return existing;
+    await this.assertPeriodOpen(firmId, new Date(input.receivedAt));
 
     const account = await this.prisma.client.ledgerAccount.findFirst({
       where: { id: input.accountId, firmId, active: true }
     });
     if (!account) throw new BadRequestException("Receiving account not found");
+    await this.assertNoOpenReconciliation(firmId, new Date(input.receivedAt), [account.id]);
 
     const receiptNumber = await this.numbering.next({
       firmId,
@@ -437,6 +522,7 @@ export class FinanceService {
         description: `Receipt ${receiptNumber}: ${input.description}`,
         transactionDate: input.receivedAt,
         sourceType: "PAYMENT_RECEIPT",
+        sourceId: input.referenceNumber,
         lines: [
           { accountId: account.id, debit: input.amount, credit: 0, matterId: input.matterId, clientId: input.clientId },
           { accountId: counterpart.id, debit: 0, credit: input.amount, matterId: input.matterId, clientId: input.clientId }
@@ -445,24 +531,35 @@ export class FinanceService {
       journalEntryId = journal.id;
     }
 
-    const receipt = await this.prisma.client.paymentReceipt.create({
-      data: {
-        firmId,
-        matterId: input.matterId,
-        clientId: input.clientId,
-        accountId: input.accountId,
-        journalEntryId,
-        receiptNumber,
-        amount: input.amount,
-        currency: input.currency,
-        payerName: input.payerName,
-        paymentMethod: input.paymentMethod,
-        referenceNumber: input.referenceNumber,
-        description: input.description,
-        receivedAt: new Date(input.receivedAt),
-        createdById: actorId
+    let receipt;
+    try {
+      receipt = await this.prisma.client.paymentReceipt.create({
+        data: {
+          firmId,
+          matterId: input.matterId,
+          clientId: input.clientId,
+          accountId: input.accountId,
+          journalEntryId,
+          receiptNumber,
+          amount: input.amount,
+          currency: input.currency,
+          payerName: input.payerName,
+          paymentMethod: input.paymentMethod,
+          referenceNumber: input.referenceNumber,
+          description: input.description,
+          receivedAt: new Date(input.receivedAt),
+          createdById: actorId
+        }
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        const concurrent = await this.prisma.client.paymentReceipt.findFirst({
+          where: { firmId, referenceNumber: input.referenceNumber }
+        });
+        if (concurrent) return concurrent;
       }
-    });
+      throw error;
+    }
     await this.audit.record({
       firmId, actorUserId: actorId, action: "finance.receipt_recorded",
       entityType: "payment_receipt", entityId: receipt.id,
@@ -470,6 +567,28 @@ export class FinanceService {
       metadata: { receiptNumber, amount: String(receipt.amount), accountId: input.accountId }
     });
     return receipt;
+  }
+
+  async clearReceipt(firmId: string, actorId: string, receiptId: string, clearingReference: string) {
+    const receipt = await this.prisma.client.paymentReceipt.findFirst({ where: { id: receiptId, firmId } });
+    if (!receipt) throw new NotFoundException("Payment receipt not found");
+    if (receipt.clearedAt) return receipt;
+    const clearedAt = new Date();
+    const updated = await this.prisma.client.paymentReceipt.updateMany({
+      where: { id: receiptId, firmId, clearedAt: null },
+      data: { clearedAt, clearingReference }
+    });
+    const canonical = await this.prisma.client.paymentReceipt.findFirst({ where: { id: receiptId, firmId } });
+    if (!canonical) throw new NotFoundException("Payment receipt not found");
+    if (updated.count === 1) {
+      await this.audit.record({
+        firmId, actorUserId: actorId, action: "finance.receipt_cleared",
+        entityType: "payment_receipt", entityId: receiptId,
+        matterId: canonical.matterId ?? undefined, clientId: canonical.clientId ?? undefined,
+        metadata: { clearingReference }
+      });
+    }
+    return canonical;
   }
 
   async matterLedger(user: RequestUser, matterId: string) {
@@ -488,8 +607,8 @@ export class FinanceService {
     if (!(await this.access.canViewMatter(user, matterId))) throw new NotFoundException("Settlement position not found");
     const [receipts, feeNotes, expenses] = await Promise.all([
       this.prisma.client.paymentReceipt.findMany({
-        where: { firmId: user.firmId, matterId },
-        select: { id: true, receiptNumber: true, amount: true, accountId: true, receivedAt: true, referenceNumber: true }
+        where: { firmId: user.firmId, matterId, clearedAt: { not: null } },
+        select: { id: true, receiptNumber: true, amount: true, accountId: true, receivedAt: true, referenceNumber: true, clearedAt: true, clearingReference: true }
       }),
       this.prisma.client.feeNote.findMany({
         where: { firmId: user.firmId, matterId, status: { in: ["ISSUED", "PARTIALLY_PAID", "SETTLED_FROM_TRUST", "PAID"] } },

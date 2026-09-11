@@ -188,7 +188,7 @@ export const CalendarWorkspace: React.FC = () => {
   };
 
   // Create event submission
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventTitle.trim()) return;
 
@@ -197,7 +197,7 @@ export const CalendarWorkspace: React.FC = () => {
     const endHour = String(Math.min(23, parseInt(eventTime.split(':')[0], 10) + durHours)).padStart(2, '0');
     const endIso = `${eventDate}T${endHour}:${eventTime.split(':')[1] || '00'}:00Z`;
 
-    createCalendarEvent({
+    const persisted = await createCalendarEvent({
       matterId: eventMatterId,
       title: eventTitle,
       eventType,
@@ -210,6 +210,8 @@ export const CalendarWorkspace: React.FC = () => {
       editPolicy: eventEditPolicy,
       notes: eventNotes || undefined,
     });
+
+    if (!persisted) return;
 
     setShowAddEventModal(false);
     setEventTitle('');
@@ -246,7 +248,7 @@ export const CalendarWorkspace: React.FC = () => {
   };
 
   // Save Reschedule
-  const handleSaveReschedule = (e: React.FormEvent) => {
+  const handleSaveReschedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventForReschedule) return;
     setRescheduleError(null);
@@ -254,7 +256,7 @@ export const CalendarWorkspace: React.FC = () => {
     const startIso = `${rescheduleDate}T${rescheduleTime}:00Z`;
     const endIso = `${rescheduleDate}T${String(parseInt(rescheduleTime.split(':')[0], 10) + 2).padStart(2, '0')}:00:00Z`;
 
-    const res = rescheduleCalendarEvent(
+    const res = await rescheduleCalendarEvent(
       selectedEventForReschedule.id,
       startIso,
       endIso,
@@ -273,10 +275,10 @@ export const CalendarWorkspace: React.FC = () => {
   };
 
   // Link Document handler
-  const handleLinkDocument = (e: React.FormEvent) => {
+  const handleLinkDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventForDetail || !selectedDocToLink) return;
-    linkDocumentToCalendarEvent(selectedEventForDetail.id, selectedDocToLink);
+    await linkDocumentToCalendarEvent(selectedEventForDetail.id, selectedDocToLink);
     setShowLinkDocModal(false);
     setSelectedDocToLink('');
   };
