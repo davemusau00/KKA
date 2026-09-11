@@ -1,7 +1,9 @@
 import {
   Injectable,
   UnauthorizedException,
-  BadRequestException
+  BadRequestException,
+  HttpException,
+  HttpStatus
 } from "@nestjs/common";
 import * as argon2 from "argon2";
 import { createHash, randomBytes } from "node:crypto";
@@ -10,16 +12,22 @@ import { RedisService } from "../../platform/redis/redis.service";
 import { env } from "../../platform/env";
 import type { LoginInput } from "@kka/contracts";
 import { roleContext } from '../../platform/auth/role-context';
+import { AuditService } from '../../platform/audit/audit.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redis: RedisService
+    private readonly redis: RedisService,
+    private readonly audit: AuditService
   ) {}
 
   private sessionKey(sid: string) {
     return `session:${sid}`;
+  }
+
+  private userSessionsKey(userId: string) {
+    return `user-sessions:${userId}`;
   }
 
   async login(input: LoginInput) {
@@ -51,6 +59,8 @@ export class AuthService {
       "EX",
       env().SESSION_TTL_SECONDS
     );
+    await this.redis.client.sadd(this.userSessionsKey(user.id), sid);
+    await this.redis.client.expire(this.userSessionsKey(user.id), env().SESSION_TTL_SECONDS);
 
     await this.prisma.client.user.update({
       where: { id: user.id },
@@ -71,7 +81,14 @@ export class AuthService {
   }
 
   async logout(sid: string | undefined) {
-    if (sid) await this.redis.client.del(this.sessionKey(sid));
+    if (sid) {
+      const raw = await this.redis.client.get(this.sessionKey(sid));
+      if (raw) {
+        const session = JSON.parse(raw) as { userId?: string };
+        if (session.userId) await this.redis.client.srem(this.userSessionsKey(session.userId), sid);
+      }
+      await this.redis.client.del(this.sessionKey(sid));
+    }
     return { ok: true };
   }
 
@@ -114,6 +131,82 @@ export class AuthService {
       })
     ]);
 
+    return { ok: true };
+  }
+
+  async requestPasswordReset(email: string) {
+    const normalizedEmail = email.toLowerCase();
+    const rateKey = `password-reset-request:${createHash("sha256").update(normalizedEmail).digest("hex")}`;
+    const attempts = await this.redis.client.incr(rateKey);
+    if (attempts === 1) await this.redis.client.expire(rateKey, 3600);
+    if (attempts > 5) throw new HttpException("Try again later", HttpStatus.TOO_MANY_REQUESTS);
+
+    const user = await this.prisma.client.user.findUnique({ where: { email: normalizedEmail } });
+    let localToken: string | undefined;
+    if (user?.status === "ACTIVE" && user.passwordHash) {
+      localToken = randomBytes(32).toString("base64url");
+      const tokenHash = createHash("sha256").update(localToken).digest("hex");
+      await this.prisma.client.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() }
+      });
+      await this.prisma.client.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt: new Date(Date.now() + env().PASSWORD_RESET_TOKEN_TTL_MINUTES * 60_000)
+        }
+      });
+      await this.audit.record({
+        firmId: user.firmId,
+        actorUserId: user.id,
+        action: "auth.password_reset_requested",
+        entityType: "user",
+        entityId: user.id,
+        metadata: { deliveryStatus: "UNCONFIGURED" }
+      });
+    }
+
+    return {
+      ok: true,
+      deliveryStatus: "UNCONFIGURED" as const,
+      ...(env().EXPOSE_LOCAL_RESET_TOKEN && env().NODE_ENV !== "production" && localToken ? { localToken } : {})
+    };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const reset = await this.prisma.client.passwordResetToken.findUnique({ where: { tokenHash } });
+    if (!reset || reset.usedAt || reset.expiresAt <= new Date()) {
+      throw new BadRequestException("Reset token is invalid or expired");
+    }
+    const passwordHash = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: env().ARGON2_MEMORY_COST,
+      timeCost: env().ARGON2_TIME_COST,
+      parallelism: env().ARGON2_PARALLELISM
+    });
+    await this.prisma.client.$transaction(async tx => {
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: { id: reset.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() }
+      });
+      if (claimed.count !== 1) throw new BadRequestException("Reset token is invalid or expired");
+      await tx.user.update({ where: { id: reset.userId }, data: { passwordHash } });
+      await tx.passwordResetToken.updateMany({ where: { userId: reset.userId, usedAt: null, id: { not: reset.id } }, data: { usedAt: new Date() } });
+    });
+    const resetUser = await this.prisma.client.user.findUnique({ where: { id: reset.userId }, select: { firmId: true } });
+    if (resetUser) await this.audit.record({
+      firmId: resetUser.firmId,
+      actorUserId: reset.userId,
+      action: "auth.password_reset_completed",
+      entityType: "user",
+      entityId: reset.userId,
+      metadata: { sessionsRevoked: true }
+    });
+    const sessions = await this.redis.client.smembers(this.userSessionsKey(reset.userId));
+    if (sessions.length) await this.redis.client.del(...sessions.map(sid => this.sessionKey(sid)));
+    await this.redis.client.del(this.userSessionsKey(reset.userId));
     return { ok: true };
   }
 }

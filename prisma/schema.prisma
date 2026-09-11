@@ -469,6 +469,7 @@ model User {
   branches                       UserBranch[]
   teams                          UserTeam[]
   invites                        UserInvite[]
+  passwordResetTokens            PasswordResetToken[]
   supervisedMatters              Matter[]              @relation("MatterSupervisor")
   stageOwnedMatters              Matter[]              @relation("MatterStageOwner")
   assignments                    MatterAssignment[]
@@ -531,6 +532,19 @@ model UserInvite {
   acceptedAt  DateTime?
   createdById String?
   createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

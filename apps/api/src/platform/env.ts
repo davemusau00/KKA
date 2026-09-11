@@ -28,6 +28,8 @@ export const EnvSchema = z.object({
   ARGON2_TIME_COST: z.coerce.number().int().positive().default(3),
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
   INVITE_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(48),
+  PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().default(30),
+  EXPOSE_LOCAL_RESET_TOKEN: boolish.default(false),
   APP_ENCRYPTION_KEY_BASE64: z.string().min(32),
   ENCRYPTION_KEY_VERSION: z.coerce.number().int().positive().default(1),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),

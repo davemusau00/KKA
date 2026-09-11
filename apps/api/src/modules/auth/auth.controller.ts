@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req, Res } from "@nestjs/common";
 import { z } from "zod";
 import type { FastifyReply } from "fastify";
-import { LoginSchema, AcceptInviteSchema } from "@kka/contracts";
+import { LoginSchema, AcceptInviteSchema, RequestPasswordResetSchema, ResetPasswordSchema } from "@kka/contracts";
 import { AuthService } from "./auth.service";
 import { CurrentUser, Public } from "../../platform/auth/decorators";
 import type { AuthenticatedRequest, RequestUser } from "../../platform/auth/auth.types";
@@ -38,6 +38,20 @@ export class AuthController {
   async acceptInvite(@Body() body: unknown) {
     const input = AcceptInviteSchema.parse(body);
     return this.auth.acceptInvite(input.token, input.password);
+  }
+
+  @Public()
+  @Post("request-password-reset")
+  async requestPasswordReset(@Body() body: unknown) {
+    const input = RequestPasswordResetSchema.parse(body);
+    return this.auth.requestPasswordReset(input.email);
+  }
+
+  @Public()
+  @Post("reset-password")
+  async resetPassword(@Body() body: unknown) {
+    const input = ResetPasswordSchema.parse(body);
+    return this.auth.resetPassword(input.token, input.password);
   }
 
   @Post("elevate")

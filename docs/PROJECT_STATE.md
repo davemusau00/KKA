@@ -1,5 +1,7 @@
 # Project state and release evidence
 
+> Current cross-domain status is maintained in [CURRENT_RELEASE_STATE.md](CURRENT_RELEASE_STATE.md). This file records dated verification evidence and remains the evidence ledger.
+
 Updated 2026-09-07. Repository: `davemusau00/KKA`.
 
 ## Product and launch authority

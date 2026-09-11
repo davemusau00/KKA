@@ -28,4 +28,10 @@ export const authApi = {
 
   acceptInvite: (token: string, password: string) =>
     apiClient.post<{ user: BackendUser }>('/auth/accept-invite', { token, password }),
+
+  requestPasswordReset: (email: string) =>
+    apiClient.post<{ ok: boolean; deliveryStatus: 'UNCONFIGURED' | 'MANUAL' | 'SENT'; localToken?: string }>('/auth/request-password-reset', { email }),
+
+  resetPassword: (token: string, password: string) =>
+    apiClient.post<{ ok: boolean }>('/auth/reset-password', { token, password }),
 };
