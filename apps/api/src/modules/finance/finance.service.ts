@@ -48,6 +48,34 @@ export class FinanceService {
       lines: JournalLineInput[];
     }
   ) {
+    if (!input.lines.length) throw new BadRequestException("Journal requires at least two lines");
+    for (const line of input.lines) {
+      const debit = Number(line.debit || 0);
+      const credit = Number(line.credit || 0);
+      if (!Number.isFinite(debit) || !Number.isFinite(credit) || debit < 0 || credit < 0 || (debit > 0 && credit > 0) || (debit === 0 && credit === 0)) {
+        throw new BadRequestException("Each journal line must contain exactly one non-negative debit or credit amount");
+      }
+      if (line.matterId && input.matterId && line.matterId !== input.matterId) {
+        throw new BadRequestException("Journal line matter attribution does not match the journal");
+      }
+      if (line.clientId && input.clientId && line.clientId !== input.clientId) {
+        throw new BadRequestException("Journal line client attribution does not match the journal");
+      }
+    }
+
+    if (input.matterId) {
+      const matter = await this.prisma.client.matter.findFirst({
+        where: { id: input.matterId, firmId },
+        select: { clientId: true }
+      });
+      if (!matter) throw new BadRequestException("Matter not found");
+      if (input.clientId && matter.clientId !== input.clientId) throw new BadRequestException("Matter and client attribution do not match");
+    }
+    if (input.clientId) {
+      const client = await this.prisma.client.client.findFirst({ where: { id: input.clientId, firmId }, select: { id: true } });
+      if (!client) throw new BadRequestException("Client not found");
+    }
+
     const totalDebit = money(input.lines.reduce((sum, line) => sum + Number(line.debit || 0), 0));
     const totalCredit = money(input.lines.reduce((sum, line) => sum + Number(line.credit || 0), 0));
     if (totalDebit <= 0 || totalCredit <= 0 || totalDebit !== totalCredit) {

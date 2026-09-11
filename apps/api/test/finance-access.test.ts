@@ -56,3 +56,14 @@ test("receipt retries return the existing reference instead of creating another 
   assert.equal(result.id, "receipt-existing");
   assert.equal(creates, 0);
 });
+
+test("journal rejects line attribution that differs from the journal header", async () => {
+  const finance = new FinanceService({ client: {} } as any, {} as any, {} as any, {} as any);
+  await assert.rejects(
+    finance.postJournal("firm-1", "user-1", {
+      matterId: "matter-1", description: "Mismatch", transactionDate: "2026-09-11T00:00:00.000Z",
+      lines: [{ accountId: "a", debit: 100, credit: 0, matterId: "matter-2" }, { accountId: "b", debit: 0, credit: 100 }]
+    }),
+    /matter attribution does not match/
+  );
+});
