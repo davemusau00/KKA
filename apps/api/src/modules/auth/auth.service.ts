@@ -180,11 +180,10 @@ export class AuthService {
       });
       await this.audit.record({
         firmId: user.firmId,
-        actorUserId: user.id,
         action: "auth.password_reset_requested",
         entityType: "user",
         entityId: user.id,
-        metadata: { deliveryStatus: "UNCONFIGURED" }
+        metadata: { deliveryStatus: "UNCONFIGURED", authenticated: false }
       });
     }
 
@@ -219,11 +218,10 @@ export class AuthService {
     const resetUser = await this.prisma.client.user.findUnique({ where: { id: reset.userId }, select: { firmId: true } });
     if (resetUser) await this.audit.record({
       firmId: resetUser.firmId,
-      actorUserId: reset.userId,
       action: "auth.password_reset_completed",
       entityType: "user",
       entityId: reset.userId,
-      metadata: { sessionsRevoked: true }
+      metadata: { sessionsRevoked: true, authenticated: false }
     });
     const sessions = await this.redis.client.smembers(this.userSessionsKey(reset.userId));
     if (sessions.length) await this.redis.client.del(...sessions.map(sid => this.sessionKey(sid)));
