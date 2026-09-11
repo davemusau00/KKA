@@ -18,6 +18,8 @@ function fixture(canView: boolean) {
         upsert: async () => ({ id: "pi-1", matterId: "matter-1" }),
         findUnique: async () => ({ id: "pi-1", matterId: "matter-1", judgment: null, liability: null })
       },
+      ledgerAccount: { findMany: async () => [] },
+      paymentReceipt: { findMany: async () => [] },
       piJudgmentAward: {
         upsert: async (args: any) => { calls.push(args); return { id: "judgment-1", totalAward: 1250 }; }
       }
@@ -62,4 +64,12 @@ test("judgment writes preserve the persisted field contract and audit the mutati
   assert.equal(write.create.interestRatePercent, 12);
   assert.equal(write.create.recoveryTriggered, false);
   assert.equal(calls.some((call) => call.audit?.action === "pi.judgment_updated"), true);
+});
+
+test("settlement writes reject client funds that have no persisted client receipt", async () => {
+  const { service } = fixture(true);
+  await assert.rejects(
+    service.updateSettlement("firm-1", "user-1", "matter-1", { clientFundsReceived: 1 }),
+    /more client funds than recorded receipts/
+  );
 });

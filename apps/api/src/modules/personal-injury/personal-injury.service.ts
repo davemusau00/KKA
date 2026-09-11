@@ -198,8 +198,39 @@ export class PersonalInjuryService {
 
   async updateSettlement(firmId: string, actorId: string, matterId: string, input: any) {
     const p = await this.profile(firmId, actorId, matterId);
-    const { deductions = [], ...data } = input;
-    if (data.paidAt) data.paidAt = new Date(data.paidAt);
+    const grossAmount = input.grossAmount ?? input.grossSettlementAmount;
+    const clientFundsReceived = input.clientFundsReceived ?? input.fundsReceivedAmount ?? 0;
+    const professionalFees = input.professionalFees ?? 0;
+    const disbursements = input.disbursements ?? input.totalDisbursements ?? 0;
+    const otherDeductions = Array.isArray(input.otherDeductions)
+      ? input.otherDeductions.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0)
+      : (input.otherDeductions ?? 0);
+    const netClientAmount = input.netClientAmount;
+    for (const [name, value] of Object.entries({ grossAmount, clientFundsReceived, professionalFees, disbursements, otherDeductions, netClientAmount })) {
+      if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) throw new BadRequestException(`${name} must be a non-negative amount`);
+    }
+    if (netClientAmount !== undefined && grossAmount !== undefined) {
+      const expected = Number(grossAmount) - Number(professionalFees) - Number(disbursements) - Number(otherDeductions);
+      if (Math.abs(expected - Number(netClientAmount)) > 0.01) throw new BadRequestException("Settlement net amount does not reconcile with its deductions");
+    }
+    const clientAccounts = await this.prisma.client.ledgerAccount.findMany({ where: { firmId, fundType: "CLIENT", active: true }, select: { id: true } });
+    const clientAccountIds = clientAccounts.map((account) => account.id);
+    const receipts = clientAccountIds.length ? await this.prisma.client.paymentReceipt.findMany({ where: { firmId, matterId, accountId: { in: clientAccountIds } }, select: { amount: true } }) : [];
+    const recordedClientFunds = receipts.reduce((sum, receipt) => sum + Number(receipt.amount), 0);
+    if (Number(clientFundsReceived) > recordedClientFunds + 0.01) throw new BadRequestException("Settlement claims more client funds than recorded receipts");
+
+    const deductions = Array.isArray(input.deductions) ? input.deductions : [];
+    const data: any = {
+      grossAmount, clientFundsReceived, professionalFees, disbursements, otherDeductions,
+      netClientAmount,
+      clientApproved: input.clientApproved ?? ["approved", "disbursed"].includes(input.clientApprovalStatus),
+      partnerApproved: input.partnerApproved ?? false,
+      paymentMethod: input.paymentMethod,
+      paymentReference: input.paymentReference,
+      paidAt: input.paidAt ? new Date(input.paidAt) : undefined,
+      settlementStatementDocumentId: input.settlementStatementDocumentId,
+      dischargeDocumentId: input.dischargeDocumentId
+    };
     const row = await this.prisma.client.$transaction(async (tx) => {
       const settlement = await tx.piSettlementDistribution.upsert({ where: { personalInjuryId: p.id }, create: { personalInjuryId: p.id, ...data }, update: data });
       if (Array.isArray(deductions)) {

@@ -21,6 +21,31 @@ export class FinanceController {
     return this.finance.accountBalance(user.firmId, id);
   }
 
+  @Get("reconciliations")
+  @RequirePermissions("finance.view")
+  reconciliations(@CurrentUser() user: RequestUser) {
+    return this.finance.reconciliations(user.firmId);
+  }
+
+  @Post("reconciliations")
+  @RequirePermissions("finance.reconciliation_manage")
+  reconciliation(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const input = z.object({
+      accountId: z.string().min(1),
+      periodStart: z.string().datetime(),
+      periodEnd: z.string().datetime(),
+      statementOpeningBalance: z.coerce.number(),
+      statementClosingBalance: z.coerce.number()
+    }).parse(body);
+    return this.finance.startReconciliation(user.firmId, user.id, input);
+  }
+
+  @Post("reconciliations/:id/complete")
+  @RequirePermissions("finance.reconciliation_manage")
+  completeReconciliation(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.finance.completeReconciliation(user.firmId, user.id, id);
+  }
+
   @Post("journals")
   @RequirePermissions("finance.billing_manage")
   journal(@CurrentUser() user: RequestUser, @Body() body: unknown) {
@@ -60,9 +85,31 @@ export class FinanceController {
     return this.finance.recordReceipt(user.firmId, user.id, RecordReceiptSchema.parse(body));
   }
 
+  @Post("transfers")
+  @RequirePermissions("finance.trust_ledger")
+  transfer(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const input = z.object({
+      sourceAccountId: z.string().min(1),
+      destinationAccountId: z.string().min(1),
+      amount: z.coerce.number().positive(),
+      description: z.string().min(2).max(1000),
+      transactionDate: z.string().datetime(),
+      idempotencyKey: z.string().min(8).max(150),
+      matterId: z.string().optional(),
+      clientId: z.string().optional()
+    }).parse(body);
+    return this.finance.transfer(user.firmId, user.id, input);
+  }
+
   @Get("matters/:matterId/ledger")
   @RequirePermissions("finance.view")
   matterLedger(@CurrentUser() user: RequestUser, @Param("matterId") matterId: string) {
     return this.finance.matterLedger(user, matterId);
+  }
+
+  @Get("matters/:matterId/settlement-position")
+  @RequirePermissions("finance.view")
+  settlementPosition(@CurrentUser() user: RequestUser, @Param("matterId") matterId: string) {
+    return this.finance.settlementPosition(user, matterId);
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   DollarSign,
   Calculator,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { SettlementDistributionData, Matter } from '../../../types';
 
 interface SettlementDistributionWorkspaceProps {
@@ -35,6 +36,23 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
 
   const [localData, setLocalData] = useState<SettlementDistributionData>(data);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [serverPosition, setServerPosition] = useState<any>(null);
+  const [positionLoading, setPositionLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [positionError, setPositionError] = useState('');
+
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    apiClient.get<any>(`/finance/matters/${matter.id}/settlement-position`)
+      .then((position) => {
+        if (!active) return;
+        setServerPosition(position);
+        setPositionError('');
+      })
+      .catch((error) => active && setPositionError(error?.message || 'Unable to load the server settlement position.'))
+      .finally(() => active && setPositionLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
 
   // Dynamic fee & VAT calculations
   const gross = Number(localData.grossSettlementAmount) || 0;
@@ -67,7 +85,10 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
 
   return (
     <div className="space-y-6 text-xs">
-      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server settlement ledger is available for this matter. Cleared funds, deductions, approval, and payout are not represented here.</p>}
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">Server settlement evidence is read-only here. Approval, payout, and disbursement are not represented as complete until the ledger workflow is connected.</p>}
+      {!runtimeConfig.enableDemoMode && positionLoading && <p role="status" className="text-slate-400">Loading server settlement position…</p>}
+      {!runtimeConfig.enableDemoMode && positionError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{positionError}</p>}
+      {!runtimeConfig.enableDemoMode && serverPosition && <div role="status" className="border border-sky-800 bg-sky-950/30 text-sky-200 rounded-lg p-3">Server evidence: recorded client funds KES {Number(serverPosition.recordedClientFunds || 0).toLocaleString()} · recorded fee notes KES {Number(serverPosition.recordedFeeNotes || 0).toLocaleString()} · reconciled disbursements KES {Number(serverPosition.reconciledDisbursements || 0).toLocaleString()} · proposed residual KES {Number(serverPosition.proposedResidual || 0).toLocaleString()}. This is not a payout confirmation.</div>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>

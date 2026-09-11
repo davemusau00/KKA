@@ -34,6 +34,132 @@ export class FinanceService {
     });
   }
 
+  async reconciliations(firmId: string) {
+    return this.prisma.client.reconciliation.findMany({
+      where: { firmId },
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+      take: 200
+    });
+  }
+
+  private async accountBalanceAt(firmId: string, accountId: string, at: Date, before?: Date) {
+    const account = await this.prisma.client.ledgerAccount.findFirst({ where: { id: accountId, firmId, active: true } });
+    if (!account) throw new NotFoundException("Account not found");
+    const lines = await this.prisma.client.journalLine.findMany({
+      where: {
+        accountId,
+        entry: { firmId, status: "POSTED", transactionDate: { ...(before ? { gte: before } : {}), lte: at } }
+      },
+      select: { debit: true, credit: true }
+    });
+    const debits = lines.reduce((sum, line) => sum + Number(line.debit), 0);
+    const credits = lines.reduce((sum, line) => sum + Number(line.credit), 0);
+    const normalDebit = ["ASSET", "EXPENSE"].includes(account.accountClass);
+    return money(normalDebit ? debits - credits : credits - debits);
+  }
+
+  async startReconciliation(firmId: string, actorId: string, input: {
+    accountId: string;
+    periodStart: string;
+    periodEnd: string;
+    statementOpeningBalance: number;
+    statementClosingBalance: number;
+  }) {
+    const periodStart = new Date(input.periodStart);
+    const periodEnd = new Date(input.periodEnd);
+    if (!(periodStart < periodEnd)) throw new BadRequestException("Reconciliation period must have an end after its start");
+    const account = await this.prisma.client.ledgerAccount.findFirst({ where: { id: input.accountId, firmId, active: true } });
+    if (!account) throw new NotFoundException("Account not found");
+    const existing = await this.prisma.client.reconciliation.findFirst({ where: { firmId, accountId: input.accountId, periodStart, periodEnd } });
+    if (existing) return existing;
+    const ledgerOpeningBalance = await this.accountBalanceAt(firmId, input.accountId, new Date(periodStart.getTime() - 1), undefined);
+    const ledgerClosingBalance = await this.accountBalanceAt(firmId, input.accountId, periodEnd, undefined);
+    const reconciliation = await this.prisma.client.reconciliation.create({
+      data: {
+        firmId,
+        accountId: input.accountId,
+        periodStart,
+        periodEnd,
+        statementOpeningBalance: input.statementOpeningBalance,
+        statementClosingBalance: input.statementClosingBalance,
+        ledgerClosingBalance,
+        status: "OPEN"
+      },
+      include: { items: true }
+    });
+    await this.audit.record({
+      firmId, actorUserId: actorId, action: "finance.reconciliation_started",
+      entityType: "reconciliation", entityId: reconciliation.id,
+      metadata: { accountId: input.accountId, ledgerOpeningBalance, ledgerClosingBalance, statementClosingBalance: input.statementClosingBalance }
+    });
+    return { ...reconciliation, ledgerOpeningBalance, difference: money(input.statementClosingBalance - ledgerClosingBalance) };
+  }
+
+  async completeReconciliation(firmId: string, actorId: string, reconciliationId: string) {
+    const reconciliation = await this.prisma.client.reconciliation.findFirst({ where: { id: reconciliationId, firmId } });
+    if (!reconciliation) throw new NotFoundException("Reconciliation not found");
+    if (reconciliation.status !== "OPEN") throw new BadRequestException("Only open reconciliations can be completed");
+    const ledgerClosingBalance = await this.accountBalanceAt(firmId, reconciliation.accountId, reconciliation.periodEnd, undefined);
+    if (Math.abs(Number(reconciliation.statementClosingBalance) - ledgerClosingBalance) > 0.01) {
+      throw new BadRequestException("Statement closing balance does not match the posted ledger");
+    }
+    const updated = await this.prisma.client.reconciliation.updateMany({
+      where: { id: reconciliationId, firmId, status: "OPEN" },
+      data: { status: "COMPLETED", ledgerClosingBalance, completedById: actorId, completedAt: new Date() }
+    });
+    if (updated.count !== 1) throw new BadRequestException("Reconciliation was already completed");
+    const completed = await this.prisma.client.reconciliation.findUnique({ where: { id: reconciliationId }, include: { items: true } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "finance.reconciliation_completed", entityType: "reconciliation", entityId: reconciliationId, metadata: { ledgerClosingBalance } });
+    return completed;
+  }
+
+  async transfer(firmId: string, actorId: string, input: {
+    sourceAccountId: string;
+    destinationAccountId: string;
+    amount: number;
+    description: string;
+    transactionDate: string;
+    idempotencyKey: string;
+    matterId?: string;
+    clientId?: string;
+  }) {
+    if (input.sourceAccountId === input.destinationAccountId) {
+      throw new BadRequestException("Source and destination accounts must differ");
+    }
+    const existing = await this.prisma.client.journalEntry.findFirst({
+      where: { firmId, sourceType: "FUND_TRANSFER", sourceId: input.idempotencyKey },
+      include: { lines: { include: { account: true } } }
+    });
+    if (existing) return existing;
+
+    const amount = money(Number(input.amount));
+    if (!Number.isFinite(amount) || amount <= 0) throw new BadRequestException("Transfer amount must be positive");
+    const accounts = await this.prisma.client.ledgerAccount.findMany({
+      where: { firmId, id: { in: [input.sourceAccountId, input.destinationAccountId] }, active: true }
+    });
+    if (accounts.length !== 2) throw new BadRequestException("Source or destination account is invalid");
+
+    const entry = await this.postJournal(firmId, actorId, {
+      matterId: input.matterId,
+      clientId: input.clientId,
+      description: input.description,
+      transactionDate: input.transactionDate,
+      sourceType: "FUND_TRANSFER",
+      sourceId: input.idempotencyKey,
+      lines: [
+        { accountId: input.destinationAccountId, debit: amount, credit: 0, matterId: input.matterId, clientId: input.clientId },
+        { accountId: input.sourceAccountId, debit: 0, credit: amount, matterId: input.matterId, clientId: input.clientId }
+      ]
+    });
+    await this.audit.record({
+      firmId, actorUserId: actorId, action: "finance.fund_transfer_posted",
+      entityType: "journal_entry", entityId: entry.id, matterId: input.matterId, clientId: input.clientId,
+      metadata: { sourceAccountId: input.sourceAccountId, destinationAccountId: input.destinationAccountId, amount, idempotencyKey: input.idempotencyKey }
+    });
+    return entry;
+  }
+
   async postJournal(
     firmId: string,
     actorId: string,
@@ -95,6 +221,10 @@ export class FinanceService {
       where: { firmId, id: { in: accountIds }, active: true }
     });
     if (accounts.length !== accountIds.length) throw new BadRequestException("One or more ledger accounts are invalid");
+    const fundTypes = new Set(accounts.map((account) => account.fundType));
+    if (fundTypes.size > 1 && input.sourceType !== "FUND_TRANSFER") {
+      throw new BadRequestException("A journal cannot mix client and office funds unless it is an explicit fund transfer");
+    }
 
     const reference = await this.numbering.next({
       firmId,
@@ -352,6 +482,43 @@ export class FinanceService {
       },
       orderBy: { createdAt: "asc" }
     });
+  }
+
+  async settlementPosition(user: RequestUser, matterId: string) {
+    if (!(await this.access.canViewMatter(user, matterId))) throw new NotFoundException("Settlement position not found");
+    const [receipts, feeNotes, expenses] = await Promise.all([
+      this.prisma.client.paymentReceipt.findMany({
+        where: { firmId: user.firmId, matterId },
+        select: { id: true, receiptNumber: true, amount: true, accountId: true, receivedAt: true, referenceNumber: true }
+      }),
+      this.prisma.client.feeNote.findMany({
+        where: { firmId: user.firmId, matterId, status: { in: ["ISSUED", "PARTIALLY_PAID", "SETTLED_FROM_TRUST", "PAID"] } },
+        select: { id: true, feeNoteNumber: true, grossTotal: true, status: true }
+      }),
+      this.prisma.client.expenseRequest.findMany({
+        where: { firmId: user.firmId, matterId, status: { in: ["DISBURSED", "RECONCILED"] } },
+        select: { id: true, expenseNumber: true, amount: true, status: true }
+      })
+    ]);
+    const accountIds = [...new Set(receipts.map((receipt) => receipt.accountId))];
+    const accounts = accountIds.length ? await this.prisma.client.ledgerAccount.findMany({ where: { firmId: user.firmId, id: { in: accountIds } }, select: { id: true, fundType: true } }) : [];
+    const clientAccountIds = new Set(accounts.filter((account) => account.fundType === "CLIENT").map((account) => account.id));
+    const clientReceipts = receipts.filter((receipt) => clientAccountIds.has(receipt.accountId));
+    const recordedClientFunds = money(clientReceipts.reduce((sum, receipt) => sum + Number(receipt.amount), 0));
+    const recordedFeeNotes = money(feeNotes.reduce((sum, feeNote) => sum + Number(feeNote.grossTotal), 0));
+    const reconciledDisbursements = money(expenses.reduce((sum, expense) => sum + Number(expense.amount), 0));
+    return {
+      matterId,
+      recordedClientFunds,
+      recordedFeeNotes,
+      reconciledDisbursements,
+      proposedResidual: money(recordedClientFunds - recordedFeeNotes - reconciledDisbursements),
+      evidence: {
+        receiptIds: clientReceipts.map((receipt) => receipt.id),
+        feeNoteIds: feeNotes.map((feeNote) => feeNote.id),
+        expenseIds: expenses.map((expense) => expense.id)
+      }
+    };
   }
 
   async accountBalance(firmId: string, accountId: string) {
