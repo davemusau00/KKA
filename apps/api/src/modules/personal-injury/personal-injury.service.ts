@@ -150,8 +150,26 @@ export class PersonalInjuryService {
 
   async updateJudgment(firmId: string, actorId: string, matterId: string, input: any) {
     const p = await this.profile(firmId, matterId);
-    const data: any = { ...input };
-    for (const k of ["judgmentDate","paymentDeadline","appealDeadline"]) if (data[k]) data[k] = new Date(data[k]);
+    const defendantPercent = input.liabilityDefendantPercent ?? input.liabilityPercent;
+    const claimantPercent = input.liabilityClaimantPercent ?? (defendantPercent === undefined ? undefined : 100 - Number(defendantPercent));
+    const data: any = {
+      judgmentDate: input.judgmentDate ? new Date(input.judgmentDate) : undefined,
+      liabilityPercent: defendantPercent,
+      liabilityClaimantPercent: claimantPercent,
+      liabilityDefendantPercent: defendantPercent,
+      generalDamages: input.generalDamages,
+      specialDamages: input.specialDamages,
+      futureMedical: input.futureMedical,
+      costsAmount: input.costsAwarded ?? input.costsAmount,
+      interestRatePercent: input.interestRatePercent,
+      interestFromDate: input.interestFromDate ? new Date(input.interestFromDate) : undefined,
+      totalAward: input.totalAward,
+      paymentDeadline: input.paymentDeadline ? new Date(input.paymentDeadline) : undefined,
+      appealDeadline: input.appealDeadline ? new Date(input.appealDeadline) : undefined,
+      appealRecommended: input.appealRecommended,
+      appealJustification: input.appealJustification,
+      recoveryTriggered: input.recoveryTriggered,
+    };
     const row = await this.prisma.client.piJudgmentAward.upsert({ where: { personalInjuryId: p.id }, create: { personalInjuryId: p.id, ...data }, update: data });
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.judgment_updated", entityType: "pi_judgment", entityId: row.id, matterId, metadata: { totalAward: row.totalAward.toString() } });
     return row;

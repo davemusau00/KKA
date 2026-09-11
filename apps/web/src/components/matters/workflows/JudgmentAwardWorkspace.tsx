@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Gavel,
   Award,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { JudgmentAwardData, Matter } from '../../../types';
 
 interface JudgmentAwardWorkspaceProps {
@@ -29,11 +30,50 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
     interestRatePercent: 0, interestFromDate: '', totalAward: 0, paymentDeadline: '', appealDeadline: '',
     appealRecommended: false,
     appealJustification: '',
-    recoveryTriggered: true,
+    recoveryTriggered: false,
   };
 
   const [localData, setLocalData] = useState<JudgmentAwardData>(data);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loading, setLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    setLoading(true);
+    apiClient.get<any>(`/personal-injury/${matter.id}`)
+      .then((profile) => {
+        if (!active) return;
+        const judgment = profile?.judgment;
+        if (!judgment) {
+          setLoadError('No judgment record exists for this matter.');
+          return;
+        }
+        const value = (key: string, fallback = 0) => Number(judgment[key] ?? fallback);
+        const persisted: JudgmentAwardData = {
+          matterId: matter.id,
+          judgmentDate: judgment.judgmentDate ? String(judgment.judgmentDate).slice(0, 10) : '',
+          liabilityClaimantPercent: value('liabilityClaimantPercent', 100 - value('liabilityPercent')),
+          liabilityDefendantPercent: value('liabilityDefendantPercent', value('liabilityPercent')),
+          generalDamages: value('generalDamages'), specialDamages: value('specialDamages'),
+          futureMedical: value('futureMedical'), costsAwarded: value('costsAwarded'),
+          interestRatePercent: value('interestRatePercent'),
+          interestFromDate: judgment.interestFromDate ? String(judgment.interestFromDate).slice(0, 10) : '',
+          totalAward: value('totalAward'),
+          paymentDeadline: judgment.paymentDeadline ? String(judgment.paymentDeadline).slice(0, 10) : '',
+          appealDeadline: judgment.appealDeadline ? String(judgment.appealDeadline).slice(0, 10) : '',
+          appealRecommended: Boolean(judgment.appealRecommended),
+          appealJustification: judgment.appealJustification || '',
+          recoveryTriggered: Boolean(judgment.recoveryTriggered),
+        };
+        setLocalData(persisted);
+        setLoadError('');
+      })
+      .catch((error) => active && setLoadError(error?.message || 'Unable to load the server judgment record.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
 
   // Recalculate gross and net damages
   const gross =
@@ -41,23 +81,50 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
     (Number(localData.specialDamages) || 0) +
     (Number(localData.futureMedical) || 0);
 
-  const net = Math.round(gross * ((Number(localData.liabilityDefendantPercent) || 100) / 100));
+  const net = Math.round(gross * (Number(localData.liabilityDefendantPercent) / 100));
   const totalPayableWithCosts = net + (Number(localData.costsAwarded) || 0);
 
-  const handleSave = () => {
-    if (!runtimeConfig.enableDemoMode) return;
+  const handleSave = async () => {
     const updated = {
       ...localData,
       totalAward: totalPayableWithCosts,
     };
-    updateJudgmentAward(matter.id, updated);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        updateJudgmentAward(matter.id, updated);
+      } else {
+        const persisted = await apiClient.put<any>(`/personal-injury/${matter.id}/judgment`, {
+          judgmentDate: updated.judgmentDate || undefined,
+          liabilityClaimantPercent: updated.liabilityClaimantPercent,
+          liabilityDefendantPercent: updated.liabilityDefendantPercent,
+          generalDamages: updated.generalDamages,
+          specialDamages: updated.specialDamages,
+          futureMedical: updated.futureMedical,
+          costsAwarded: updated.costsAwarded,
+          interestRatePercent: updated.interestRatePercent,
+          interestFromDate: updated.interestFromDate || undefined,
+          totalAward: updated.totalAward,
+          paymentDeadline: updated.paymentDeadline || undefined,
+          appealDeadline: updated.appealDeadline || undefined,
+          appealRecommended: updated.appealRecommended,
+          appealJustification: updated.appealJustification,
+          recoveryTriggered: updated.recoveryTriggered,
+        });
+        setLocalData({ ...updated, totalAward: Number(persisted.totalAward ?? updated.totalAward) });
+        setLoadError('');
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Judgment record was not saved.');
+    }
   };
 
   return (
     <div className="space-y-6 text-xs">
-      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server judgment record is available for this matter. This workspace is read-only until the judgment API is connected; no legal finding or award is assumed.</p>}
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">This workspace reads and writes the server judgment record. An empty matter has no legal finding or award until an authorized user saves one.</p>}
+      {loading && <p role="status" className="text-slate-400">Loading server judgment record…</p>}
+      {loadError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{loadError}</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -83,7 +150,7 @@ export const JudgmentAwardWorkspace: React.FC<JudgmentAwardWorkspaceProps> = ({ 
           )}
           <button
             onClick={handleSave}
-            disabled={!runtimeConfig.enableDemoMode}
+            disabled={loading}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

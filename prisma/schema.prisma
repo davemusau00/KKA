@@ -2816,23 +2816,29 @@ model PiHearingBrief {
 }
 
 model PiJudgmentAward {
-  id                 String    @id @default(cuid())
-  personalInjuryId   String    @unique
-  judgmentDate       DateTime?
-  liabilityPercent   Decimal?  @db.Decimal(8, 3)
-  generalDamages     Decimal   @default(0) @db.Decimal(18, 2)
-  specialDamages     Decimal   @default(0) @db.Decimal(18, 2)
-  futureMedical      Decimal   @default(0) @db.Decimal(18, 2)
-  costsAmount        Decimal   @default(0) @db.Decimal(18, 2)
-  interestAmount     Decimal   @default(0) @db.Decimal(18, 2)
-  totalAward         Decimal   @default(0) @db.Decimal(18, 2)
-  paymentDeadline    DateTime?
-  appealDeadline     DateTime?
-  appealRecommended  Boolean   @default(false)
-  judgmentDocumentId String?
-  decreeDocumentId   String?
-  notes              String?
-  updatedAt          DateTime  @updatedAt
+  id                        String    @id @default(cuid())
+  personalInjuryId          String    @unique
+  judgmentDate              DateTime?
+  liabilityPercent          Decimal?  @db.Decimal(8, 3)
+  liabilityClaimantPercent  Decimal?  @db.Decimal(8, 3)
+  liabilityDefendantPercent Decimal?  @db.Decimal(8, 3)
+  generalDamages            Decimal   @default(0) @db.Decimal(18, 2)
+  specialDamages            Decimal   @default(0) @db.Decimal(18, 2)
+  futureMedical             Decimal   @default(0) @db.Decimal(18, 2)
+  costsAmount               Decimal   @default(0) @db.Decimal(18, 2)
+  interestAmount            Decimal   @default(0) @db.Decimal(18, 2)
+  totalAward                Decimal   @default(0) @db.Decimal(18, 2)
+  paymentDeadline           DateTime?
+  appealDeadline            DateTime?
+  appealRecommended         Boolean   @default(false)
+  appealJustification       String?
+  interestRatePercent       Decimal?  @db.Decimal(8, 3)
+  interestFromDate          DateTime?
+  recoveryTriggered         Boolean   @default(false)
+  judgmentDocumentId        String?
+  decreeDocumentId          String?
+  notes                     String?
+  updatedAt                 DateTime  @updatedAt
 
   personalInjury PersonalInjuryCase @relation(fields: [personalInjuryId], references: [id], onDelete: Cascade)
 }
