@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Scale,
   DollarSign,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { LiabilityQuantumData, Matter, SpecialDamageItem } from '../../../types';
 
 interface LiabilityQuantumWorkspaceProps {
@@ -40,6 +41,60 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
 
   const [localData, setLocalData] = useState<LiabilityQuantumData>(data);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loading, setLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    setLoading(true);
+    apiClient.get<any>(`/personal-injury/${matter.id}`)
+      .then((profile) => {
+        if (!active) return;
+        const liability = profile?.liability;
+        if (!liability) {
+          setLoadError('No liability or quantum record exists for this matter.');
+          return;
+        }
+        const number = (key: string) => Number(liability[key] ?? 0);
+        const persisted: LiabilityQuantumData = {
+          liability: {
+            claimantPercent: number('claimantPercent'),
+            defendantPercent: number('defendantPercent'),
+            contributoryNegligenceAlleged: Boolean(liability.contributoryNegligence),
+            contributoryNotes: liability.contributoryNotes || '',
+            supportingEvidence: Array.isArray(liability.supportingEvidence) ? liability.supportingEvidence : [],
+            weaknesses: Array.isArray(liability.weaknesses) ? liability.weaknesses : [],
+            advocateOpinion: liability.advocateOpinion || '',
+          },
+          damages: {
+            generalDamages: number('generalDamages'),
+            generalDamagesJustification: liability.generalDamagesJustification || '',
+            specialDamages: (liability.specialDamages || []).map((item: any) => ({
+              id: item.id,
+              head: item.head,
+              amount: Number(item.amount ?? 0),
+              receiptRef: item.receiptReference || '',
+              isEvidenced: Boolean(item.evidenced),
+              evidenceDocId: item.evidenceDocumentId,
+            })),
+            futureMedicalExpenses: number('futureMedicalExpenses'),
+            futureMedicalJustification: liability.futureMedicalJustification || '',
+            lossOfEarnings: number('lossOfEarnings'),
+            lossOfEarningsMonths: 0,
+            monthlyEarningsBasis: 0,
+            lossOfEarningCapacity: number('lossOfEarningCapacity'),
+            otherHeads: [],
+            totalEstimatedClaimValue: number('generalDamages') + (liability.specialDamages || []).reduce((sum: number, item: any) => sum + Number(item.amount ?? 0), 0) + number('futureMedicalExpenses') + number('lossOfEarnings'),
+          },
+        };
+        setLocalData(persisted);
+        setLoadError('');
+      })
+      .catch((error) => active && setLoadError(error?.message || 'Unable to load the server liability record.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
 
   // New special damage row
   const [showSpecialForm, setShowSpecialForm] = useState(false);
@@ -62,11 +117,10 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
     (Number(localData.damages.lossOfEarnings) || 0);
 
   const netQuantum = Math.round(
-    grossQuantum * ((Number(localData.liability.defendantPercent) || 100) / 100)
+    grossQuantum * (Number(localData.liability.defendantPercent) / 100)
   );
 
-  const handleSave = () => {
-    if (!runtimeConfig.enableDemoMode) return;
+  const handleSave = async () => {
     const updated: LiabilityQuantumData = {
       ...localData,
       damages: {
@@ -74,9 +128,35 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
         totalEstimatedClaimValue: netQuantum,
       },
     };
-    updateLiabilityQuantum(matter.id, updated);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        updateLiabilityQuantum(matter.id, updated);
+      } else {
+        await apiClient.put(`/personal-injury/${matter.id}/liability-quantum`, {
+          claimantPercent: updated.liability.claimantPercent,
+          defendantPercent: updated.liability.defendantPercent,
+          contributoryNegligence: updated.liability.contributoryNegligenceAlleged,
+          contributoryNotes: updated.liability.contributoryNotes,
+          supportingEvidence: updated.liability.supportingEvidence,
+          weaknesses: updated.liability.weaknesses,
+          advocateOpinion: updated.liability.advocateOpinion,
+          generalDamages: updated.damages.generalDamages,
+          generalDamagesJustification: updated.damages.generalDamagesJustification,
+          futureMedicalExpenses: updated.damages.futureMedicalExpenses,
+          lossOfEarnings: updated.damages.lossOfEarnings,
+          lossOfEarningCapacity: updated.damages.lossOfEarningCapacity,
+          specialDamages: updated.damages.specialDamages.map((item) => ({
+            head: item.head, amount: item.amount, evidenced: item.isEvidenced,
+            receiptReference: item.receiptRef, evidenceDocumentId: item.evidenceDocId,
+          })),
+        });
+        setLoadError('');
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Liability and quantum record was not saved.');
+    }
   };
 
   const handleAddSpecial = () => {
@@ -116,7 +196,9 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
 
   return (
     <div className="space-y-6 text-xs">
-      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server quantum record is available for this matter. Entered values are not authoritative until the liability and quantum API is connected.</p>}
+      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">This workspace reads and writes the server liability and quantum record. An empty matter has no finding or valuation until an authorized user saves one.</p>}
+      {loading && <p role="status" className="text-slate-400">Loading server liability and quantum record…</p>}
+      {loadError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{loadError}</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -142,7 +224,7 @@ export const LiabilityQuantumWorkspace: React.FC<LiabilityQuantumWorkspaceProps>
           )}
           <button
             onClick={handleSave}
-            disabled={!runtimeConfig.enableDemoMode}
+            disabled={loading}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />

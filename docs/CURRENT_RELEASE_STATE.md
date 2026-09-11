@@ -17,6 +17,7 @@
 - Matter-derived management dashboard counts, court metrics, and portal grant creation/listing now use the same access policy. Approval and expense dashboard totals remain firm-scoped because those current records do not carry a direct matter relation and require a later data-model/policy decision.
 - Notification listing and read-state mutations now re-check matter visibility, preventing restricted matter content from being returned or acknowledged by an unauthorized recipient. Creation-time delivery filtering and multi-user browser acceptance remain open.
 - PI judgment, liability/quantum, recovery, and settlement workspaces no longer surface seeded legal, recovery, payment, or client-money outcomes in normal mode. Their browser-only save/disbursement paths are disabled unless the explicit local demo flag is enabled; empty screens now state that server-backed evidence is unavailable. This is a truthfulness remediation, not acceptance of the PI lifecycle.
+- The judgment and liability/quantum workspaces now hydrate from and save to the server PI record, with schema-backed field mappings for liability splits, appeal justification, interest metadata, recovery-trigger state, and special-damage evidence. The PI service applies the shared matter-access policy to reads and writes. Reload, second-user, and browser authorization evidence for this slice remain to be added before it is classified as fully accepted.
 
 ## Implemented, acceptance incomplete
 
