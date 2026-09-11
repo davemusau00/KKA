@@ -14,7 +14,7 @@ import {
   Building2,
   LogOut,
 } from 'lucide-react';
-import { CurrentAuthUser } from '../../lib/api/auth.api';
+import { authApi, CurrentAuthUser } from '../../lib/api/auth.api';
 import { useApp } from '../../context/AppContext';
 import { FirmLogo } from '../common/FirmLogo';
 import { runtimeConfig } from '../../config/runtime';
@@ -33,6 +33,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [authView, setAuthView] = useState<'login' | 'request' | 'reset'>('login');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   if (!isOpen) return null;
 
@@ -62,6 +65,53 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
     } catch (err: any) {
       const msg = err?.message || 'Invalid credentials or backend service unreachable.';
       setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setErrorMessage('Enter your firm email address.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      const result = await authApi.requestPasswordReset(email.trim());
+      if (result.localToken) {
+        setResetToken(result.localToken);
+        setAuthView('reset');
+        setSuccessMessage('A local reset token was issued for this development environment.');
+      } else {
+        setSuccessMessage('If the account is eligible, reset instructions would be sent. Email delivery is currently unconfigured; contact an administrator for a manual reset.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Unable to start password recovery. Try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 12) {
+      setErrorMessage('Use a password with at least 12 characters.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      await authApi.resetPassword(resetToken.trim(), newPassword);
+      setAuthView('login');
+      setPassword('');
+      setNewPassword('');
+      setSuccessMessage('Password reset complete. Sign in with your new password.');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'This reset token is invalid or expired.');
     } finally {
       setIsLoading(false);
     }
@@ -118,8 +168,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {authView !== 'login' && (
+            <button
+              type="button"
+              onClick={() => { setAuthView('login'); setErrorMessage(null); setSuccessMessage(null); }}
+              className="mb-4 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+            >
+              ← Back to sign in
+            </button>
+          )}
+
+          {authView === 'request' && <form onSubmit={handleRequestReset} className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Reset your password</h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Enter your firm email. We will not reveal whether an account exists.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Firm Email Address</label>
+              <div className="relative"><Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none transition" /></div>
+            </div>
+            <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold text-xs py-2.5 px-4 rounded-xl disabled:opacity-60">{isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}Request reset</button>
+          </form>}
+
+          {authView === 'reset' && <form onSubmit={handleResetPassword} className="space-y-4">
+            <div><h2 className="text-lg font-semibold">Choose a new password</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Reset tokens expire and can only be used once.</p></div>
+            <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Reset token</label><input value={resetToken} onChange={(e) => setResetToken(e.target.value)} required className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-900 dark:text-slate-100 outline-none" /></div>
+            <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">New password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={12} required className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none" /></div>
+            <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold text-xs py-2.5 px-4 rounded-xl disabled:opacity-60">{isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}Set new password</button>
+          </form>}
+
+          {authView === 'login' && <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Firm Email Address
@@ -143,9 +221,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Password
                 </label>
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer">
+                <button type="button" onClick={() => { setAuthView('request'); setErrorMessage(null); setSuccessMessage(null); }} className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer">
                   Forgot password?
-                </span>
+                </button>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
@@ -186,7 +264,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
                 </>
               )}
             </button>
-          </form>
+          </form>}
 
           {runtimeConfig.enableDemoMode && <>
           {/* Quick Fill Demo Credentials */}
