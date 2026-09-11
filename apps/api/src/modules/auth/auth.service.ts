@@ -92,6 +92,27 @@ export class AuthService {
     return { ok: true };
   }
 
+  async logoutAll(userId: string, firmId: string, currentSid?: string) {
+    const sessions = await this.redis.client.smembers(this.userSessionsKey(userId));
+    const revoke = sessions.filter(sid => sid !== currentSid);
+    if (revoke.length) await this.redis.client.del(...revoke.map(sid => this.sessionKey(sid)));
+    if (currentSid) {
+      await this.redis.client.srem(this.userSessionsKey(userId), ...revoke);
+      await this.redis.client.sadd(this.userSessionsKey(userId), currentSid);
+    } else {
+      await this.redis.client.del(this.userSessionsKey(userId));
+    }
+    await this.audit.record({
+      firmId,
+      actorUserId: userId,
+      action: "auth.sessions_revoked",
+      entityType: "user",
+      entityId: userId,
+      metadata: { revokedSessions: revoke.length, retainedCurrentSession: Boolean(currentSid) }
+    });
+    return { ok: true, revokedSessions: revoke.length };
+  }
+
   async elevate(userId: string, password: string) {
     const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
     if (!user?.passwordHash || user.status !== "ACTIVE" || !(await argon2.verify(user.passwordHash, password))) {

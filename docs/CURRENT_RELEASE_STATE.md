@@ -12,6 +12,7 @@
 - Client/task/intake adapters and selected server-confirmed mutations exist. Calendar CRUD and court/document service foundations exist.
 - Provider and backup/integration fallbacks are required to report unavailable, manual, failed, or unimplemented states; local checks do not prove external delivery, payment, filing, synchronization, backup, or restore.
 - Password-reset request and token-consumption API paths now exist with expiring single-use hashed tokens, generic request behavior, local-only token exposure behind an explicit flag, audit events, and revocation of indexed sessions. Mail delivery remains unconfigured.
+- Password reset and self-service logout-all were exercised against the local compiled API, PostgreSQL, and Redis; valid reset tokens are single-use and reset revokes existing sessions.
 
 ## Implemented, acceptance incomplete
 
@@ -24,7 +25,7 @@
 
 ## Not implemented or not proven
 
-- Password-recovery browser journey, MFA, session administration, and end-to-end invite acceptance journey remain incomplete. The password-reset API slice is implemented but not yet accepted end to end.
+- Password-recovery browser journey, MFA, administrative session inspection/revocation, and end-to-end invite acceptance journey remain incomplete. The password-reset API and self-service logout-all slice are locally accepted; browser automation and mail delivery remain open.
 - One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants.
 - Complete PI legal lifecycle with empty-state truthfulness, persisted stage gates, approvals, transitions, and cross-user verification.
 - Ledger-grade client-money operations and settlement reconciliation.

@@ -68,6 +68,12 @@ export class AuthController {
     return { ok: true };
   }
 
+  @Post("logout-all")
+  async logoutAll(@Req() request: AuthenticatedRequest) {
+    const sid = request.cookies?.[env().SESSION_COOKIE_NAME];
+    return this.auth.logoutAll(request.authUser!.id, request.authUser!.firmId, sid);
+  }
+
   @Get("me")
   me(@CurrentUser() user: RequestUser) {
     return user;
