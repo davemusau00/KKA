@@ -1897,6 +1897,7 @@ model JournalEntry {
   matter Matter?       @relation(fields: [matterId], references: [id], onDelete: SetNull)
   lines  JournalLine[]
 
+  @@unique([firmId, sourceType, sourceId])
   @@index([matterId, transactionDate])
   @@index([clientId, transactionDate])
   @@index([status, transactionDate])
@@ -1941,6 +1942,7 @@ model PaymentReceipt {
   createdById              String
   createdAt                DateTime @default(now())
 
+  @@unique([firmId, referenceNumber])
   @@index([matterId, receivedAt])
   @@index([clientId, receivedAt])
 }

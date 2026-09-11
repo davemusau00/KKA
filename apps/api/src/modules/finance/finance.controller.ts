@@ -63,6 +63,6 @@ export class FinanceController {
   @Get("matters/:matterId/ledger")
   @RequirePermissions("finance.view")
   matterLedger(@CurrentUser() user: RequestUser, @Param("matterId") matterId: string) {
-    return this.finance.matterLedger(user.firmId, matterId);
+    return this.finance.matterLedger(user, matterId);
   }
 }

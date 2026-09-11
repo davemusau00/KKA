@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { NumberingService } from "../numbering/numbering.service";
+import { RecordAccessService } from "../../platform/auth/record-access.service";
+import type { RequestUser } from "../../platform/auth/auth.types";
 
 type JournalLineInput = {
   accountId: string;
@@ -21,7 +23,8 @@ export class FinanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly numbering: NumberingService
+    private readonly numbering: NumberingService,
+    private readonly access: RecordAccessService
   ) {}
 
   accounts(firmId: string) {
@@ -49,6 +52,14 @@ export class FinanceService {
     const totalCredit = money(input.lines.reduce((sum, line) => sum + Number(line.credit || 0), 0));
     if (totalDebit <= 0 || totalCredit <= 0 || totalDebit !== totalCredit) {
       throw new BadRequestException(`Journal is not balanced. Debit=${totalDebit}, Credit=${totalCredit}`);
+    }
+
+    if (input.sourceType && input.sourceId) {
+      const existing = await this.prisma.client.journalEntry.findFirst({
+        where: { firmId, sourceType: input.sourceType, sourceId: input.sourceId },
+        include: { lines: { include: { account: true } } }
+      });
+      if (existing) return existing;
     }
 
     const accountIds = Array.from(new Set(input.lines.map((line) => line.accountId)));
@@ -232,6 +243,12 @@ export class FinanceService {
   }
 
   async recordReceipt(firmId: string, actorId: string, input: any) {
+    const existing = await this.prisma.client.paymentReceipt.findFirst({
+      where: { firmId, referenceNumber: input.referenceNumber },
+      include: { journalEntry: { include: { lines: { include: { account: true } } } } }
+    });
+    if (existing) return existing;
+
     const account = await this.prisma.client.ledgerAccount.findFirst({
       where: { id: input.accountId, firmId, active: true }
     });
@@ -298,9 +315,10 @@ export class FinanceService {
     return receipt;
   }
 
-  matterLedger(firmId: string, matterId: string) {
+  async matterLedger(user: RequestUser, matterId: string) {
+    if (!(await this.access.canViewMatter(user, matterId))) throw new NotFoundException("Matter ledger not found");
     return this.prisma.client.journalLine.findMany({
-      where: { matterId, entry: { firmId, status: "POSTED" } },
+      where: { matterId, entry: { firmId: user.firmId, status: "POSTED" } },
       include: {
         account: true,
         entry: { select: { id: true, reference: true, description: true, transactionDate: true, sourceType: true } }
