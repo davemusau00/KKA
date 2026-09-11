@@ -20,6 +20,7 @@
 - The judgment and liability/quantum workspaces now hydrate from and save to the server PI record, with schema-backed field mappings for liability splits, appeal justification, interest metadata, recovery-trigger state, and special-damage evidence. The PI service applies the shared matter-access policy to reads and writes. Reload, second-user, and browser authorization evidence for this slice remain to be added before it is classified as fully accepted.
 - `pnpm --filter @kka/api test:access` now covers the shared record predicate, notification visibility, PI restricted reads, authorized reads, judgment field mapping, and PI audit recording; these are service-level proofs, not yet browser or second-user acceptance.
 - Audit listing now applies the same matter-access policy to matter-linked audit events, including firm-wide audit queries; restricted audit rows are omitted. The access suite includes this regression.
+- Matter-ledger reads now enforce shared matter access. Journal source identifiers and receipt reference numbers have database uniqueness constraints with idempotent replay handling, preventing the same source transaction from being posted twice. Full client-money balancing, allocation, reconciliation, closed-period, and settlement-distribution acceptance remains open.
 
 ## Implemented, acceptance incomplete
 
