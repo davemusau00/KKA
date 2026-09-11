@@ -244,8 +244,7 @@ export class FinanceService {
 
   async recordReceipt(firmId: string, actorId: string, input: any) {
     const existing = await this.prisma.client.paymentReceipt.findFirst({
-      where: { firmId, referenceNumber: input.referenceNumber },
-      include: { journalEntry: { include: { lines: { include: { account: true } } } } }
+      where: { firmId, referenceNumber: input.referenceNumber }
     });
     if (existing) return existing;
 
