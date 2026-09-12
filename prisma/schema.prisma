@@ -525,17 +525,22 @@ model UserTeam {
 }
 
 model UserInvite {
-  id          String    @id @default(cuid())
-  userId      String
-  tokenHash   String    @unique
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  createdById String?
-  createdAt   DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  userId              String
+  tokenHash           String    @unique
+  expiresAt           DateTime
+  acceptedAt          DateTime?
+  revokedAt           DateTime?
+  supersededAt        DateTime?
+  deliveryStatus      String    @default("UNCONFIGURED")
+  deliveryAttemptedAt DateTime?
+  createdById         String?
+  createdAt           DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+  @@index([userId, acceptedAt, revokedAt, supersededAt])
 }
 
 model PasswordResetToken {

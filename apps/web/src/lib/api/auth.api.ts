@@ -1,5 +1,4 @@
 import { apiClient } from './client';
-import { BackendUser } from './users.api';
 
 export interface CurrentAuthUser {
   id: string;
@@ -28,8 +27,10 @@ export const authApi = {
   elevate: (password: string) =>
     apiClient.post<{ elevationToken: string; expiresInSeconds: number }>('/auth/elevate', { password }),
 
+  inspectInvite: (token: string) => apiClient.post<{ valid: boolean }>('/auth/inspect-invite', { token }),
+
   acceptInvite: (token: string, password: string) =>
-    apiClient.post<{ user: BackendUser }>('/auth/accept-invite', { token, password }),
+    apiClient.post<{ ok: boolean; auditId: string; user: CurrentAuthUser }>('/auth/accept-invite', { token, password }),
 
   requestPasswordReset: (email: string) =>
     apiClient.post<{ ok: boolean; deliveryStatus: 'UNCONFIGURED' | 'MANUAL' | 'SENT'; localToken?: string }>('/auth/request-password-reset', { email }),

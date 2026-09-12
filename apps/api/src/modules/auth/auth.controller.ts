@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req, Res } from "@nestjs/common";
 import { z } from "zod";
 import type { FastifyReply } from "fastify";
-import { LoginSchema, AcceptInviteSchema, RequestPasswordResetSchema, ResetPasswordSchema } from "@kka/contracts";
+import { LoginSchema, AcceptInviteSchema, InviteTokenSchema, RequestPasswordResetSchema, ResetPasswordSchema } from "@kka/contracts";
 import { AuthService } from "./auth.service";
 import { CurrentUser, Public } from "../../platform/auth/decorators";
 import type { AuthenticatedRequest, RequestUser } from "../../platform/auth/auth.types";
@@ -38,6 +38,12 @@ export class AuthController {
   async acceptInvite(@Body() body: unknown) {
     const input = AcceptInviteSchema.parse(body);
     return this.auth.acceptInvite(input.token, input.password);
+  }
+
+  @Public()
+  @Post("inspect-invite")
+  inspectInvite(@Body() body: unknown) {
+    return this.auth.inspectInvite(InviteTokenSchema.parse(body).token);
   }
 
   @Public()

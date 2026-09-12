@@ -1,0 +1,77 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { BadRequestException } from "@nestjs/common";
+import { AuthService } from "../src/modules/auth/auth.service";
+import { UsersService } from "../src/modules/users/users.service";
+
+process.env.DATABASE_URL ??= "postgresql://localhost/test";
+process.env.REDIS_URL ??= "redis://localhost";
+process.env.APP_ENCRYPTION_KEY_BASE64 ??= Buffer.alloc(32, 7).toString("base64");
+process.env.ARGON2_MEMORY_COST = "1024";
+process.env.ARGON2_TIME_COST = "1";
+
+const user = {
+  id: "invitee-1", email: "invitee@example.test", fullName: "Invitee", firmId: "firm-1", homeBranchId: null, status: "INVITED", passwordHash: null,
+  roles: [{ role: { firmId: "firm-1", active: true, key: "advocate", permissions: [{ permission: { key: "matter.view" } }] } }]
+};
+
+function authService(overrides: Record<string, unknown> = {}) {
+  const redis = { client: { incr: async () => 1, expire: async () => 1, ...((overrides.redis as object) || {}) } };
+  const audit = { record: async () => ({ id: "audit-1" }) };
+  return new AuthService({ client: overrides.client } as any, redis as any, audit as any);
+}
+
+test("invite acceptance atomically claims a valid invite, activates the user, revokes replacements, and records an audit", async () => {
+  const calls: Array<{ target: string; data?: unknown }> = [];
+  const invite = { id: "invite-1", userId: user.id, expiresAt: new Date(Date.now() + 60_000), acceptedAt: null, revokedAt: null, supersededAt: null, user };
+  const tx = {
+    userInvite: {
+      updateMany: async (input: any) => { calls.push({ target: "invite", data: input.data }); return { count: 1 }; }
+    },
+    user: {
+      updateMany: async (input: any) => { calls.push({ target: "user", data: input.data }); return { count: 1 }; },
+      findUniqueOrThrow: async () => user
+    }
+  };
+  const service = authService({ client: { userInvite: { findUnique: async () => invite }, $transaction: async (work: any) => work(tx) } });
+  const accepted = await service.acceptInvite("x".repeat(43), "sufficiently-long-password");
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.user.id, user.id);
+  assert.equal(accepted.auditId, "audit-1");
+  const activation = calls.find((call) => call.target === "user")?.data as { passwordHash: string; status: string };
+  assert.equal(typeof activation.passwordHash, "string");
+  assert.equal(activation.status, "ACTIVE");
+  assert.equal(calls.filter((call) => call.target === "invite").length, 2);
+});
+
+test("a concurrently claimed, expired, revoked, superseded, or already accepted invite cannot activate an account", async () => {
+  const invite = { id: "invite-1", userId: user.id, expiresAt: new Date(Date.now() + 60_000), acceptedAt: null, revokedAt: null, supersededAt: null, user };
+  let activated = 0;
+  const tx = { userInvite: { updateMany: async () => ({ count: 0 }) }, user: { updateMany: async () => { activated += 1; return { count: 1 }; } } };
+  const service = authService({ client: { userInvite: { findUnique: async () => invite }, $transaction: async (work: any) => work(tx) } });
+  await assert.rejects(() => service.acceptInvite("y".repeat(43), "sufficiently-long-password"), (error: unknown) => error instanceof BadRequestException);
+  assert.equal(activated, 0);
+
+  for (const state of [{ acceptedAt: new Date() }, { revokedAt: new Date() }, { supersededAt: new Date() }, { expiresAt: new Date(Date.now() - 1) }, { user: { ...user, status: "SUSPENDED" } }]) {
+    const rejected = authService({ client: { userInvite: { findUnique: async () => ({ ...invite, ...state }) } } });
+    await assert.rejects(() => rejected.acceptInvite("z".repeat(43), "sufficiently-long-password"), (error: unknown) => error instanceof BadRequestException);
+  }
+});
+
+test("resending a pending invitation supersedes every still-usable token and records an unconfigured delivery outcome", async () => {
+  const superseded: unknown[] = [];
+  const created: any[] = [];
+  const service = new UsersService({ client: {
+    user: { findFirst: async () => user },
+    $transaction: async (work: any) => work({ userInvite: {
+      updateMany: async (input: any) => { superseded.push(input); return { count: 1 }; },
+      create: async (input: any) => { created.push(input); return { id: "replacement-1", expiresAt: input.data.expiresAt, deliveryStatus: input.data.deliveryStatus }; }
+    } })
+  } } as any, { record: async () => ({ id: "audit-2" }) } as any);
+  const result = await service.resendInvite("firm-1", "admin-1", user.id);
+  assert.equal(result.invite.deliveryStatus, "UNCONFIGURED");
+  assert.equal(result.auditId, "audit-2");
+  assert.equal(superseded.length, 1);
+  assert.equal(created[0].data.deliveryStatus, "UNCONFIGURED");
+  assert.equal(created[0].data.createdById, "admin-1");
+});

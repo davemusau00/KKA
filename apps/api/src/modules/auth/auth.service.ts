@@ -30,6 +30,12 @@ export class AuthService {
     return `user-sessions:${userId}`;
   }
 
+  private async rateLimit(key: string, maximum: number, windowSeconds: number) {
+    const attempts = await this.redis.client.incr(key);
+    if (attempts === 1) await this.redis.client.expire(key, windowSeconds);
+    if (attempts > maximum) throw new HttpException("Try again later", HttpStatus.TOO_MANY_REQUESTS);
+  }
+
   async login(input: LoginInput) {
     const user = await this.prisma.client.user.findUnique({
       where: { email: input.email.toLowerCase() },
@@ -125,12 +131,13 @@ export class AuthService {
 
   async acceptInvite(token: string, password: string) {
     const tokenHash = createHash("sha256").update(token).digest("hex");
+    await this.rateLimit(`invite-accept:${tokenHash}`, 10, 900);
     const invite = await this.prisma.client.userInvite.findUnique({
       where: { tokenHash },
       include: { user: true }
     });
 
-    if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+    if (!invite || invite.acceptedAt || invite.revokedAt || invite.supersededAt || invite.expiresAt <= new Date() || invite.user.status !== "INVITED") {
       throw new BadRequestException("Invite token is invalid or expired");
     }
 
@@ -141,26 +148,62 @@ export class AuthService {
       parallelism: env().ARGON2_PARALLELISM
     });
 
-    await this.prisma.client.$transaction([
-      this.prisma.client.user.update({
-        where: { id: invite.userId },
+    const accepted = await this.prisma.client.$transaction(async (tx) => {
+      const now = new Date();
+      const claimed = await tx.userInvite.updateMany({
+        where: { id: invite.id, acceptedAt: null, revokedAt: null, supersededAt: null, expiresAt: { gt: now } },
+        data: { acceptedAt: now }
+      });
+      if (claimed.count !== 1) throw new BadRequestException("Invite token is invalid or expired");
+      const activated = await tx.user.updateMany({
+        where: { id: invite.userId, status: "INVITED", passwordHash: null },
         data: { passwordHash, status: "ACTIVE" }
-      }),
-      this.prisma.client.userInvite.update({
-        where: { id: invite.id },
-        data: { acceptedAt: new Date() }
-      })
-    ]);
+      });
+      if (activated.count !== 1) throw new BadRequestException("Invite token is invalid or expired");
+      await tx.userInvite.updateMany({
+        where: { userId: invite.userId, id: { not: invite.id }, acceptedAt: null, revokedAt: null, supersededAt: null },
+        data: { revokedAt: now }
+      });
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: invite.userId },
+        include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } }
+      });
+      const audit = await this.audit.record({
+        firmId: user.firmId,
+        actorUserId: user.id,
+        action: "auth.invite_accepted",
+        entityType: "user_invite",
+        entityId: invite.id,
+        metadata: { userId: user.id, authenticated: false, sessionsCreated: false }
+      }, tx);
+      return { user, auditId: audit.id };
+    });
 
-    return { ok: true };
+    return {
+      ok: true,
+      auditId: accepted.auditId,
+      user: {
+        id: accepted.user.id,
+        email: accepted.user.email,
+        fullName: accepted.user.fullName,
+        firmId: accepted.user.firmId,
+        homeBranchId: accepted.user.homeBranchId,
+        ...roleContext(accepted.user.firmId, accepted.user.roles)
+      }
+    };
+  }
+
+  async inspectInvite(token: string) {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const invite = await this.prisma.client.userInvite.findUnique({ where: { tokenHash }, include: { user: { select: { status: true } } } });
+    const valid = Boolean(invite && !invite.acceptedAt && !invite.revokedAt && !invite.supersededAt && invite.expiresAt > new Date() && invite.user.status === "INVITED");
+    return { valid };
   }
 
   async requestPasswordReset(email: string) {
     const normalizedEmail = email.toLowerCase();
     const rateKey = `password-reset-request:${createHash("sha256").update(normalizedEmail).digest("hex")}`;
-    const attempts = await this.redis.client.incr(rateKey);
-    if (attempts === 1) await this.redis.client.expire(rateKey, 3600);
-    if (attempts > 5) throw new HttpException("Try again later", HttpStatus.TOO_MANY_REQUESTS);
+    await this.rateLimit(rateKey, 5, 3600);
 
     const user = await this.prisma.client.user.findUnique({ where: { email: normalizedEmail } });
     let localToken: string | undefined;

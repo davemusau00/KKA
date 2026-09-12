@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Users,
   Search,
@@ -19,6 +19,8 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { RoleId, UserProfile, BranchId } from '../../../types';
 import { INITIAL_ROLES } from '../../../data/rbacData';
+import { runtimeConfig } from '../../../config/runtime';
+import { BackendUser, usersApi } from '../../../lib/api/users.api';
 
 export const ALL_ROLES_LIST: RoleId[] = [
   'managing_partner',
@@ -62,10 +64,30 @@ export const StaffDirectoryTab: React.FC = () => {
   const [newSecondaryRoles, setNewSecondaryRoles] = useState<RoleId[]>([]);
   const [newHomeBranchId, setNewHomeBranchId] = useState<BranchId>('branch-nairobi');
   const [newBarNumber, setNewBarNumber] = useState('');
+  const [serverUsers, setServerUsers] = useState<BackendUser[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const loadServerUsers = async () => {
+    if (runtimeConfig.enableDemoMode) return;
+    try { setServerUsers(await usersApi.list()); }
+    catch (cause: any) { setActionError(cause?.message || 'Unable to load the authoritative staff directory.'); }
+  };
+
+  useEffect(() => { void loadServerUsers(); }, []);
+
+  const displayedUsers: UserProfile[] = runtimeConfig.enableDemoMode ? users : serverUsers.map((user) => {
+    const roles = user.roleKeys as RoleId[];
+    return {
+      id: user.id, fullName: user.fullName, email: user.email, phone: user.phone || '—', jobTitle: user.jobTitle || 'Firm staff',
+      role: roles[0] || 'administrator', roles, homeBranchId: user.homeBranchId || '', isActive: user.status === 'ACTIVE',
+    };
+  });
 
   // Filtered users list
   const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
+    return displayedUsers.filter((u) => {
       const q = search.toLowerCase();
       const matchesSearch =
         u.fullName.toLowerCase().includes(q) ||
@@ -82,20 +104,20 @@ export const StaffDirectoryTab: React.FC = () => {
 
       return matchesSearch && matchesBranch && matchesRole && matchesStatus;
     });
-  }, [users, search, branchFilter, roleFilter, statusFilter]);
+  }, [displayedUsers, search, branchFilter, roleFilter, statusFilter]);
 
   // Metrics
-  const totalStaff = users.length;
-  const activeStaff = users.filter((u) => u.isActive).length;
-  const advocatesCount = users.filter((u) => u.roles.includes('advocate') || u.roles.includes('senior_partner') || u.roles.includes('managing_partner')).length;
+  const totalStaff = displayedUsers.length;
+  const activeStaff = displayedUsers.filter((u) => u.isActive).length;
+  const advocatesCount = displayedUsers.filter((u) => u.roles.includes('advocate') || u.roles.includes('senior_partner') || u.roles.includes('managing_partner')).length;
 
-  const handleInviteSubmit = (e: React.FormEvent) => {
+  const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFullName.trim() || !newEmail.trim()) return;
 
     const allRoles: RoleId[] = Array.from(new Set([newPrimaryRole, ...newSecondaryRoles]));
 
-    inviteUser({
+    if (runtimeConfig.enableDemoMode) inviteUser({
       fullName: newFullName.trim(),
       email: newEmail.trim(),
       phone: newPhone.trim(),
@@ -108,6 +130,16 @@ export const StaffDirectoryTab: React.FC = () => {
       barNumber: newBarNumber.trim() || undefined,
     });
 
+    if (!runtimeConfig.enableDemoMode) {
+      setIsSubmitting(true); setActionError(null); setActionMessage(null);
+      try {
+        const result = await usersApi.invite({ fullName: newFullName.trim(), email: newEmail.trim(), phone: newPhone.trim() || undefined, jobTitle: newJobTitle.trim() || undefined, homeBranchId: newHomeBranchId || undefined, roleKeys: allRoles });
+        setActionMessage(result.localInviteToken ? `Invitation persisted. Development-only link: ${window.location.origin}/auth/invite?token=${result.localInviteToken}` : 'Invitation persisted. Email delivery is UNCONFIGURED; no delivery was claimed.');
+        await loadServerUsers();
+      } catch (cause: any) { setActionError(cause?.message || 'Unable to create the invitation.'); return; }
+      finally { setIsSubmitting(false); }
+    }
+
     setNewFullName('');
     setNewEmail('');
     setNewPhone('+254 7');
@@ -117,11 +149,39 @@ export const StaffDirectoryTab: React.FC = () => {
     setShowInviteModal(false);
   };
 
-  const handleSaveUserRoles = (e: React.FormEvent) => {
+  const handleSaveUserRoles = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUserRoles) return;
-    updateUserRoles(editingUserRoles.id, editingUserRoles.roles);
+    if (runtimeConfig.enableDemoMode) updateUserRoles(editingUserRoles.id, editingUserRoles.roles);
+    else {
+      setIsSubmitting(true); setActionError(null);
+      try { await usersApi.setRoles(editingUserRoles.id, editingUserRoles.roles); await loadServerUsers(); }
+      catch (cause: any) { setActionError(cause?.message || 'Unable to update roles.'); return; }
+      finally { setIsSubmitting(false); }
+    }
     setEditingUserRoles(null);
+  };
+
+  const updateStatus = async (profile: UserProfile) => {
+    if (runtimeConfig.enableDemoMode) { toggleUserActive(profile.id); return; }
+    if (serverUsers.find((user) => user.id === profile.id)?.status === 'INVITED') {
+      setActionError('Pending invitations cannot be activated until the recipient creates a password.');
+      return;
+    }
+    setIsSubmitting(true); setActionError(null);
+    try { await usersApi.setStatus(profile.id, profile.isActive ? 'SUSPENDED' : 'ACTIVE'); await loadServerUsers(); }
+    catch (cause: any) { setActionError(cause?.message || 'Unable to update account status.'); }
+    finally { setIsSubmitting(false); }
+  };
+
+  const resendInvite = async (userId: string) => {
+    setIsSubmitting(true); setActionError(null); setActionMessage(null);
+    try {
+      const result = await usersApi.resendInvite(userId);
+      setActionMessage(result.localInviteToken ? `Invitation replaced. Development-only link: ${window.location.origin}/auth/invite?token=${result.localInviteToken}` : 'Invitation replaced. Email delivery is UNCONFIGURED; no delivery was claimed.');
+      await loadServerUsers();
+    } catch (cause: any) { setActionError(cause?.message || 'Unable to resend the invitation.'); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
@@ -146,6 +206,9 @@ export const StaffDirectoryTab: React.FC = () => {
           <span>Invite New Staff Member</span>
         </button>
       </div>
+
+      {actionError && <div className="mb-4 rounded-xl border border-rose-900/70 bg-rose-950/30 p-3 text-xs text-rose-200" role="alert">{actionError}</div>}
+      {actionMessage && <div className="mb-4 rounded-xl border border-amber-800/70 bg-amber-950/30 p-3 text-xs text-amber-100" role="status">{actionMessage}</div>}
 
       {/* Stats Counter Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
@@ -253,6 +316,7 @@ export const StaffDirectoryTab: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredUsers.map((u) => {
             const isSelf = u.id === currentUser.id;
+            const isInvitePending = !runtimeConfig.enableDemoMode && serverUsers.find((user) => user.id === u.id)?.status === 'INVITED';
             const branch = branches.find((b) => b.id === u.homeBranchId);
             const roleDef = INITIAL_ROLES[u.role];
 
@@ -270,15 +334,13 @@ export const StaffDirectoryTab: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
-                        alt={u.fullName}
-                        className="w-12 h-12 rounded-xl object-cover border border-slate-700 shrink-0"
-                      />
+                      {runtimeConfig.enableDemoMode ? <img src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'} alt={u.fullName} className="w-12 h-12 rounded-xl object-cover border border-slate-700 shrink-0" /> : <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-slate-700 bg-slate-800 text-sm font-semibold text-amber-300" aria-hidden="true">{u.fullName.slice(0, 1).toUpperCase()}</div>}
                       <div className="min-w-0">
                         <div className="font-serif font-bold text-sm text-slate-100 truncate flex items-center gap-1.5">
                           <span>{u.fullName}</span>
-                          {!u.isActive && (
+                          {isInvitePending ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono">Pending invitation</span>
+                          ) : !u.isActive && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 font-mono">
                               Inactive
                             </span>
@@ -295,8 +357,9 @@ export const StaffDirectoryTab: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => toggleUserActive(u.id)}
-                      title={u.isActive ? 'Deactivate user' : 'Activate user'}
+                      onClick={() => void updateStatus(u)}
+                      disabled={isInvitePending || isSubmitting}
+                      title={isInvitePending ? 'The recipient must accept the invitation first' : u.isActive ? 'Deactivate user' : 'Activate user'}
                       className={`p-1.5 rounded-lg border transition shrink-0 ${
                         u.isActive
                           ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-rose-400 hover:border-rose-700'
@@ -352,16 +415,18 @@ export const StaffDirectoryTab: React.FC = () => {
                     <span>Roles</span>
                   </button>
 
+                  {isInvitePending && <button type="button" onClick={() => void resendInvite(u.id)} disabled={isSubmitting} className="px-2.5 py-1.5 rounded-lg border border-amber-700 bg-amber-950/40 text-amber-200 font-medium text-xs disabled:opacity-60">Resend</button>}
+
                   <button
                     onClick={() => setCurrentUser(u)}
-                    disabled={isSelf}
+                    disabled={isSelf || !runtimeConfig.enableDemoMode}
                     className={`flex-1 py-1.5 rounded-lg font-medium transition text-xs text-center ${
                       isSelf
                         ? 'bg-amber-600/30 text-amber-300 border border-amber-600/40 cursor-default font-semibold'
                         : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer'
                     }`}
                   >
-                    {isSelf ? 'Current Active Persona' : 'Switch Persona'}
+                    {isSelf ? 'Current Active Persona' : runtimeConfig.enableDemoMode ? 'Switch Persona' : 'Server account'}
                   </button>
                 </div>
               </div>
@@ -484,9 +549,10 @@ export const StaffDirectoryTab: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="admin-btn-primary"
+                  disabled={isSubmitting}
+                  className="admin-btn-primary disabled:opacity-60"
                 >
-                  Send Invitation
+                  {isSubmitting ? 'Saving…' : 'Create Invitation'}
                 </button>
               </div>
             </form>

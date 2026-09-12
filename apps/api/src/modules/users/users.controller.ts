@@ -21,6 +21,12 @@ export class UsersController {
     return this.users.invite(user.firmId, user.id, InviteUserSchema.parse(body));
   }
 
+  @Post(":id/invite/resend")
+  @RequirePermissions("admin.users_manage")
+  resendInvite(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.users.resendInvite(user.firmId, user.id, id);
+  }
+
   @Patch(":id/status")
   @RequirePermissions("admin.users_manage")
   setStatus(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {

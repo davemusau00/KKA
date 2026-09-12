@@ -18,6 +18,7 @@ import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { IntegrationsWorkspace } from './components/integrations/IntegrationsWorkspace';
 import { WebsiteGrowthWorkspace } from './components/website/WebsiteGrowthWorkspace';
 import { parseWorkspaceLocation, serializeWorkspaceRoute } from './lib/routing/workspaceRoutes';
+import { InviteAcceptancePage } from './components/auth/InviteAcceptancePage';
 
 const MainWorkspaceRouter: React.FC = () => {
   const {
@@ -81,6 +82,7 @@ const MainWorkspaceRouter: React.FC = () => {
 };
 
 export default function App() {
+  if (window.location.pathname === '/auth/invite') return <InviteAcceptancePage />;
   return (
     <BrandingProvider><AppProvider>
       <ServerStateProvider><MainWorkspaceRouter /></ServerStateProvider>

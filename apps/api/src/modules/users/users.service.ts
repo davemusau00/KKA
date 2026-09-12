@@ -4,6 +4,8 @@ import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { env } from "../../platform/env";
 
+type InviteDeliveryStatus = "UNCONFIGURED";
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -11,8 +13,8 @@ export class UsersService {
     private readonly audit: AuditService
   ) {}
 
-  list(firmId: string) {
-    return this.prisma.client.user.findMany({
+  async list(firmId: string) {
+    const users = await this.prisma.client.user.findMany({
       where: { firmId },
       include: {
         roles: { include: { role: true } },
@@ -22,6 +24,57 @@ export class UsersService {
       },
       orderBy: { fullName: "asc" }
     });
+    return users.map((user) => this.userDto(user));
+  }
+
+  private userDto(user: any) {
+    return {
+      id: user.id,
+      firmId: user.firmId,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone,
+      jobTitle: user.jobTitle,
+      homeBranchId: user.homeBranchId,
+      status: user.status,
+      roleKeys: user.roles?.map((assignment: any) => assignment.role.key) ?? [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  }
+
+  private localInviteToken(rawToken: string) {
+    return env().EXPOSE_LOCAL_INVITE_TOKEN && env().NODE_ENV !== "production" ? { localInviteToken: rawToken } : {};
+  }
+
+  private async issueInvite(firmId: string, actorId: string, user: { id: string; email: string }, action: "user.invited" | "user.invite_resent") {
+    const rawToken = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + env().INVITE_TOKEN_TTL_HOURS * 3600_000);
+    const now = new Date();
+    const result = await this.prisma.client.$transaction(async (tx) => {
+      await tx.userInvite.updateMany({
+        where: { userId: user.id, acceptedAt: null, revokedAt: null, supersededAt: null },
+        data: { supersededAt: now }
+      });
+      const invite = await tx.userInvite.create({
+        data: { userId: user.id, tokenHash, expiresAt, createdById: actorId, deliveryStatus: "UNCONFIGURED" }
+      });
+      const audit = await this.audit.record({
+        firmId,
+        actorUserId: actorId,
+        action,
+        entityType: "user_invite",
+        entityId: invite.id,
+        metadata: { userId: user.id, email: user.email, expiresAt: expiresAt.toISOString(), deliveryStatus: "UNCONFIGURED", providerConfigured: false }
+      }, tx);
+      return { invite, audit };
+    });
+    return {
+      invite: { id: result.invite.id, expiresAt: result.invite.expiresAt, deliveryStatus: result.invite.deliveryStatus as InviteDeliveryStatus },
+      auditId: result.audit.id,
+      ...this.localInviteToken(rawToken)
+    };
   }
 
   async invite(
@@ -41,16 +94,18 @@ export class UsersService {
     });
     if (existing) throw new BadRequestException("A user with this email already exists");
 
+    const roleKeys = [...new Set(input.roleKeys)];
     const roles = await this.prisma.client.role.findMany({
-      where: { firmId, key: { in: input.roleKeys }, active: true }
+      where: { firmId, key: { in: roleKeys }, active: true }
     });
-    if (roles.length !== input.roleKeys.length) {
+    if (roles.length !== roleKeys.length) {
       throw new BadRequestException("One or more role keys are invalid");
     }
 
-    const rawToken = randomBytes(32).toString("base64url");
-    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-    const expiresAt = new Date(Date.now() + env().INVITE_TOKEN_TTL_HOURS * 3600_000);
+    if (input.homeBranchId) {
+      const branch = await this.prisma.client.branch.findFirst({ where: { id: input.homeBranchId, firmId, active: true }, select: { id: true } });
+      if (!branch) throw new BadRequestException("Home branch is invalid or inactive");
+    }
 
     const user = await this.prisma.client.user.create({
       data: {
@@ -64,27 +119,19 @@ export class UsersService {
         roles: {
           create: roles.map((role) => ({ roleId: role.id }))
         },
-        invites: {
-          create: {
-            tokenHash,
-            expiresAt,
-            createdById: actorId
-          }
-        }
       },
       include: { roles: { include: { role: true } } }
     });
+    const issued = await this.issueInvite(firmId, actorId, user, "user.invited");
+    return { user: this.userDto(user), ...issued };
+  }
 
-    await this.audit.record({
-      firmId,
-      actorUserId: actorId,
-      action: "user.invited",
-      entityType: "user",
-      entityId: user.id,
-      metadata: { email: user.email, roleKeys: input.roleKeys }
-    });
-
-    return { user, inviteToken: rawToken, expiresAt };
+  async resendInvite(firmId: string, actorId: string, userId: string) {
+    const user = await this.prisma.client.user.findFirst({ where: { id: userId, firmId }, include: { roles: { include: { role: true } } } });
+    if (!user) throw new NotFoundException("User not found");
+    if (user.status !== "INVITED") throw new BadRequestException("Only pending invitations can be resent");
+    const issued = await this.issueInvite(firmId, actorId, user, "user.invite_resent");
+    return { user: this.userDto(user), ...issued };
   }
 
   async setStatus(firmId: string, actorId: string, userId: string, status: "ACTIVE" | "SUSPENDED" | "DISABLED") {

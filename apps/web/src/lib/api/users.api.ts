@@ -8,8 +8,7 @@ export interface BackendUser {
   phone?: string | null;
   jobTitle?: string | null;
   homeBranchId?: string | null;
-  status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
-  avatarUrl?: string | null;
+  status: 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
   roleKeys: string[];
   createdAt: string;
   updatedAt: string;
@@ -27,7 +26,9 @@ export interface InviteUserInput {
 export const usersApi = {
   list: () => apiClient.get<BackendUser[]>('/users'),
 
-  invite: (data: InviteUserInput) => apiClient.post<{ id: string; inviteToken?: string }>('/users/invite', data),
+  invite: (data: InviteUserInput) => apiClient.post<InviteResult>('/users/invite', data),
+
+  resendInvite: (id: string) => apiClient.post<InviteResult>(`/users/${id}/invite/resend`),
 
   setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED') =>
     apiClient.patch(`/users/${id}/status`, { status }),
@@ -35,3 +36,10 @@ export const usersApi = {
   setRoles: (id: string, roleKeys: string[]) =>
     apiClient.patch(`/users/${id}/roles`, { roleKeys }),
 };
+
+export interface InviteResult {
+  user: BackendUser;
+  invite: { id: string; expiresAt: string; deliveryStatus: 'UNCONFIGURED' };
+  auditId: string;
+  localInviteToken?: string;
+}
