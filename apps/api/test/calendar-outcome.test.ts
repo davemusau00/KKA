@@ -24,6 +24,7 @@ test("court outcome persists its derived event, deadline, task, matter action, a
     },
     user: { findFirst: async () => { calls.push("assignee.lookup"); return { id: "advocate-1" }; } },
     deadline: { create: async ({ data }: any) => { calls.push("deadline.create"); return { id: "deadline-1", ...data }; } },
+    deadlineRevision: { create: async () => { calls.push("deadline_revision.create"); return {}; } },
     task: { create: async ({ data }: any) => { calls.push("task.create"); return { id: "task-1", createdAt: new Date(), updatedAt: new Date(), ...data }; } },
     matter: { update: async () => { calls.push("matter.update"); return {}; } },
     courtOutcomeRecord: { create: async ({ data }: any) => { calls.push("outcome.create"); return { id: "outcome-1", recordedAt: new Date(), ...data }; } }
@@ -49,7 +50,7 @@ test("court outcome persists its derived event, deadline, task, matter action, a
   assert.equal((result as any).deadline.id, "deadline-1");
   assert.equal((result as any).deadlineEvent.id, "deadline-event-1");
   assert.equal((result as any).task.id, "task-1");
-  assert.deepEqual(calls, ["event.update", "event.create.COURT", "assignee.lookup", "deadline.create", "event.create.DEADLINE", "task.create", "matter.update", "outcome.create", "audit.record", "calendar.queue"]);
+  assert.deepEqual(calls, ["event.update", "event.create.COURT", "assignee.lookup", "deadline.create", "deadline_revision.create", "event.create.DEADLINE", "task.create", "matter.update", "outcome.create", "audit.record", "calendar.queue"]);
   assert.equal(auditTransaction, tx);
 });
 

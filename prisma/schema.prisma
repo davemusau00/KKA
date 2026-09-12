@@ -1120,24 +1120,65 @@ model TaskDependency {
 }
 
 model Deadline {
-  id               String    @id @default(cuid())
-  matterId         String
-  title            String
-  deadlineType     String
-  officialDueAt    DateTime
-  internalTargetAt DateTime?
-  source           String
-  riskLevel        String
-  immutable        Boolean   @default(true)
-  completedAt      DateTime?
-  completedById    String?
-  notes            String?
-  createdAt        DateTime  @default(now())
+  id                   String    @id @default(cuid())
+  matterId             String
+  title                String
+  deadlineType         String
+  officialDueAt        DateTime
+  internalTargetAt     DateTime?
+  source               String
+  sourceEventId        String?
+  sourceDocumentId     String?
+  legalRuleCode        String?
+  calculationMethod    String    @default("MANUAL")
+  calculationAnchorAt  DateTime?
+  calculationDays      Int?
+  excludedDates        Json?
+  courtOrderOverride   Boolean   @default(false)
+  courtOrderDocumentId String?
+  reminderSchedule     Json?
+  responsibleUserId    String?
+  escalationUserId     String?
+  stayPeriods          Json?
+  riskLevel            String
+  immutable            Boolean   @default(true)
+  status               String    @default("OPEN")
+  version              Int       @default(1)
+  completedAt          DateTime?
+  completedById        String?
+  lastRecalculatedAt   DateTime?
+  notes                String?
+  createdAt            DateTime  @default(now())
 
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  matter    Matter             @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  revisions DeadlineRevision[]
 
   @@index([matterId, officialDueAt])
   @@index([officialDueAt, completedAt])
+  @@index([responsibleUserId, status, officialDueAt])
+}
+
+model DeadlineRevision {
+  id                   String   @id @default(cuid())
+  deadlineId           String
+  revisionNumber       Int
+  action               String
+  priorOfficialDueAt   DateTime?
+  nextOfficialDueAt    DateTime?
+  priorInternalTargetAt DateTime?
+  nextInternalTargetAt DateTime?
+  source               String
+  reason               String?
+  legalRuleCode        String?
+  courtOrderDocumentId String?
+  calculationSnapshot  Json?
+  changedById          String
+  createdAt            DateTime @default(now())
+
+  deadline Deadline @relation(fields: [deadlineId], references: [id], onDelete: Cascade)
+
+  @@unique([deadlineId, revisionNumber])
+  @@index([deadlineId, createdAt])
 }
 
 model CalendarEvent {
@@ -1265,16 +1306,26 @@ model CourtFilingPackage {
   defendants             Json?
   courtAssessmentAmount  Decimal?  @db.Decimal(18, 2)
   feeRequisitionApproved Boolean   @default(false)
+  documentId             String?
+  documentVersionId      String?
+  filingMethod           String?
+  courtReceiptDocumentId String?
   receiptDocumentId      String?
   receiptNumber          String?
+  paymentReceiptId       String?
   ctsReference           String?
+  filingReference        String?
   courtCaseNumber        String?
   status                 String    @default("READY_TO_FILE")
   assignedClerkId        String?
   submittedAt            DateTime?
+  submittedById          String?
   acceptedAt             DateTime?
+  verifiedById           String?
+  verifiedAt             DateTime?
   rejectedAt             DateTime?
   rejectionReason        String?
+  failureReason          String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -1290,6 +1341,7 @@ model ServiceRecord {
   documentId          String?
   partyName           String
   partyAddress        String?
+  partyContact        String?
   processServerName   String?
   assignedDate        DateTime?
   dueDate             DateTime?
@@ -1297,6 +1349,10 @@ model ServiceRecord {
   serviceMethod       String?
   affidavitDocumentId String?
   affidavitStatus     String    @default("AWAITED")
+  substituteServiceOrderDocumentId String?
+  returnedService     Boolean   @default(false)
+  nextAction          String?
+  nextDeadlineId      String?
   status              String    @default("REQUESTED")
   notes               String?
   createdAt           DateTime  @default(now())
@@ -1314,6 +1370,10 @@ model ServiceAttempt {
   attemptNo       Int
   attemptedAt     DateTime
   outcome         String
+  serviceAddress  String?
+  affidavitDocumentId String?
+  returnedService Boolean @default(false)
+  failureReason   String?
   notes           String?
 
   serviceRecord ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)

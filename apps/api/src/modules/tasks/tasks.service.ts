@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { RecordAccessService } from "../../platform/auth/record-access.service";
+import { roleContext } from "../../platform/auth/role-context";
 import type { RequestUser } from "../../platform/auth/auth.types";
 
 @Injectable()
@@ -11,6 +12,33 @@ export class TasksService {
     private readonly audit: AuditService,
     private readonly access: RecordAccessService
   ) {}
+
+  private async actor(firmId: string, actorId: string): Promise<RequestUser> {
+    const user = await this.prisma.client.user.findFirst({
+      where: { id: actorId, firmId, status: "ACTIVE" },
+      include: { roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } }
+    });
+    if (!user) throw new NotFoundException("Task actor not found");
+    return {
+      id: user.id, firmId: user.firmId, email: user.email, fullName: user.fullName,
+      homeBranchId: user.homeBranchId, ...roleContext(user.firmId, user.roles)
+    };
+  }
+
+  private async assertMatterAccess(user: RequestUser, matterId?: string | null) {
+    if (matterId && !(await this.access.canViewMatter(user, matterId))) {
+      throw new NotFoundException("Task not found");
+    }
+  }
+
+  private firmTaskWhere(firmId: string) {
+    return {
+      OR: [
+        { matter: { firmId } },
+        { matterId: null, createdBy: { firmId } }
+      ]
+    };
+  }
 
   async list(firmId: string, filters: { matterId?: string; assignedToId?: string; status?: string }, user: RequestUser) {
     const matterScope = await this.access.matterWhere(user);
@@ -30,9 +58,22 @@ export class TasksService {
   }
 
   async create(firmId: string, actorId: string, input: any) {
+    const actor = await this.actor(firmId, actorId);
     if (input.matterId) {
-      const matter = await this.prisma.client.matter.findFirst({ where: { id: input.matterId, firmId } });
-      if (!matter) throw new BadRequestException("Matter not found");
+      await this.assertMatterAccess(actor, input.matterId);
+    }
+    const assignee = await this.prisma.client.user.findFirst({ where: { id: input.assignedToId, firmId, status: "ACTIVE" }, select: { id: true } });
+    if (!assignee) throw new BadRequestException("Assigned user is not active in this firm");
+    if (input.dependencyIds?.length) {
+      const dependencies = await this.prisma.client.task.findMany({
+        where: input.matterId
+          ? { id: { in: input.dependencyIds }, matterId: input.matterId, matter: await this.access.matterWhere(actor) }
+          : { id: { in: input.dependencyIds }, matterId: null, createdBy: { firmId } },
+        select: { id: true }
+      });
+      if (dependencies.length !== new Set(input.dependencyIds).size) {
+        throw new BadRequestException("One or more dependencies are inaccessible or belong to a different matter");
+      }
     }
     const task = await this.prisma.client.task.create({
       data: {
@@ -62,11 +103,13 @@ export class TasksService {
   }
 
   async setStatus(firmId: string, actorId: string, taskId: string, input: any) {
+    const actor = await this.actor(firmId, actorId);
     const task = await this.prisma.client.task.findFirst({
-      where: { id: taskId, matter: { firmId } },
+      where: { id: taskId, ...this.firmTaskWhere(firmId) },
       include: { dependencies: { include: { dependsOn: true } } }
     });
     if (!task) throw new NotFoundException("Task not found");
+    await this.assertMatterAccess(actor, task.matterId);
 
     if (input.status === "COMPLETED" && !input.force) {
       const incomplete = task.dependencies.filter(
@@ -105,11 +148,13 @@ export class TasksService {
   }
 
   async update(firmId: string, actorId: string, taskId: string, input: any) {
+    const actor = await this.actor(firmId, actorId);
     const task = await this.prisma.client.task.findFirst({
-      where: { id: taskId, matter: { firmId } },
+      where: { id: taskId, ...this.firmTaskWhere(firmId) },
       include: { dependencies: true }
     });
     if (!task) throw new NotFoundException("Task not found");
+    await this.assertMatterAccess(actor, task.matterId);
 
     if (input.assignedToId) {
       const assignee = await this.prisma.client.user.findFirst({ where: { id: input.assignedToId, firmId, status: "ACTIVE" } });
@@ -119,8 +164,13 @@ export class TasksService {
     const dependencyIds = input.dependencyIds as string[] | undefined;
     if (dependencyIds) {
       if (dependencyIds.includes(taskId)) throw new BadRequestException("A task cannot depend on itself");
-      const dependencies = await this.prisma.client.task.findMany({ where: { id: { in: dependencyIds }, matter: { firmId } }, select: { id: true } });
-      if (dependencies.length !== new Set(dependencyIds).size) throw new BadRequestException("One or more dependencies are invalid");
+      const dependencies = await this.prisma.client.task.findMany({
+        where: task.matterId
+          ? { id: { in: dependencyIds }, matterId: task.matterId, matter: await this.access.matterWhere(actor) }
+          : { id: { in: dependencyIds }, matterId: null, createdBy: { firmId } },
+        select: { id: true }
+      });
+      if (dependencies.length !== new Set(dependencyIds).size) throw new BadRequestException("One or more dependencies are inaccessible or belong to a different matter");
     }
 
     const { dependencyIds: nextDependencyIds, ...fields } = input;
@@ -146,8 +196,10 @@ export class TasksService {
   }
 
   async archive(firmId: string, actorId: string, taskId: string) {
-    const task = await this.prisma.client.task.findFirst({ where: { id: taskId, matter: { firmId } } });
+    const actor = await this.actor(firmId, actorId);
+    const task = await this.prisma.client.task.findFirst({ where: { id: taskId, ...this.firmTaskWhere(firmId) } });
     if (!task) throw new NotFoundException("Task not found");
+    await this.assertMatterAccess(actor, task.matterId);
     if (task.status === "COMPLETED") throw new BadRequestException("Completed tasks must be reversed explicitly");
     const updated = await this.prisma.client.task.update({ where: { id: taskId }, data: { status: "CANCELLED", blockedReason: "Archived by user" } });
     await this.audit.record({ firmId, actorUserId: actorId, action: "task.archived", entityType: "task", entityId: taskId, matterId: updated.matterId ?? undefined, metadata: {} });

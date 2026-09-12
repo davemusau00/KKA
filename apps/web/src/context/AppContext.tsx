@@ -131,7 +131,7 @@ import {
 } from '../data/adminSeedData';
 import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDependencies';
 import { generateSequentialMatterReference } from '../utils/matterReference';
-import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi, calendarApi } from '../lib/api';
+import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi, calendarApi, deadlinesApi } from '../lib/api';
 import { runtimeConfig } from '../config/runtime';
 
 const EMPTY_USER: UserProfile = {
@@ -939,7 +939,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (liveCheck.status !== 'ok' || !isMounted) return;
 
         // Backend is online and responsive: hydrate catalogs and operational collections
-        const [dirRes, branchRes, notifRes, meRes, clientRes, taskRes, calendarRes] = await Promise.allSettled([
+        const [dirRes, branchRes, notifRes, meRes, clientRes, taskRes, calendarRes, deadlineRes] = await Promise.allSettled([
           directoryApi.list(),
           organizationApi.listBranches(),
           notificationsApi.list(false),
@@ -947,6 +947,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           clientsApi.list({ limit: 100 }),
           tasksApi.list({ limit: 100 }),
           calendarApi.list(),
+          deadlinesApi.list(),
         ]);
 
         if (isMounted && dirRes.status === 'fulfilled' && Array.isArray(dirRes.value) && dirRes.value.length > 0) {
@@ -1065,6 +1066,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         if (isMounted && calendarRes.status === 'fulfilled' && Array.isArray(calendarRes.value)) {
           setCalendarEvents(calendarRes.value.map(mapCalendarEventFromApi));
+        }
+
+        if (isMounted && deadlineRes.status === 'fulfilled' && Array.isArray(deadlineRes.value)) {
+          setDeadlines(deadlineRes.value.map((deadline) => ({
+            id: deadline.id,
+            matterId: deadline.matterId,
+            title: deadline.title,
+            deadlineType: (deadline.deadlineType === 'COURT_DIRECTION' ? 'court_directions' : deadline.deadlineType.toLowerCase()) as Deadline['deadlineType'],
+            officialDueAt: deadline.officialDueAt,
+            source: deadline.source,
+            riskLevel: deadline.riskLevel.toLowerCase() as Deadline['riskLevel'],
+            notes: deadline.notes || undefined,
+            completedAt: deadline.completedAt || undefined,
+          })));
         }
       } catch (err) {
         if (runtimeConfig.enableDemoMode) console.debug('Backend unavailable, using local storage demo state:', err);

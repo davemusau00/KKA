@@ -281,9 +281,25 @@ export class CalendarService {
               officialDueAt,
               internalTargetAt,
               source: `Court outcome ${eventId}`,
+              sourceEventId: eventId,
+              calculationMethod: "MANUAL",
+              courtOrderOverride: true,
+              responsibleUserId: assignee.id,
               riskLevel: "CRITICAL",
               immutable: true,
               notes: input.directions || input.outcome
+            }
+          });
+          await tx.deadlineRevision.create({
+            data: {
+              deadlineId: deadline.id,
+              revisionNumber: 1,
+              action: "CREATED",
+              nextOfficialDueAt: deadline.officialDueAt,
+              nextInternalTargetAt: deadline.internalTargetAt,
+              source: `Court outcome ${eventId}`,
+              changedById: actorId,
+              calculationSnapshot: { calculationMethod: "MANUAL", sourceEventId: eventId }
             }
           });
           deadlineEvent = await tx.calendarEvent.create({

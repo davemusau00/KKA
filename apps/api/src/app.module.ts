@@ -21,6 +21,7 @@ import { IntakeModule } from "./modules/intake/intake.module";
 import { MattersModule } from "./modules/matters/matters.module";
 import { WorkflowsModule } from "./modules/workflows/workflows.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
+import { DeadlinesModule } from "./modules/deadlines/deadlines.module";
 import { CalendarModule } from "./modules/calendar/calendar.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { MarksModule } from "./modules/marks/marks.module";
@@ -65,6 +66,7 @@ import { WebsiteModule } from "./modules/website/website.module";
     MattersModule,
     WorkflowsModule,
     TasksModule,
+    DeadlinesModule,
     CalendarModule,
     DocumentsModule,
     MarksModule,
