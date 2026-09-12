@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Prisma } from "@kka/database";
 import { CalendarService } from "../src/modules/calendar/calendar.service";
 import type { RequestUser } from "../src/platform/auth/auth.types";
 
@@ -66,5 +67,35 @@ test("court outcome retry returns the canonical outcome without creating duplica
 
   const result = await service.completeFromCourtOutcome("firm-1", "actor-1", "court-1", { status: "ADJOURNED", outcome: "Adjourned." });
   assert.deepEqual(result, { outcome: canonical, replayed: true });
+  assert.equal(transactions, 0);
+});
+
+test("court outcome concurrent uniqueness race returns the canonical record after its transaction rolls back", async () => {
+  const canonical = { id: "outcome-1", eventId: "court-1", nextEventId: "court-2" };
+  let reads = 0;
+  const service = new CalendarService({
+    client: {
+      user: { findFirst: async () => ({ id: "actor-1", firmId: "firm-1", status: "ACTIVE", email: "actor@example.test", fullName: "Actor", homeBranchId: null, roles: [] }) },
+      calendarEvent: { findFirst: async () => courtEvent },
+      courtOutcomeRecord: { findUnique: async () => ++reads === 1 ? null : canonical },
+      $transaction: async () => { throw new Prisma.PrismaClientKnownRequestError("unique outcome event", { code: "P2002", clientVersion: "test" }); }
+    }
+  } as any, {} as any, {} as any, { canViewMatter: async () => true } as any);
+
+  const result = await service.completeFromCourtOutcome("firm-1", "actor-1", "court-1", { status: "ADJOURNED", outcome: "Adjourned." });
+  assert.deepEqual(result, { outcome: canonical, replayed: true });
+});
+
+test("court outcome rejects a restricted matter before starting a transaction", async () => {
+  let transactions = 0;
+  const service = new CalendarService({
+    client: {
+      user: { findFirst: async () => ({ id: "actor-1", firmId: "firm-1", status: "ACTIVE", email: "actor@example.test", fullName: "Actor", homeBranchId: null, roles: [] }) },
+      calendarEvent: { findFirst: async () => courtEvent },
+      $transaction: async () => { transactions += 1; }
+    }
+  } as any, {} as any, {} as any, { canViewMatter: async () => false } as any);
+
+  await assert.rejects(() => service.completeFromCourtOutcome("firm-1", "actor-1", "court-1", { status: "ADJOURNED", outcome: "Adjourned." }));
   assert.equal(transactions, 0);
 });

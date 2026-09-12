@@ -1,6 +1,6 @@
 # KKA current release state
 
-**Status date:** 2026-09-11  
+**Status date:** 2026-09-13
 **Repository:** `davemusau00/KKA`  
 **Normative use:** This document is the current implementation and acceptance register. Older status documents are historical or domain-specific unless they explicitly provide newer evidence.
 
@@ -31,12 +31,13 @@
 - Reconciliation now accepts period-bounded statement items through `POST /finance/reconciliations/:id/items`, validates optional journal matches against the reconciled account and amount, prevents duplicate source references, and blocks completion while items remain unmatched. It is manual evidence entry, not an external bank import.
 - Ledger period locks now have firm-scoped list/create routes and prevent new journal postings or receipts dated inside a locked interval. Open reconciliations also prevent postings to their account during the reconciled period; reversal approval, bank/M-Pesa evidence, and full client-money acceptance remain open.
 - Web workspace navigation now has reload-safe URL routes for dashboard, matters, clients, tasks, court, approvals, calendar, documents, communications, finance, reports, admin, integrations, and website, plus `/matters/:matterId?tab=...` detail links with browser-history handling. Client/task/document/court resource-detail routes, auth links, and browser acceptance remain open.
-- Calendar hydration and the non-demo create/reschedule/document-link actions now use the server API; local state is updated only after a persisted response. Calendar list and matter-linked mutations apply the shared record-access policy, with focused restricted-event tests. Court-outcome automation, cross-user browser reload evidence, and external calendar synchronization remain open.
+- Calendar hydration and the non-demo create/reschedule/document-link actions now use the server API; local state is updated only after a persisted response. Calendar list and matter-linked mutations apply the shared record-access policy, with focused restricted-event tests.
 
 ## Implemented, acceptance incomplete
 
 - Client, intake, matter, task, calendar, court, document, finance, communication, notification, portal, reporting, and website surfaces have backend modules or UI paths, but not every path has proven reload persistence, second-user visibility, scoped authorization, failure behavior, concurrency behavior, and audit evidence.
-- `AppContext.tsx` still contains local business collections, seed imports, and mutations. Calendar hydration/create/reschedule/document-link paths now cross an authoritative API boundary outside demo mode; the remaining domain collections and court-outcome mutation path are compatibility/prototype paths until converted.
+- `AppContext.tsx` still contains local business collections, seed imports, and mutations. Calendar hydration/create/reschedule/document-link/court-outcome paths now cross an authoritative API boundary outside demo mode; the remaining domain collections are compatibility/prototype paths until converted.
+- Court outcomes now have a single persisted outcome record per court event. The recorded outcome, optional next hearing, court-directed deadline, locked deadline calendar event, preparation task, matter next action, and audit event are created in one transaction; retry returns the canonical outcome rather than duplicating downstream records. This is local service-level evidence only: legal deadline calculation, responsible-staff/client notification delivery, court-order document validation, cross-user browser reload, and external calendar synchronization remain open.
 - PI stage models and routes exist, but the complete lifecycle from empty matter through closure is not accepted as one gated workflow.
 - Finance models and routes exist, but client money is not launch-ready until balanced immutable journals, fund separation, idempotency, reversals, reconciliation, locks, and ledger-derived settlement distribution are proven.
 - Filing, service, court outcome propagation, communications, portal grants, search access policy, settings administration, feature flags, resource-detail/auth routing, and notifications require domain-specific acceptance evidence.

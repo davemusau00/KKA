@@ -48,6 +48,7 @@ export class CalendarService {
       include: {
         matter: { select: { id: true, internalReference: true, title: true } },
         participants: true,
+        outcomeRecord: true,
         documents: { include: { document: { select: { id: true, title: true, documentType: true } } } }
       },
       orderBy: { startAt: "asc" },

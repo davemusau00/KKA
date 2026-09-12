@@ -175,6 +175,7 @@ function mapCalendarEventFromApi(event: any): CalendarEvent {
     organizerId: event.organizerId,
     courtProceedingId: event.courtProceedingId || undefined,
     notes: event.notes || undefined,
+    courtOutcome: event.outcomeRecord?.outcome || undefined,
     linkedDocumentIds: (event.documents || []).map((link: any) => link.documentId || link.document?.id).filter(Boolean),
     courtStatus: event.status?.toLowerCase() as CourtEventStatus | undefined,
     syncState: event.syncState?.toLowerCase() as CalendarEvent['syncState'],
@@ -377,7 +378,7 @@ interface AppContextType {
       sendSms?: boolean;
       smsText?: string;
     }
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => void;
 
   // Judgment, Recovery, Settlement, Closure
   updateJudgmentAward: (matterId: string, updates: Partial<JudgmentAwardData>) => void;
@@ -403,7 +404,7 @@ interface AppContextType {
       requiredDocumentTypeIds?: string[];
       draftingTaskTitle?: string;
     }
-  ) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
   rescheduleCalendarEvent: (
     eventId: string,
     newStartAt: string,
@@ -2763,7 +2764,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           } : undefined,
         }).then((response) => {
           if (response.event) {
-            const persisted = mapCalendarEventFromApi(response.event);
+            const persisted = { ...mapCalendarEventFromApi(response.event), courtOutcome: response.outcome?.outcome || outcomeNotes };
             setCalendarEvents((prev) => prev.map((current) => current.id === persisted.id ? persisted : current));
           }
           const generatedEvents = [response.nextEvent, response.deadlineEvent].filter(Boolean).map(mapCalendarEventFromApi);
