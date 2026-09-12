@@ -119,6 +119,33 @@ export class AuthService {
     return { ok: true, revokedSessions: revoke.length };
   }
 
+  async inspectUserSessions(firmId: string, actorId: string, userId: string) {
+    const user = await this.prisma.client.user.findFirst({ where: { id: userId, firmId }, select: { id: true } });
+    if (!user) throw new BadRequestException("User not found");
+    const sessionIds = await this.redis.client.smembers(this.userSessionsKey(userId));
+    const records = sessionIds.length ? await Promise.all(sessionIds.map((sid) => this.redis.client.get(this.sessionKey(sid)))) : [];
+    const stale = sessionIds.filter((_sid, index) => !records[index]);
+    if (stale.length) await this.redis.client.srem(this.userSessionsKey(userId), ...stale);
+    await this.audit.record({
+      firmId, actorUserId: actorId, action: "auth.sessions_inspected", entityType: "user", entityId: userId,
+      metadata: { activeSessionCount: records.length - stale.length }
+    });
+    return { userId, activeSessionCount: records.length - stale.length, checkedAt: new Date().toISOString() };
+  }
+
+  async revokeUserSessions(firmId: string, actorId: string, userId: string) {
+    const user = await this.prisma.client.user.findFirst({ where: { id: userId, firmId }, select: { id: true } });
+    if (!user) throw new BadRequestException("User not found");
+    const sessionIds = await this.redis.client.smembers(this.userSessionsKey(userId));
+    if (sessionIds.length) await this.redis.client.del(...sessionIds.map((sid) => this.sessionKey(sid)));
+    await this.redis.client.del(this.userSessionsKey(userId));
+    await this.audit.record({
+      firmId, actorUserId: actorId, action: "auth.sessions_admin_revoked", entityType: "user", entityId: userId,
+      metadata: { revokedSessions: sessionIds.length }
+    });
+    return { ok: true, userId, revokedSessions: sessionIds.length };
+  }
+
   async elevate(userId: string, password: string) {
     const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
     if (!user?.passwordHash || user.status !== "ACTIVE" || !(await argon2.verify(user.passwordHash, password))) {

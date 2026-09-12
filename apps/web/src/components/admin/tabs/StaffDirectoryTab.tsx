@@ -21,6 +21,7 @@ import { RoleId, UserProfile, BranchId } from '../../../types';
 import { INITIAL_ROLES } from '../../../data/rbacData';
 import { runtimeConfig } from '../../../config/runtime';
 import { BackendUser, usersApi } from '../../../lib/api/users.api';
+import { authApi } from '../../../lib/api/auth.api';
 
 export const ALL_ROLES_LIST: RoleId[] = [
   'managing_partner',
@@ -181,6 +182,16 @@ export const StaffDirectoryTab: React.FC = () => {
       setActionMessage(result.localInviteToken ? `Invitation replaced. Development-only link: ${window.location.origin}/auth/invite?token=${result.localInviteToken}` : 'Invitation replaced. Email delivery is UNCONFIGURED; no delivery was claimed.');
       await loadServerUsers();
     } catch (cause: any) { setActionError(cause?.message || 'Unable to resend the invitation.'); }
+    finally { setIsSubmitting(false); }
+  };
+
+  const revokeSessions = async (userId: string) => {
+    setIsSubmitting(true); setActionError(null); setActionMessage(null);
+    try {
+      const before = await authApi.inspectUserSessions(userId);
+      const result = await authApi.revokeUserSessions(userId);
+      setActionMessage(`Revoked ${result.revokedSessions} active server session${result.revokedSessions === 1 ? '' : 's'} (inspection found ${before.activeSessionCount}).`);
+    } catch (cause: any) { setActionError(cause?.message || 'Unable to revoke server sessions.'); }
     finally { setIsSubmitting(false); }
   };
 
@@ -416,6 +427,8 @@ export const StaffDirectoryTab: React.FC = () => {
                   </button>
 
                   {isInvitePending && <button type="button" onClick={() => void resendInvite(u.id)} disabled={isSubmitting} className="px-2.5 py-1.5 rounded-lg border border-amber-700 bg-amber-950/40 text-amber-200 font-medium text-xs disabled:opacity-60">Resend</button>}
+
+                  {!runtimeConfig.enableDemoMode && !isInvitePending && <button type="button" onClick={() => void revokeSessions(u.id)} disabled={isSubmitting} className="px-2.5 py-1.5 rounded-lg border border-rose-900 bg-rose-950/40 text-rose-200 font-medium text-xs disabled:opacity-60">Revoke sessions</button>}
 
                   <button
                     onClick={() => setCurrentUser(u)}

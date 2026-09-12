@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
 import { z } from "zod";
 import type { FastifyReply } from "fastify";
 import { LoginSchema, AcceptInviteSchema, InviteTokenSchema, RequestPasswordResetSchema, ResetPasswordSchema } from "@kka/contracts";
 import { AuthService } from "./auth.service";
-import { CurrentUser, Public } from "../../platform/auth/decorators";
+import { CurrentUser, Public, RequirePermissions } from "../../platform/auth/decorators";
 import type { AuthenticatedRequest, RequestUser } from "../../platform/auth/auth.types";
 import { env } from "../../platform/env";
 import { issueCsrf } from '../../platform/auth/csrf';
@@ -78,6 +78,18 @@ export class AuthController {
   async logoutAll(@Req() request: AuthenticatedRequest) {
     const sid = request.cookies?.[env().SESSION_COOKIE_NAME];
     return this.auth.logoutAll(request.authUser!.id, request.authUser!.firmId, sid);
+  }
+
+  @Get("users/:userId/sessions")
+  @RequirePermissions("admin.users_manage")
+  inspectUserSessions(@CurrentUser() user: RequestUser, @Param("userId") userId: string) {
+    return this.auth.inspectUserSessions(user.firmId, user.id, userId);
+  }
+
+  @Post("users/:userId/revoke-sessions")
+  @RequirePermissions("admin.users_manage")
+  revokeUserSessions(@CurrentUser() user: RequestUser, @Param("userId") userId: string) {
+    return this.auth.revokeUserSessions(user.firmId, user.id, userId);
   }
 
   @Get("me")

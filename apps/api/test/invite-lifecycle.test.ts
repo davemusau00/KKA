@@ -75,3 +75,35 @@ test("resending a pending invitation supersedes every still-usable token and rec
   assert.equal(created[0].data.deliveryStatus, "UNCONFIGURED");
   assert.equal(created[0].data.createdById, "admin-1");
 });
+
+test("an administrator cannot bypass password creation by activating a pending invitation", async () => {
+  let updates = 0;
+  const service = new UsersService({ client: { user: {
+    findFirst: async () => user,
+    update: async () => { updates += 1; return user; }
+  } } } as any, { record: async () => ({ id: "audit-3" }) } as any);
+  await assert.rejects(() => service.setStatus("firm-1", "admin-1", user.id, "ACTIVE"), (error: unknown) => error instanceof BadRequestException);
+  assert.equal(updates, 0);
+});
+
+test("administrators can inspect and revoke only same-firm server sessions, with stale session cleanup", async () => {
+  const deleted: string[][] = [];
+  const removed: string[][] = [];
+  const audit: any[] = [];
+  const service = new AuthService({ client: { user: { findFirst: async ({ where }: any) => where.firmId === "firm-1" ? { id: user.id } : null } } } as any, {
+    client: {
+      smembers: async () => ["live", "stale"],
+      get: async (key: string) => key.endsWith("live") ? "session" : null,
+      srem: async (_key: string, ...ids: string[]) => { removed.push(ids); return ids.length; },
+      del: async (...keys: string[]) => { deleted.push(keys); return keys.length; }
+    }
+  } as any, { record: async (input: any) => { audit.push(input); return { id: "audit-4" }; } } as any);
+  const inspected = await service.inspectUserSessions("firm-1", "admin-1", user.id);
+  assert.equal(inspected.activeSessionCount, 1);
+  assert.deepEqual(removed, [["stale"]]);
+  const revoked = await service.revokeUserSessions("firm-1", "admin-1", user.id);
+  assert.equal(revoked.revokedSessions, 2);
+  assert.equal(audit[0].action, "auth.sessions_inspected");
+  assert.equal(audit[1].action, "auth.sessions_admin_revoked");
+  await assert.rejects(() => service.revokeUserSessions("other-firm", "admin-1", user.id), (error: unknown) => error instanceof BadRequestException);
+});

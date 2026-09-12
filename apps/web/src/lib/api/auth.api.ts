@@ -24,6 +24,10 @@ export const authApi = {
 
   logoutAll: () => apiClient.post<{ ok: boolean; revokedSessions: number }>('/auth/logout-all'),
 
+  inspectUserSessions: (userId: string) => apiClient.get<{ userId: string; activeSessionCount: number; checkedAt: string }>(`/auth/users/${userId}/sessions`),
+
+  revokeUserSessions: (userId: string) => apiClient.post<{ ok: boolean; userId: string; revokedSessions: number }>(`/auth/users/${userId}/revoke-sessions`),
+
   elevate: (password: string) =>
     apiClient.post<{ elevationToken: string; expiresInSeconds: number }>('/auth/elevate', { password }),
 

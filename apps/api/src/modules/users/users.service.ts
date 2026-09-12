@@ -47,12 +47,12 @@ export class UsersService {
     return env().EXPOSE_LOCAL_INVITE_TOKEN && env().NODE_ENV !== "production" ? { localInviteToken: rawToken } : {};
   }
 
-  private async issueInvite(firmId: string, actorId: string, user: { id: string; email: string }, action: "user.invited" | "user.invite_resent") {
+  private async issueInvite(firmId: string, actorId: string, user: { id: string; email: string }, action: "user.invited" | "user.invite_resent", transaction?: any) {
     const rawToken = randomBytes(32).toString("base64url");
     const tokenHash = createHash("sha256").update(rawToken).digest("hex");
     const expiresAt = new Date(Date.now() + env().INVITE_TOKEN_TTL_HOURS * 3600_000);
     const now = new Date();
-    const result = await this.prisma.client.$transaction(async (tx) => {
+    const persist = async (tx: any) => {
       await tx.userInvite.updateMany({
         where: { userId: user.id, acceptedAt: null, revokedAt: null, supersededAt: null },
         data: { supersededAt: now }
@@ -69,7 +69,8 @@ export class UsersService {
         metadata: { userId: user.id, email: user.email, expiresAt: expiresAt.toISOString(), deliveryStatus: "UNCONFIGURED", providerConfigured: false }
       }, tx);
       return { invite, audit };
-    });
+    };
+    const result = transaction ? await persist(transaction) : await this.prisma.client.$transaction(persist);
     return {
       invite: { id: result.invite.id, expiresAt: result.invite.expiresAt, deliveryStatus: result.invite.deliveryStatus as InviteDeliveryStatus },
       auditId: result.audit.id,
@@ -107,23 +108,24 @@ export class UsersService {
       if (!branch) throw new BadRequestException("Home branch is invalid or inactive");
     }
 
-    const user = await this.prisma.client.user.create({
-      data: {
-        firmId,
-        email: input.email.toLowerCase(),
-        fullName: input.fullName,
-        phone: input.phone,
-        jobTitle: input.jobTitle,
-        homeBranchId: input.homeBranchId,
-        status: "INVITED",
-        roles: {
-          create: roles.map((role) => ({ roleId: role.id }))
+    const created = await this.prisma.client.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          firmId,
+          email: input.email.toLowerCase(),
+          fullName: input.fullName,
+          phone: input.phone,
+          jobTitle: input.jobTitle,
+          homeBranchId: input.homeBranchId,
+          status: "INVITED",
+          roles: { create: roles.map((role) => ({ roleId: role.id })) }
         },
-      },
-      include: { roles: { include: { role: true } } }
+        include: { roles: { include: { role: true } } }
+      });
+      const issued = await this.issueInvite(firmId, actorId, user, "user.invited", tx);
+      return { user, issued };
     });
-    const issued = await this.issueInvite(firmId, actorId, user, "user.invited");
-    return { user: this.userDto(user), ...issued };
+    return { user: this.userDto(created.user), ...created.issued };
   }
 
   async resendInvite(firmId: string, actorId: string, userId: string) {
@@ -137,6 +139,9 @@ export class UsersService {
   async setStatus(firmId: string, actorId: string, userId: string, status: "ACTIVE" | "SUSPENDED" | "DISABLED") {
     const existing = await this.prisma.client.user.findFirst({ where: { id: userId, firmId } });
     if (!existing) throw new NotFoundException("User not found");
+    if (existing.status === "INVITED" && status === "ACTIVE") {
+      throw new BadRequestException("Pending invitations can only be activated by accepting their invitation");
+    }
     const user = await this.prisma.client.user.update({ where: { id: userId }, data: { status } });
     await this.audit.record({
       firmId,
