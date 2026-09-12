@@ -178,10 +178,11 @@ export const MatterDetailWorkspace: React.FC<Props> = ({ matter, onBack }) => {
     setChatText('');
   };
 
-  const handleSaveCourtOutcome = (e: React.FormEvent) => {
+  const handleSaveCourtOutcome = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCourtEvent) return;
-    recordCourtOutcome(selectedCourtEvent.id, courtStatusChoice, courtOutcomeText, nextCourtDateInput || undefined);
+    const result = await recordCourtOutcome(selectedCourtEvent.id, courtStatusChoice, courtOutcomeText, nextCourtDateInput || undefined);
+    if (!result.success) return;
     setSelectedCourtEvent(null);
     setCourtOutcomeText('');
   };

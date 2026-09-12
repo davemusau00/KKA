@@ -377,7 +377,7 @@ interface AppContextType {
       sendSms?: boolean;
       smsText?: string;
     }
-  ) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
 
   // Judgment, Recovery, Settlement, Closure
   updateJudgmentAward: (matterId: string, updates: Partial<JudgmentAwardData>) => void;
@@ -2744,7 +2744,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         requiredDocumentTypeIds?: string[];
         draftingTaskTitle?: string;
       }
-    ) => {
+    ): Promise<{ success: boolean; error?: string }> => {
+      const event = calendarEvents.find((e) => e.id === eventId);
+      if (!event) return Promise.resolve({ success: false, error: 'Court event not found' });
+
+      if (!runtimeConfig.enableDemoMode) {
+        const asIso = (date: string, hour: string) => date.includes('T') ? new Date(date).toISOString() : `${date}T${hour}:00.000Z`;
+        return calendarApi.outcome(eventId, {
+          outcome: outcomeNotes,
+          status,
+          nextDate: nextHearingDate ? asIso(nextHearingDate, '09:00') : undefined,
+          directions: outcomeNotes,
+          deadline: workflowAutomation?.filingDeadlineDate ? {
+            officialDueAt: asIso(workflowAutomation.filingDeadlineDate, '16:00'),
+            title: workflowAutomation.filingTitle || `Court Directions Filing: ${event.title}`,
+            taskTitle: workflowAutomation.draftingTaskTitle,
+            assignedToId: event.assignedUserId,
+          } : undefined,
+        }).then((response) => {
+          if (response.event) {
+            const persisted = mapCalendarEventFromApi(response.event);
+            setCalendarEvents((prev) => prev.map((current) => current.id === persisted.id ? persisted : current));
+          }
+          const generatedEvents = [response.nextEvent, response.deadlineEvent].filter(Boolean).map(mapCalendarEventFromApi);
+          if (generatedEvents.length) {
+            setCalendarEvents((prev) => [...generatedEvents, ...prev.filter((current) => !generatedEvents.some((generated) => generated.id === current.id))]);
+          }
+          if (response.deadline) {
+            setDeadlines((prev) => [{
+              id: response.deadline.id, matterId: response.deadline.matterId, title: response.deadline.title,
+              deadlineType: 'court_directions', officialDueAt: response.deadline.officialDueAt,
+              source: response.deadline.source, riskLevel: 'critical', notes: response.deadline.notes || undefined,
+            }, ...prev.filter((current) => current.id !== response.deadline.id)]);
+          }
+          if (response.task) {
+            const statusMap: Record<string, TaskStatus> = { TODO: 'todo', IN_PROGRESS: 'in_progress', BLOCKED: 'blocked', IN_REVIEW: 'waiting_review', COMPLETED: 'completed', CANCELLED: 'cancelled' };
+            setTasks((prev) => [{
+              id: response.task.id, matterId: response.task.matterId || undefined, calendarEventId: response.task.calendarEventId || undefined,
+              title: response.task.title, description: response.task.description || undefined, assignedTo: response.task.assignedToId,
+              createdBy: response.task.createdById, priority: response.task.priority.toLowerCase(), status: statusMap[response.task.status] || 'todo',
+              dueAt: response.task.dueAt, officialDeadlineAt: response.task.officialDeadlineAt || undefined,
+              createdAt: response.task.createdAt, updatedAt: response.task.updatedAt, dependsOnTaskIds: [],
+            }, ...prev.filter((current) => current.id !== response.task.id)]);
+          }
+          return { success: true };
+        }).catch((error) => ({ success: false, error: error instanceof Error ? error.message : 'The server rejected the court outcome.' }));
+      }
+
       setCalendarEvents((prev) =>
         prev.map((e) =>
           e.id === eventId
@@ -2758,7 +2804,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         )
       );
 
-      const event = calendarEvents.find((e) => e.id === eventId);
       if (event?.matterId) {
         logAudit('court.outcome_recorded', 'court_event', eventId, event.matterId, {
           status,
@@ -2856,6 +2901,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           );
         }
       }
+      return Promise.resolve({ success: true });
     },
     [calendarEvents, currentUser.id, logAudit, notify, createTask]
   );

@@ -112,6 +112,7 @@ export const CalendarWorkspace: React.FC = () => {
   const [filingDeadlineInput, setFilingDeadlineInput] = useState('');
   const [filingTitleInput, setFilingTitleInput] = useState('');
   const [generatePrepTask, setGeneratePrepTask] = useState(true);
+  const [outcomeError, setOutcomeError] = useState<string | null>(null);
 
   // Reschedule Form State
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -219,11 +220,12 @@ export const CalendarWorkspace: React.FC = () => {
   };
 
   // Save Outcome with Workflow Automation
-  const handleSaveOutcome = (e: React.FormEvent) => {
+  const handleSaveOutcome = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventForOutcome) return;
+    setOutcomeError(null);
 
-    recordCourtOutcome(
+    const result = await recordCourtOutcome(
       selectedEventForOutcome.id,
       courtStatusChoice,
       courtOutcomeText,
@@ -238,6 +240,11 @@ export const CalendarWorkspace: React.FC = () => {
           }
         : undefined
     );
+
+    if (!result.success) {
+      setOutcomeError(result.error || 'The court outcome could not be saved.');
+      return;
+    }
 
     setSelectedEventForOutcome(null);
     setCourtOutcomeText('');
@@ -1662,6 +1669,10 @@ export const CalendarWorkspace: React.FC = () => {
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 text-xs outline-none resize-none"
               />
             </div>
+
+            {outcomeError && (
+              <p role="alert" className="text-xs text-red-700 dark:text-red-300">{outcomeError}</p>
+            )}
 
             <div>
               <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">

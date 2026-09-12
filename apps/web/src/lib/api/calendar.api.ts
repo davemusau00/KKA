@@ -29,7 +29,14 @@ export const calendarApi = {
   create: (dto: CalendarEventDto) => apiClient.post<any>('/calendar/events', dto),
   reschedule: (id: string, input: { startAt: string; endAt: string; reason?: string; source?: string; supportingDocumentId?: string }) =>
     apiClient.post<any>(`/calendar/events/${id}/reschedule`, input),
-  outcome: (id: string, input: { outcome: string; status: string; nextDate?: string; directions?: string }) =>
+  outcome: (id: string, input: {
+    outcome: string;
+    status: string;
+    nextDate?: string;
+    directions?: string;
+    courtOrderDocumentId?: string;
+    deadline?: { officialDueAt: string; title: string; taskTitle?: string; assignedToId?: string };
+  }) =>
     apiClient.post<any>(`/calendar/events/${id}/court-outcome`, input),
   linkDocument: (id: string, documentId: string, requirementKey?: string) =>
     apiClient.post<any>(`/calendar/events/${id}/documents`, { documentId, requirementKey }),

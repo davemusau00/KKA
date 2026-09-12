@@ -166,10 +166,11 @@ export const CourtOperationsWorkspace: React.FC = () => {
     setView('diary');
   };
 
-  const handleRecordOutcome = (e: React.FormEvent) => {
+  const handleRecordOutcome = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
-    recordCourtOutcome(selectedEvent.id, outcomeStatus, outcomeNotes, nextDate || undefined);
+    const result = await recordCourtOutcome(selectedEvent.id, outcomeStatus, outcomeNotes, nextDate || undefined);
+    if (!result.success) return;
     setSelectedEvent(null);
     setOutcomeNotes('');
     setNextDate('');

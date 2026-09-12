@@ -1174,10 +1174,30 @@ model CalendarEvent {
   participants CalendarParticipant[]
   documents    CalendarEventDocument[]
   revisions    CalendarRevision[]
+  outcomeRecord CourtOutcomeRecord?
 
   @@index([assignedUserId, startAt, endAt])
   @@index([matterId, startAt])
   @@index([eventType, startAt])
+}
+
+model CourtOutcomeRecord {
+  id                   String   @id @default(cuid())
+  eventId              String   @unique
+  status               String
+  outcome              String
+  directions           String?
+  courtOrderDocumentId String?
+  nextEventId          String?
+  deadlineId           String?
+  deadlineEventId      String?
+  taskId               String?
+  recordedById         String
+  recordedAt           DateTime @default(now())
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([recordedById, recordedAt])
 }
 
 model CalendarParticipant {

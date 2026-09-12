@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
+import { Prisma } from "@kka/database";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { AuditService } from "../../platform/audit/audit.service";
 import { QueueService, QUEUES } from "../../platform/queue/queue.service";
@@ -201,48 +202,167 @@ export class CalendarService {
     firmId: string,
     actorId: string,
     eventId: string,
-    input: { outcome: string; status: string; nextDate?: string; directions?: string }
+    input: {
+      outcome: string;
+      status: string;
+      nextDate?: string;
+      directions?: string;
+      courtOrderDocumentId?: string;
+      deadline?: { officialDueAt: string; title: string; taskTitle?: string; assignedToId?: string };
+    }
   ) {
     const event = await this.prisma.client.calendarEvent.findFirst({ where: { id: eventId, firmId } });
     if (!event) throw new NotFoundException("Event not found");
     await this.assertMatterAccess(firmId, actorId, event.matterId);
     if (event.eventType !== "COURT") throw new BadRequestException("Court outcome applies only to court events");
 
-    const updated = await this.prisma.client.calendarEvent.update({
-      where: { id: eventId },
-      data: { status: input.status, notes: [event.notes, input.outcome, input.directions].filter(Boolean).join("\n\n") }
-    });
+    const prior = await this.prisma.client.courtOutcomeRecord.findUnique({ where: { eventId } });
+    if (prior) return { outcome: prior, replayed: true };
 
-    let nextEvent = null;
-    if (input.nextDate) {
-      const start = new Date(input.nextDate);
-      const end = new Date(start.getTime() + 2 * 3600_000);
-      nextEvent = await this.prisma.client.calendarEvent.create({
-        data: {
-          firmId,
-          matterId: event.matterId,
-          courtProceedingId: event.courtProceedingId,
-          title: event.title,
-          eventType: "COURT",
-          startAt: start,
-          endAt: end,
-          timezone: event.timezone,
-          allDay: false,
-          location: event.location,
-          organizerId: actorId,
-          assignedUserId: event.assignedUserId,
-          sourceType: "COURT_OUTCOME",
-          editPolicy: "REASON_REQUIRED",
-          notes: input.directions
-        }
-      });
+    if (input.deadline && !event.matterId) {
+      throw new BadRequestException("A court-directed deadline requires a matter-linked court event");
     }
 
-    await this.audit.record({
-      firmId, actorUserId: actorId, action: "court.outcome_recorded",
-      entityType: "calendar_event", entityId: eventId, matterId: event.matterId ?? undefined,
-      metadata: { outcome: input.outcome, status: input.status, nextEventId: nextEvent?.id }
-    });
-    return { event: updated, nextEvent };
+    try {
+      const result = await this.prisma.client.$transaction(async (tx) => {
+        const updated = await tx.calendarEvent.update({
+          where: { id: eventId },
+          data: {
+            status: input.status,
+            notes: [event.notes, input.outcome, input.directions].filter(Boolean).join("\n\n"),
+            syncState: "PENDING"
+          }
+        });
+
+        let nextEvent = null;
+        if (input.nextDate) {
+          const start = new Date(input.nextDate);
+          nextEvent = await tx.calendarEvent.create({
+            data: {
+              firmId,
+              matterId: event.matterId,
+              courtProceedingId: event.courtProceedingId,
+              title: event.title,
+              eventType: "COURT",
+              startAt: start,
+              endAt: new Date(start.getTime() + 2 * 3600_000),
+              timezone: event.timezone,
+              allDay: false,
+              location: event.location,
+              organizerId: actorId,
+              assignedUserId: event.assignedUserId,
+              sourceType: "COURT_OUTCOME",
+              editPolicy: "REASON_REQUIRED",
+              notes: input.directions,
+              syncState: "PENDING"
+            }
+          });
+        }
+
+        let deadline = null;
+        let deadlineEvent = null;
+        let task = null;
+        if (input.deadline && event.matterId) {
+          const officialDueAt = new Date(input.deadline.officialDueAt);
+          const internalTargetAt = new Date(officialDueAt.getTime() - 3 * 24 * 3600_000);
+          const assignedToId = input.deadline.assignedToId ?? event.assignedUserId;
+          const assignee = await tx.user.findFirst({
+            where: { id: assignedToId, firmId, status: "ACTIVE" },
+            select: { id: true }
+          });
+          if (!assignee) throw new BadRequestException("Court-direction task assignee is not active in this firm");
+
+          deadline = await tx.deadline.create({
+            data: {
+              matterId: event.matterId,
+              title: input.deadline.title,
+              deadlineType: "COURT_DIRECTION",
+              officialDueAt,
+              internalTargetAt,
+              source: `Court outcome ${eventId}`,
+              riskLevel: "CRITICAL",
+              immutable: true,
+              notes: input.directions || input.outcome
+            }
+          });
+          deadlineEvent = await tx.calendarEvent.create({
+            data: {
+              firmId,
+              matterId: event.matterId,
+              deadlineId: deadline.id,
+              title: `FILING DEADLINE: ${deadline.title}`,
+              eventType: "DEADLINE",
+              startAt: officialDueAt,
+              endAt: new Date(officialDueAt.getTime() + 3600_000),
+              timezone: event.timezone,
+              location: event.location,
+              organizerId: actorId,
+              assignedUserId: assignee.id,
+              sourceType: "COURT_OUTCOME",
+              editPolicy: "LOCKED",
+              notes: `Court-directed deadline recorded from ${event.title}`,
+              syncState: "PENDING"
+            }
+          });
+          task = await tx.task.create({
+            data: {
+              matterId: event.matterId,
+              calendarEventId: deadlineEvent.id,
+              title: input.deadline.taskTitle || `Prepare court-directed filing: ${deadline.title}`,
+              description: `Prepare the filing required by the recorded court outcome. Official deadline: ${officialDueAt.toISOString()}.`,
+              assignedToId: assignee.id,
+              createdById: actorId,
+              priority: "CRITICAL",
+              status: "TODO",
+              dueAt: internalTargetAt,
+              officialDeadlineAt: officialDueAt
+            }
+          });
+          await tx.matter.update({
+            where: { id: event.matterId },
+            data: { nextAction: task.title, lastActivityAt: new Date() }
+          });
+        } else if (event.matterId) {
+          await tx.matter.update({ where: { id: event.matterId }, data: { lastActivityAt: new Date() } });
+        }
+
+        const outcome = await tx.courtOutcomeRecord.create({
+          data: {
+            eventId,
+            status: input.status,
+            outcome: input.outcome,
+            directions: input.directions,
+            courtOrderDocumentId: input.courtOrderDocumentId,
+            nextEventId: nextEvent?.id,
+            deadlineId: deadline?.id,
+            deadlineEventId: deadlineEvent?.id,
+            taskId: task?.id,
+            recordedById: actorId
+          }
+        });
+        await this.audit.record({
+          firmId, actorUserId: actorId, action: "court.outcome_recorded",
+          entityType: "calendar_event", entityId: eventId, matterId: event.matterId ?? undefined,
+          metadata: {
+            courtOutcomeRecordId: outcome.id,
+            status: input.status,
+            nextEventId: nextEvent?.id,
+            deadlineId: deadline?.id,
+            deadlineEventId: deadlineEvent?.id,
+            taskId: task?.id,
+            courtOrderDocumentId: input.courtOrderDocumentId
+          }
+        }, tx);
+        return { outcome, event: updated, nextEvent, deadline, deadlineEvent, task, replayed: false };
+      });
+      await this.queues.add(QUEUES.calendar, "calendar.sync", { eventId, action: "update" });
+      return result;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const canonical = await this.prisma.client.courtOutcomeRecord.findUnique({ where: { eventId } });
+        if (canonical) return { outcome: canonical, replayed: true };
+      }
+      throw error;
+    }
   }
 }

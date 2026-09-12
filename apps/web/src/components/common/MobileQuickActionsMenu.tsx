@@ -81,26 +81,20 @@ export const MobileQuickActionsMenu: React.FC = () => {
     }, 1200);
   };
 
-  const handleSaveCourtOutcome = (e: React.FormEvent) => {
+  const handleSaveCourtOutcome = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMatterId) return;
+    let persisted = false;
     if (courtEventId) {
-      recordCourtOutcome(
+      const result = await recordCourtOutcome(
         courtEventId,
         courtStatus === 'conducted' ? 'completed' : 'adjourned',
         courtOutcomeNotes,
         nextHearingDate || undefined
       );
-    } else {
-      notify(
-        currentUser.id,
-        'Field Court Outcome Recorded',
-        `Matter #${selectedMatterId}: ${courtOutcomeNotes}`,
-        'system',
-        selectedMatterId
-      );
+      persisted = result.success;
     }
-    showSuccess('Court outcome logged successfully!');
+    if (persisted) showSuccess('Court outcome recorded.');
   };
 
   const handleSaveCaseNote = (e: React.FormEvent) => {

@@ -54,7 +54,14 @@ export class CalendarController {
       outcome: z.string().min(2),
       status: z.string().min(2),
       nextDate: z.string().datetime().optional(),
-      directions: z.string().optional()
+      directions: z.string().optional(),
+      courtOrderDocumentId: z.string().optional(),
+      deadline: z.object({
+        officialDueAt: z.string().datetime(),
+        title: z.string().min(2),
+        taskTitle: z.string().min(2).optional(),
+        assignedToId: z.string().optional()
+      }).optional()
     }).parse(body);
     return this.calendar.completeFromCourtOutcome(user.firmId, user.id, id, input);
   }
