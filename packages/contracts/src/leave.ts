@@ -27,6 +27,7 @@ export const CalculatedLeaveRequestSchema = LeavePreviewSchema.safeExtend({
 export const LeaveDecisionSchema = z.object({ decision: z.enum(['APPROVED', 'REJECTED']), revision: z.number().int().nonnegative(), reason: z.string().max(3000).optional() }).strict();
 export const LeaveCancelSchema = z.object({ revision: z.number().int().nonnegative() }).strict();
 export type CalculatedLeaveRequest = z.infer<typeof CalculatedLeaveRequestSchema>;
+export type CalculatedLeavePolicyInput = z.input<typeof CalculatedLeavePolicySchema>;
 export type LeavePreviewInput = z.infer<typeof LeavePreviewSchema>;
 export type LeavePosition = {
   policyKey: string; year: number; asOf: string; openingDays: number; accruedDays: number;

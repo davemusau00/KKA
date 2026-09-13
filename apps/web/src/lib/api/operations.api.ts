@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { CalculatedLeaveRequest, LeavePreview, LeavePreviewInput } from '@contracts';
+import type { CalculatedLeaveRequest, CalculatedLeavePolicyInput, LeavePreview, LeavePreviewInput } from '@contracts';
 
 export type LeaveStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type PurchaseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
@@ -242,7 +242,7 @@ export const operationsApi = {
   saveAdvocateCredential: (userId: string, input: { admissionNumber: string; admissionDate?: string | null; practicingCertificateNo?: string | null; certificateExpiresAt?: string | null; status?: 'ACTIVE' | 'EXPIRED' | 'SUSPENDED' | 'RETIRED'; notes?: string | null }) =>
     apiClient.post<AuditedMutation<AdvocateCredentialDto>>(`/operations/hr/employees/${userId}/advocate-credentials`, input),
   leavePolicies: () => apiClient.get<LeavePolicyDto[]>('/operations/hr/leave-policies'),
-  saveLeavePolicy: (input: { key: string; name: string; annualEntitlementDays: number; carryoverLimitDays?: number | null; active?: boolean }) =>
+  saveLeavePolicy: (input: CalculatedLeavePolicyInput) =>
     apiClient.post<AuditedMutation<LeavePolicyDto>>('/operations/hr/leave-policies', input),
   saveLeaveBalance: (userId: string, input: { policyKey: string; year: number; openingDays?: number; adjustmentDays?: number; notes: string }) =>
     apiClient.post<AuditedMutation<LeaveBalanceDto>>(`/operations/hr/employees/${userId}/leave-balances`, input),
@@ -261,6 +261,7 @@ export const operationsApi = {
   decideLeave: (id: string, decision: 'APPROVED' | 'REJECTED', revision: number, reason?: string) =>
     apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/decision`, { decision, revision, reason }),
   cancelLeave: (id: string, revision: number) => apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/cancel`, { revision }),
+  reconcileLeavePolicy: (id: string, input: { policyKey: string; revision: number; reason: string }) => apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/reconcile-policy`, input),
 
   vendors: () => apiClient.get<VendorDto[]>('/operations/vendors'),
   createVendor: (input: { name: string; kraPin?: string; contactName?: string; phone?: string; email?: string; address?: string }) =>

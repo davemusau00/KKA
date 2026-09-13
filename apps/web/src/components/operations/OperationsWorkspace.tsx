@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LeaveRequestForm } from './LeaveRequestForm';
+import { LeavePolicyManager } from './LeavePolicyManager';
 import {
   Briefcase,
   Building2,
@@ -229,6 +230,7 @@ export const OperationsWorkspace: React.FC = () => {
           <Panel title="Request leave" description="Preview your policy calendar and leave balance before submitting.">
             <LeaveRequestForm onSaved={load} />
           </Panel>
+          {canHr && <Panel title="Leave policies and historical review"><LeavePolicyManager requests={leave} onSaved={load} /></Panel>}
 
           {canHr && <Panel title="Employee profile" description="Create or update the internal employment profile attached to a firm user.">
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => {

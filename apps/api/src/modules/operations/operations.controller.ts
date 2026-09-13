@@ -334,6 +334,13 @@ export class OperationsController {
   @Post('leave/preview')
   previewLeave(@CurrentUser() user: RequestUser, @Body() body: unknown) { return this.calculatedLeave.preview(user, LeavePreviewSchema.parse(body)); }
 
+  @Post('leave/:id/reconcile-policy')
+  @RequirePermissions('hr.manage')
+  reconcileLeave(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
+    const input = z.object({ policyKey: z.string().min(2).max(80), revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(3000) }).strict().parse(body);
+    return this.calculatedLeave.reconcileHistorical(user, id, input);
+  }
+
   @Post("leave/:id/decision")
   @RequirePermissions("hr.manage")
   leaveDecision(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {

@@ -31,8 +31,10 @@ export class LeaveService {
   private async position(tx: Prisma.TransactionClient, firmId: string, userId: string, policyKey: string, year: number) {
     const policy = await tx.leavePolicy.findFirst({ where: { firmId, key: policyKey, active: true } });
     if (!policy) throw new BadRequestException('Choose an active leave policy');
-    const profile = await tx.employeeProfile.findFirst({ where: { firmId, userId } });
+    if (!await tx.user.findFirst({ where: { id: userId, firmId }, select: { id: true } })) throw new NotFoundException('Employee not found');
+    const profile = await tx.employeeProfile.findUnique({ where: { userId } });
     if (!profile) throw new BadRequestException('HR must record an employment start date before leave can be calculated');
+    if (profile.leavePolicyKey !== policyKey) throw new BadRequestException('This policy is not assigned to the employee');
     const [balance, requests] = await Promise.all([
       tx.leaveBalance.findUnique({ where: { firmId_userId_policyKey_year: { firmId, userId, policyKey, year } } }),
       tx.leaveRequest.findMany({ where: { userId, requester: { firmId }, status: { in: ['APPROVED', 'SUBMITTED'] }, startsOn: { lt: new Date(Date.UTC(year + 1, 0, 1)) }, endsOn: { gte: new Date(Date.UTC(year, 0, 1)) } } }),
@@ -42,7 +44,32 @@ export class LeaveService {
   }
 
   async policies(user: RequestUser) {
-    return this.transaction(async tx => { await this.actor(tx, user); return tx.leavePolicy.findMany({ where: { firmId: user.firmId, active: true }, orderBy: { name: 'asc' } }); });
+    return this.transaction(async tx => {
+      await this.actor(tx, user);
+      const profile = await tx.employeeProfile.findUnique({ where: { userId: user.id } });
+      if (!profile?.leavePolicyKey) return [];
+      return tx.leavePolicy.findMany({ where: { firmId: user.firmId, key: profile.leavePolicyKey, active: true }, orderBy: { name: 'asc' } });
+    });
+  }
+
+  async reconcileHistorical(user: RequestUser, id: string, input: { policyKey: string; revision: number; reason: string }) {
+    if (!user.permissions.includes('hr.manage')) throw new ForbiddenException('HR permission required');
+    return this.transaction(async tx => {
+      await this.actor(tx, user);
+      const request = await tx.leaveRequest.findFirst({ where: { id, requester: { firmId: user.firmId } } });
+      if (!request) throw new NotFoundException('Leave request not found');
+      if (request.policyKey || request.revision !== input.revision) throw new ConflictException('Leave changed. Reload before reviewing.');
+      if (request.startsOn.getUTCFullYear() !== request.endsOn.getUTCFullYear()) throw new ConflictException('A cross-year historical request requires a reviewed data migration');
+      const policy = await tx.leavePolicy.findFirst({ where: { firmId: user.firmId, key: input.policyKey, active: true } });
+      if (!policy) throw new BadRequestException('Choose an active leave policy');
+      const changed = await tx.leaveRequest.updateMany({ where: { id, policyKey: null, revision: input.revision }, data: {
+        policyKey: policy.key, revision: { increment: 1 }, calculation: { source: 'HISTORICAL_REVIEW', preservedDays: String(request.days), reviewedById: user.id, reason: input.reason },
+      } });
+      if (changed.count !== 1) throw new ConflictException('Leave changed. Reload before reviewing.');
+      const saved = await tx.leaveRequest.findUniqueOrThrow({ where: { id }, include: included });
+      const audit = await this.audit.record({ firmId: user.firmId, actorUserId: user.id, action: 'hr.leave_historical_reviewed', entityType: 'leave_request', entityId: id, metadata: { policyKey: policy.key, preservedDays: String(request.days), reason: input.reason } }, tx);
+      return { ...saved, auditRef: audit.id };
+    });
   }
 
   async preview(user: RequestUser, raw: LeavePreviewInput) {
@@ -65,7 +92,7 @@ export class LeaveService {
       const existing = await tx.leaveRequest.findUnique({ where: { userId_idempotencyKey: { userId: user.id, idempotencyKey: input.idempotencyKey } }, include: included });
       if (existing) {
         if (existing.policyKey !== input.policyKey || existing.startsOn.toISOString().slice(0, 10) !== input.startsOn || existing.endsOn.toISOString().slice(0, 10) !== input.endsOn || (existing.reason ?? '') !== (input.reason ?? '')) throw new ConflictException('Request key was already used with different leave details');
-        const audit = await tx.auditEvent.findFirst({ where: { firmId: user.firmId, entityId: existing.id, action: 'hr.leave_submitted' }, orderBy: { createdAt: 'asc' } });
+        const audit = await tx.auditEvent.findFirst({ where: { firmId: user.firmId, entityId: existing.id, action: 'hr.leave_submitted' }, orderBy: { occurredAt: 'asc' } });
         if (!audit) throw new ConflictException('Existing leave request has no submission audit reference');
         return { ...existing, auditRef: audit.id };
       }
