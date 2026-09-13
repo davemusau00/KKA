@@ -16,7 +16,8 @@ export function LeaveBalancePanel({ userId, policyKey }: { userId: string; polic
   }, [userId, policyKey, revision]);
   useEffect(() => { setCorrection({ openingDays: '', adjustmentDays: '', notes: '' }); }, [userId, policyKey]);
   return <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"><h3 className="mb-2 font-semibold text-slate-200">Calculated leave balance</h3>
-    {!policyKey ? <p>Assign a leave policy to this employee.</p> : error ? <p role="alert" className="text-amber-300">{error}</p> : !position ? <p role="status">Loading balance…</p> : <>
+    {!policyKey ? <p>Assign a leave policy to this employee.</p> : !position ? error ? <p role="alert" className="text-amber-300">{error}</p> : <p role="status">Loading balance…</p> : <>
+      {error && <p role="alert" className="mb-2 text-amber-300">{error}</p>}
       <p className="mb-2 text-slate-400">{position.policyKey} · {position.year} · as of {position.asOf}</p>
       <dl className="grid grid-cols-2 gap-2">{[['Opening carryover', position.openingDays], ['Accrued', position.accruedDays], ['Adjustments', position.adjustmentDays], ['Approved usage', position.usedDays], ['Pending', position.pendingDays], ['Available', position.availableDays], ['Projected available', position.projectedAvailableDays]].map(([label, value]) => <React.Fragment key={label}><dt>{label}</dt><dd className="text-right">{value}</dd></React.Fragment>)}</dl>
       {!!position.unclassifiedRequestIds.length && <p className="mt-2 text-amber-300">Historical requests require policy review; this balance is incomplete.</p>}

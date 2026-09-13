@@ -239,7 +239,7 @@ export const OperationsWorkspace: React.FC = () => {
               await operationsApi.upsertEmployee(employeeForm.userId, {
                 employeeNumber: employeeForm.employeeNumber || undefined,
                 employmentType: employeeForm.employmentType,
-                startDate: new Date(`${employeeForm.startDate}T00:00:00`).toISOString(),
+                startDate: new Date(`${employeeForm.startDate}T00:00:00Z`).toISOString(),
                 managerUserId: employeeForm.managerUserId || null,
                 leavePolicyKey: employeeForm.leavePolicyKey || null,
                 cpdsRequiredAnnual: Number(employeeForm.cpdsRequiredAnnual || 0),

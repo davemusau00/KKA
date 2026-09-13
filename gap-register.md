@@ -1401,6 +1401,8 @@ Measure:
 
 Backend/domain foundations are not equivalent to an accepted staff-management system.
 
+Continuation evidence: calculated leave now has policy calendars, accrual/proration, derived approved/pending usage, balance checks during submission/approval, revision conflicts, idempotent submission, atomic audit writes, HR corrections and explicit historical-policy review. Local PostgreSQL concurrency/isolation tests and focused 360px/768px/1440px browser form checks pass. See [CALCULATED_LEAVE.md](docs/CALCULATED_LEAVE.md). Authenticated end-to-end staff acceptance, automated carryover, multiple policy assignments and effective-dated policy history remain open; this section is not closed.
+
 Still required:
 
 * employee lifecycle;
