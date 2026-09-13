@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Archive, BookOpen, CheckCircle2, FileText, Plus, RefreshCw, Search, Send, Tags } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { knowledgeApi, type KnowledgeItemDto, type KnowledgeStatus } from '../../lib/api/knowledge.api';
+import { parseWorkspaceLocation } from '../../lib/routing/workspaceRoutes';
 
 const inputClass = 'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-500';
 const primaryButton = 'rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50';
@@ -30,6 +31,16 @@ export const KnowledgeWorkspace: React.FC = () => {
   const [status, setStatus] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [form, setForm] = useState({ type: 'PROCEDURE', title: '', summary: '', practiceArea: '', tags: '', documentId: '' });
+
+  useEffect(() => {
+    const applyDetailRoute = () => {
+      const route = parseWorkspaceLocation(window.location.pathname, window.location.search);
+      if (route.resourceType === 'knowledge_item' && route.resourceId) setSelectedId(route.resourceId);
+    };
+    applyDetailRoute();
+    window.addEventListener('popstate', applyDetailRoute);
+    return () => window.removeEventListener('popstate', applyDetailRoute);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -108,7 +119,7 @@ export const KnowledgeWorkspace: React.FC = () => {
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4 sm:p-5 shadow-xl">
           <div className="mb-4 flex items-center gap-2"><BookOpen className="h-4 w-4 text-amber-500" /><h2 className="font-semibold">Library</h2><span className="text-xs text-slate-500">{items.length} items</span></div>
-          {loading ? <div className="py-16 text-center text-slate-500">Loading knowledge…</div> : <div className="space-y-3">{items.map((item) => <article key={item.id} className={`rounded-xl border p-4 transition ${selectedId === item.id ? 'border-amber-600 bg-amber-950/10' : 'border-slate-800 bg-slate-950/45 hover:border-slate-700'}`}>
+          {loading ? <div className="py-16 text-center text-slate-500">Loading knowledge…</div> : <div className="space-y-3">{selectedId && !selected && <div className="rounded-xl border border-slate-700 bg-slate-950/45 p-4 text-sm text-slate-400">This knowledge item is unavailable or no longer exists.</div>}{items.map((item) => <article key={item.id} className={`rounded-xl border p-4 transition ${selectedId === item.id ? 'border-amber-600 bg-amber-950/10' : 'border-slate-800 bg-slate-950/45 hover:border-slate-700'}`}>
             <button className="w-full text-left" onClick={() => setSelectedId(selectedId === item.id ? '' : item.id)}><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="flex items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-amber-500" /><h3 className="truncate font-semibold text-slate-100">{item.title}</h3></div><div className="mt-1 text-[11px] uppercase tracking-wider text-slate-500">{item.type.replaceAll('_', ' ')}{item.practiceArea ? ` · ${item.practiceArea}` : ''}</div></div><Status value={item.status} /></div>{item.summary && <p className="mt-3 text-sm leading-relaxed text-slate-300">{item.summary}</p>}<div className="mt-3 flex flex-wrap gap-1.5">{item.tags.map((tag) => <span key={tag} className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] text-slate-400">#{tag}</span>)}</div></button>
             {selectedId === item.id && canManage && <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-800 pt-3">{item.status === 'DRAFT' && <button className={secondaryButton} disabled={busy} onClick={() => void transition(item, 'IN_REVIEW')}><Send className="mr-1 inline h-3 w-3" />Send for review</button>}{item.status === 'IN_REVIEW' && <button className={primaryButton} disabled={busy} onClick={() => void transition(item, 'PUBLISHED')}><CheckCircle2 className="mr-1 inline h-3 w-3" />Publish</button>}{item.status === 'PUBLISHED' && <button className={secondaryButton} disabled={busy} onClick={() => void transition(item, 'DRAFT')}>Return to draft</button>}{item.status !== 'ARCHIVED' && <button className={secondaryButton} disabled={busy} onClick={() => void transition(item, 'ARCHIVED')}><Archive className="mr-1 inline h-3 w-3" />Archive</button>}{item.status === 'ARCHIVED' && <button className={secondaryButton} disabled={busy} onClick={() => void transition(item, 'DRAFT')}>Restore</button>}</div>}
           </article>)}{!items.length && <div className="py-16 text-center text-sm text-slate-500">No knowledge items match this view.</div>}</div>}

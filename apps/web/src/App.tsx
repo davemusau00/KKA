@@ -20,7 +20,7 @@ import { WebsiteGrowthWorkspace } from './components/website/WebsiteGrowthWorksp
 import { OperationsWorkspace } from './components/operations/OperationsWorkspace';
 import { KnowledgeWorkspace } from './components/knowledge/KnowledgeWorkspace';
 import { HelpCenterWorkspace } from './components/help/HelpCenterWorkspace';
-import { parseWorkspaceLocation, serializeWorkspaceRoute } from './lib/routing/workspaceRoutes';
+import { parseWorkspaceLocation, serializeWorkspaceRoute, type WorkspaceRoute } from './lib/routing/workspaceRoutes';
 import { InviteAcceptancePage } from './components/auth/InviteAcceptancePage';
 
 const MainWorkspaceRouter: React.FC = () => {
@@ -33,6 +33,7 @@ const MainWorkspaceRouter: React.FC = () => {
     setSelectedMatterTab,
   } = useApp();
   const [routeReady, setRouteReady] = useState(false);
+  const [resourceRoute, setResourceRoute] = useState<Pick<WorkspaceRoute, 'workspace' | 'resourceType' | 'resourceId'> | null>(null);
   const currentLocation = useRef('');
 
   const applyLocation = useCallback((pathname: string, search: string) => {
@@ -40,6 +41,7 @@ const MainWorkspaceRouter: React.FC = () => {
     setActiveWorkspace(route.workspace);
     setSelectedMatterId(route.matterId ?? null);
     setSelectedMatterTab(route.matterTab ?? 'overview');
+    setResourceRoute(route.resourceType && route.resourceId ? { workspace: route.workspace, resourceType: route.resourceType, resourceId: route.resourceId } : null);
     currentLocation.current = `${pathname}${search}`;
   }, [setActiveWorkspace, setSelectedMatterId, setSelectedMatterTab]);
 
@@ -50,13 +52,13 @@ const MainWorkspaceRouter: React.FC = () => {
 
   useEffect(() => {
     if (!routeReady) return;
-    const target = serializeWorkspaceRoute({ workspace: activeWorkspace, matterId: selectedMatterId ?? undefined, matterTab: selectedMatterTab });
+    const target = serializeWorkspaceRoute({ workspace: activeWorkspace, matterId: selectedMatterId ?? undefined, matterTab: selectedMatterTab, ...(resourceRoute?.workspace === activeWorkspace ? resourceRoute : {}) });
     const current = `${window.location.pathname}${window.location.search}`;
     if (target !== current && currentLocation.current !== current) {
       window.history.pushState({}, '', target);
       currentLocation.current = target;
     }
-  }, [activeWorkspace, routeReady, selectedMatterId, selectedMatterTab]);
+  }, [activeWorkspace, resourceRoute, routeReady, selectedMatterId, selectedMatterTab]);
 
   useEffect(() => {
     const onPopState = () => applyLocation(window.location.pathname, window.location.search);

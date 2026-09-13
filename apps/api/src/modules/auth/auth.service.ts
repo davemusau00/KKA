@@ -10,7 +10,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { PrismaService } from "../../platform/prisma/prisma.service";
 import { RedisService } from "../../platform/redis/redis.service";
 import { env } from "../../platform/env";
-import type { LoginInput } from "@kka/contracts";
+import type { LoginInput, UpdateOnboardingInput } from "@kka/contracts";
 import { roleContext } from '../../platform/auth/role-context';
 import { AuditService } from '../../platform/audit/audit.service';
 
@@ -154,6 +154,78 @@ export class AuthService {
     const token = randomBytes(32).toString("base64url");
     await this.redis.client.set(`elevation:${token}`, JSON.stringify({ userId, createdAt: new Date().toISOString() }), "EX", 300);
     return { elevationToken: token, expiresInSeconds: 300 };
+  }
+
+  async onboardingState(userId: string) {
+    const state = await this.prisma.client.userOnboardingState.findUnique({ where: { userId } });
+    return state ?? {
+      userId,
+      onboardingVersion: 1,
+      status: "NOT_STARTED" as const,
+      currentStepKey: null,
+      completedSteps: [],
+      startedAt: null,
+      lastSeenAt: null,
+      completedAt: null,
+      tourCompletedAt: null,
+      manualViewedAt: null,
+      dismissedUntil: null
+    };
+  }
+
+  async updateOnboarding(user: { id: string; firmId: string }, input: UpdateOnboardingInput) {
+    const now = new Date();
+    if (input.action === "POSTPONE" && new Date(input.dismissedUntil!).getTime() <= now.getTime()) {
+      throw new BadRequestException("dismissedUntil must be in the future");
+    }
+
+    return this.prisma.client.$transaction(async (tx) => {
+      const existing = await tx.userOnboardingState.findUnique({ where: { userId: user.id } });
+      const completedSteps = Array.isArray(existing?.completedSteps)
+        ? existing.completedSteps.filter((step): step is string => typeof step === "string")
+        : [];
+      const isStarted = Boolean(existing && existing.status !== "NOT_STARTED");
+      const startData = isStarted ? {} : { status: "IN_PROGRESS" as const, startedAt: now };
+      let data: Record<string, unknown> = { ...startData, lastSeenAt: now, dismissedUntil: null };
+
+      switch (input.action) {
+        case "SET_STEP":
+          data = { ...data, currentStepKey: input.currentStepKey };
+          break;
+        case "COMPLETE_STEP":
+          data = { ...data, currentStepKey: input.currentStepKey ?? input.stepKey, completedSteps: [...new Set([...completedSteps, input.stepKey!])] };
+          break;
+        case "COMPLETE_TOUR":
+          data = { ...data, tourCompletedAt: now };
+          break;
+        case "VIEW_MANUAL":
+          data = { ...data, manualViewedAt: now };
+          break;
+        case "POSTPONE":
+          data = { ...data, dismissedUntil: new Date(input.dismissedUntil!) };
+          break;
+        case "COMPLETE":
+          data = { ...data, status: "COMPLETED", currentStepKey: "READY_FOR_WORK", completedAt: now, dismissedUntil: null };
+          break;
+        case "START":
+          break;
+      }
+
+      const state = await tx.userOnboardingState.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, ...data } as any,
+        update: data as any
+      });
+      const audit = await this.audit.record({
+        firmId: user.firmId,
+        actorUserId: user.id,
+        action: `auth.onboarding_${input.action.toLowerCase()}`,
+        entityType: "user_onboarding_state",
+        entityId: state.id,
+        metadata: { action: input.action, currentStepKey: state.currentStepKey, onboardingVersion: state.onboardingVersion }
+      }, tx);
+      return { state, auditId: audit.id };
+    });
   }
 
   async acceptInvite(token: string, password: string) {

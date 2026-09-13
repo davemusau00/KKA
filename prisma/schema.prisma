@@ -89,6 +89,12 @@ enum UserStatus {
   DISABLED
 }
 
+enum UserOnboardingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 enum MatterStatus {
   DRAFT
   ACTIVE
@@ -487,6 +493,7 @@ model User {
   assetAssignments               AssetAssignment[]
   projectMemberships             ProjectMember[]
   meetingParticipation           MeetingParticipant[]
+  onboardingState                UserOnboardingState?
 
   // KKA Public Digital Platform relations
   websiteMediaCreated        WebsiteMediaAsset[]         @relation("WebsiteMediaCreator")
@@ -500,6 +507,27 @@ model User {
   websiteLeadContacts        WebsiteLeadContactAttempt[] @relation("WebsiteLeadContactActor")
   websiteLeadAppointments    WebsiteLeadAppointment[]    @relation("WebsiteLeadAppointmentAssignee")
   websiteReleaseRequests     WebsitePublishRelease[]     @relation("WebsiteReleaseRequester")
+}
+
+model UserOnboardingState {
+  id               String               @id @default(cuid())
+  userId           String               @unique
+  onboardingVersion Int                 @default(1)
+  status           UserOnboardingStatus @default(NOT_STARTED)
+  currentStepKey   String?
+  completedSteps   Json                 @default("[]")
+  startedAt        DateTime?
+  lastSeenAt       DateTime?
+  completedAt      DateTime?
+  tourCompletedAt  DateTime?
+  manualViewedAt   DateTime?
+  dismissedUntil   DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, dismissedUntil])
 }
 
 model UserBranch {

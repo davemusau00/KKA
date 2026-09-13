@@ -83,6 +83,11 @@ export interface VendorDto {
   createdAt: string;
 }
 
+export interface PurchaseCategoryDto { id: string; firmId: string; key: string; name: string; approvalThreshold?: string | number | null; financeAccountCode?: string | null; active: boolean; }
+export interface VendorDocumentDto { id: string; vendorId: string; category: string; title: string; externalReference?: string | null; expiresAt?: string | null; storageState: 'MANUAL'; }
+export interface VendorQuoteDto { id: string; requisitionId: string; vendorId: string; reference: string; amount: string | number; currency: string; validUntil?: string | null; notes?: string | null; }
+export interface AssetMaintenanceDto { id: string; assetId: string; vendorId?: string | null; type: string; description: string; cost?: string | number | null; status: string; externalReference?: string | null; notes?: string | null; }
+
 export interface PurchaseRequisitionDto {
   id: string;
   firmId: string;
@@ -255,12 +260,16 @@ export const operationsApi = {
   vendors: () => apiClient.get<VendorDto[]>('/operations/vendors'),
   createVendor: (input: { name: string; kraPin?: string; contactName?: string; phone?: string; email?: string; address?: string }) =>
     apiClient.post<VendorDto>('/operations/vendors', input),
+  recordVendorDocument: (id: string, input: { category: string; title: string; externalReference?: string; expiresAt?: string }) => apiClient.post<VendorDocumentDto>(`/operations/vendors/${id}/documents`, input),
+  purchaseCategories: () => apiClient.get<PurchaseCategoryDto[]>('/operations/purchase-categories'),
+  savePurchaseCategory: (input: { key: string; name: string; approvalThreshold?: number; financeAccountCode?: string; active?: boolean }) => apiClient.post<PurchaseCategoryDto>('/operations/purchase-categories', input),
 
   requisitions: () => apiClient.get<PurchaseRequisitionDto[]>('/operations/purchase-requisitions'),
-  createRequisition: (input: { branchId: string; vendorId?: string; description: string; amount: number; idempotencyKey: string }) =>
+  createRequisition: (input: { branchId: string; vendorId?: string; categoryId?: string; description: string; amount: number; idempotencyKey: string }) =>
     apiClient.post<PurchaseRequisitionDto>('/operations/purchase-requisitions', input),
   decideRequisition: (id: string, decision: 'APPROVED' | 'REJECTED') =>
     apiClient.post<PurchaseRequisitionDto>(`/operations/purchase-requisitions/${id}/decision`, { decision }),
+  recordVendorQuote: (id: string, input: { vendorId: string; reference: string; amount: number; currency?: string; validUntil?: string; notes?: string }) => apiClient.post<VendorQuoteDto>(`/operations/purchase-requisitions/${id}/quotes`, input),
 
   orders: () => apiClient.get<PurchaseOrderDto[]>('/operations/purchase-orders'),
   receipts: () => apiClient.get<PurchaseReceiptDto[]>('/operations/purchase-receipts'),
@@ -288,6 +297,8 @@ export const operationsApi = {
     apiClient.post<AssetDto>(`/operations/assets/${id}/return`, input ?? {}),
   updateAssetStatus: (id: string, status: AssetStatus, notes?: string) =>
     apiClient.patch<AssetDto>(`/operations/assets/${id}/status`, { status, notes }),
+  recordAssetMaintenance: (id: string, input: { vendorId?: string; type: string; description: string; cost?: number; externalReference?: string; notes?: string }) => apiClient.post<AssetMaintenanceDto>(`/operations/assets/${id}/maintenance`, input),
+  completeAssetMaintenance: (id: string, notes?: string) => apiClient.post<AssetMaintenanceDto>(`/operations/asset-maintenance/${id}/complete`, { notes }),
 
   projects: () => apiClient.get<InternalProjectDto[]>('/operations/projects'),
   createProject: (input: {

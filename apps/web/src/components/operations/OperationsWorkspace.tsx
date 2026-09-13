@@ -25,11 +25,13 @@ import {
   type LeaveRequestDto,
   type MeetingDto,
   type PurchaseOrderDto,
+  type PurchaseCategoryDto,
   type PurchaseReceiptDto,
   type PurchaseRequisitionDto,
   type VendorDto,
 } from '../../lib/api/operations.api';
 import { organizationApi, type BackendDepartment } from '../../lib/api/organization.api';
+import { parseWorkspaceLocation } from '../../lib/routing/workspaceRoutes';
 
 type Tab = 'people' | 'procurement' | 'assets' | 'projects';
 
@@ -89,6 +91,7 @@ export const OperationsWorkspace: React.FC = () => {
   const [leave, setLeave] = useState<LeaveRequestDto[]>([]);
   const [vendors, setVendors] = useState<VendorDto[]>([]);
   const [requisitions, setRequisitions] = useState<PurchaseRequisitionDto[]>([]);
+  const [purchaseCategories, setPurchaseCategories] = useState<PurchaseCategoryDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [receipts, setReceipts] = useState<PurchaseReceiptDto[]>([]);
   const [assets, setAssets] = useState<AssetDto[]>([]);
@@ -103,12 +106,12 @@ export const OperationsWorkspace: React.FC = () => {
       const leavePromise = operationsApi.leave(canHr ? 'all' : 'self');
       const employeePromise = canHr ? operationsApi.employees() : Promise.resolve([] as EmployeeRowDto[]);
       const operationalPromises = canOpenOperations
-        ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings()])
-        : Promise.resolve([[], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[]]);
+        ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.purchaseCategories(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings()])
+        : Promise.resolve([[], [], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseCategoryDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[]]);
       const departmentPromise = canHr ? organizationApi.listDepartments() : Promise.resolve([] as BackendDepartment[]);
-      const [leaveRows, employeeRows, departmentRows, [vendorRows, requisitionRows, orderRows, receiptRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, departmentPromise, operationalPromises]);
+      const [leaveRows, employeeRows, departmentRows, [vendorRows, requisitionRows, categoryRows, orderRows, receiptRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, departmentPromise, operationalPromises]);
       setLeave(leaveRows); setEmployees(employeeRows); setVendors(vendorRows); setRequisitions(requisitionRows);
-      setDepartments(departmentRows); setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
+      setDepartments(departmentRows); setPurchaseCategories(categoryRows); setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load operations data.');
     } finally { setLoading(false); }
@@ -137,9 +140,9 @@ export const OperationsWorkspace: React.FC = () => {
 
   const [leaveForm, setLeaveForm] = useState({ type: 'Annual Leave', startsOn: '', endsOn: '', days: '1', reason: '' });
   const [employeeForm, setEmployeeForm] = useState({ userId: '', employeeNumber: '', employmentType: 'FULL_TIME', startDate: '', managerUserId: '', leavePolicyKey: 'STANDARD', cpdsRequiredAnnual: '0', notes: '' });
-  const [departmentForm, setDepartmentForm] = useState({ name: '', code: '', managerId: '', costCentre: '' });
+  const [departmentForm, setDepartmentForm] = useState({ name: '', code: '', branchId: '', managerId: '', costCentre: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', kraPin: '', contactName: '', phone: '', email: '', address: '' });
-  const [reqForm, setReqForm] = useState({ branchId: defaultBranchId, vendorId: '', description: '', amount: '' });
+  const [reqForm, setReqForm] = useState({ branchId: defaultBranchId, vendorId: '', categoryId: '', description: '', amount: '' });
   const [receiptReferences, setReceiptReferences] = useState<Record<string, string>>({});
   const [assetForm, setAssetForm] = useState({ branchId: defaultBranchId, category: 'ICT', name: '', serialNumber: '', purchaseCost: '', notes: '' });
   const [projectForm, setProjectForm] = useState({ branchId: defaultBranchId, name: '', description: '', ownerUserId: currentUser.id, dueDate: '', budget: '' });
@@ -150,6 +153,18 @@ export const OperationsWorkspace: React.FC = () => {
   const [selectedMeetingId, setSelectedMeetingId] = useState('');
   const [selectedMeetingParticipantIds, setSelectedMeetingParticipantIds] = useState<string[]>([]);
   const [meetingNotes, setMeetingNotes] = useState({ minutes: '', decision: '', decisionOwnerUserId: '', action: '', assigneeId: '', dueAt: '' });
+
+  useEffect(() => {
+    const applyDetailRoute = () => {
+      const route = parseWorkspaceLocation(window.location.pathname, window.location.search);
+      if (route.workspace !== 'operations') return;
+      if (route.resourceType === 'project' && route.resourceId) { setTab('projects'); setSelectedProjectId(route.resourceId); }
+      if (route.resourceType === 'meeting' && route.resourceId) { setTab('projects'); setSelectedMeetingId(route.resourceId); }
+    };
+    applyDetailRoute();
+    window.addEventListener('popstate', applyDetailRoute);
+    return () => window.removeEventListener('popstate', applyDetailRoute);
+  }, []);
 
   useEffect(() => {
     if (defaultBranchId) {
@@ -248,7 +263,7 @@ export const OperationsWorkspace: React.FC = () => {
           </Panel>}
 
           {canHr && <Panel title="Departments" description="Departments and managers are persisted to the firm organization record.">
-            <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!departmentForm.name.trim() || !departmentForm.code.trim()) throw new Error('Department name and code are required.'); await organizationApi.createDepartment({ name: departmentForm.name.trim(), code: departmentForm.code.trim(), managerId: departmentForm.managerId || undefined, costCentre: departmentForm.costCentre.trim() || undefined }); setDepartmentForm({ name: '', code: '', managerId: '', costCentre: '' }); }, 'Department created.'); }}><div className="grid grid-cols-2 gap-2"><input className={inputClass} placeholder="Department name" value={departmentForm.name} onChange={(event) => setDepartmentForm({ ...departmentForm, name: event.target.value })} /><input className={inputClass} placeholder="Code" value={departmentForm.code} onChange={(event) => setDepartmentForm({ ...departmentForm, code: event.target.value.toUpperCase() })} /></div><select className={inputClass} value={departmentForm.managerId} onChange={(event) => setDepartmentForm({ ...departmentForm, managerId: event.target.value })}><option value="">No manager</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select><input className={inputClass} placeholder="Cost centre (optional)" value={departmentForm.costCentre} onChange={(event) => setDepartmentForm({ ...departmentForm, costCentre: event.target.value })} /><button className={primaryButton} disabled={busy}>Create department</button></form><div className="mt-4 space-y-2">{departments.map((department) => <div key={department.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2 text-xs"><div><div className="font-medium text-slate-200">{department.name} <span className="font-mono text-slate-500">{department.code}</span></div><div className="text-slate-500">Manager</div></div><div className="flex items-center gap-2"><select className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100" value={department.managerId || ''} disabled={busy} onChange={(event) => void run(() => organizationApi.updateDepartment(department.id, { managerId: event.target.value || null }), 'Department manager updated.')}><option value="">Unassigned</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select><Status value={department.active ? 'ACTIVE' : 'INACTIVE'} /></div></div>)}{!departments.length && <p className="py-2 text-xs text-slate-500">No departments configured.</p>}</div>
+            <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!departmentForm.name.trim() || !departmentForm.code.trim()) throw new Error('Department name and code are required.'); await organizationApi.createDepartment({ name: departmentForm.name.trim(), code: departmentForm.code.trim(), branchId: departmentForm.branchId || undefined, managerId: departmentForm.managerId || undefined, costCentre: departmentForm.costCentre.trim() || undefined }); setDepartmentForm({ name: '', code: '', branchId: '', managerId: '', costCentre: '' }); }, 'Department created.'); }}><div className="grid grid-cols-2 gap-2"><input className={inputClass} placeholder="Department name" value={departmentForm.name} onChange={(event) => setDepartmentForm({ ...departmentForm, name: event.target.value })} /><input className={inputClass} placeholder="Code" value={departmentForm.code} onChange={(event) => setDepartmentForm({ ...departmentForm, code: event.target.value.toUpperCase() })} /></div><select className={inputClass} value={departmentForm.branchId} onChange={(event) => setDepartmentForm({ ...departmentForm, branchId: event.target.value })}><option value="">Firm-wide department</option>{branches.filter((branch) => branch.isActive).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select><select className={inputClass} value={departmentForm.managerId} onChange={(event) => setDepartmentForm({ ...departmentForm, managerId: event.target.value })}><option value="">No manager</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select><input className={inputClass} placeholder="Cost centre (optional)" value={departmentForm.costCentre} onChange={(event) => setDepartmentForm({ ...departmentForm, costCentre: event.target.value })} /><button className={primaryButton} disabled={busy}>Create department</button></form><div className="mt-4 space-y-2">{departments.map((department) => <div key={department.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2 text-xs"><div><div className="font-medium text-slate-200">{department.name} <span className="font-mono text-slate-500">{department.code}</span></div><div className="text-slate-500">Manager</div></div><div className="flex items-center gap-2"><select className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100" value={department.managerId || ''} disabled={busy} onChange={(event) => void run(() => organizationApi.updateDepartment(department.id, { managerId: event.target.value || null }), 'Department manager updated.')}><option value="">Unassigned</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select><Status value={department.active ? 'ACTIVE' : 'INACTIVE'} /></div></div>)}{!departments.length && <p className="py-2 text-xs text-slate-500">No departments configured.</p>}</div>
           </Panel>}
         </div>
 
@@ -295,9 +310,10 @@ export const OperationsWorkspace: React.FC = () => {
           </Panel>}
 
           {canProcurement && <Panel title="Purchase requisition">
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!reqForm.branchId || !reqForm.description || !reqForm.amount) throw new Error('Complete branch, description and amount.'); await operationsApi.createRequisition({ branchId: reqForm.branchId, vendorId: reqForm.vendorId || undefined, description: reqForm.description, amount: Number(reqForm.amount), idempotencyKey: crypto.randomUUID() }); setReqForm({ ...reqForm, description: '', amount: '' }); }, 'Purchase requisition submitted.'); }}>
+            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!reqForm.branchId || !reqForm.description || !reqForm.amount) throw new Error('Complete branch, description and amount.'); await operationsApi.createRequisition({ branchId: reqForm.branchId, vendorId: reqForm.vendorId || undefined, categoryId: reqForm.categoryId || undefined, description: reqForm.description, amount: Number(reqForm.amount), idempotencyKey: crypto.randomUUID() }); setReqForm({ ...reqForm, description: '', amount: '' }); }, 'Purchase requisition submitted.'); }}>
               <label className="block text-xs text-slate-400">Branch<select className={inputClass} value={reqForm.branchId} onChange={(e) => setReqForm({ ...reqForm, branchId: e.target.value })}>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
               <label className="block text-xs text-slate-400">Preferred vendor<select className={inputClass} value={reqForm.vendorId} onChange={(e) => setReqForm({ ...reqForm, vendorId: e.target.value })}><option value="">Choose later</option>{vendors.filter((vendor) => vendor.active).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></label>
+              <label className="block text-xs text-slate-400">Purchase category<select className={inputClass} value={reqForm.categoryId} onChange={(e) => setReqForm({ ...reqForm, categoryId: e.target.value })}><option value="">Uncategorised</option>{purchaseCategories.filter((category) => category.active).map((category) => <option key={category.id} value={category.id}>{category.name}{category.approvalThreshold ? ` · threshold ${money(category.approvalThreshold)}` : ''}</option>)}</select></label>
               <textarea className={`${inputClass} min-h-24`} placeholder="What is being purchased and why?" value={reqForm.description} onChange={(e) => setReqForm({ ...reqForm, description: e.target.value })} />
               <input type="number" min="1" className={inputClass} placeholder="Amount KES" value={reqForm.amount} onChange={(e) => setReqForm({ ...reqForm, amount: e.target.value })} />
               <button className={primaryButton} disabled={busy}>Submit requisition</button>
@@ -371,7 +387,7 @@ export const OperationsWorkspace: React.FC = () => {
           {canManageOperations && <Panel title="Project board" description="Milestones and manual spend are persisted to the selected project.">
             <div className="space-y-4">
               <label className="block text-xs text-slate-400">Project<select className={inputClass} value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}><option value="">Select a project</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
-              {!selectedProject && <p className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">Select a project to view and update its persisted milestones and spend register.</p>}
+              {!selectedProject && <p className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">{selectedProjectId ? 'This project is unavailable or no longer exists.' : 'Select a project to view and update its persisted milestones and spend register.'}</p>}
               {selectedProject && <>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400"><Status value={selectedProject.status} /><span>{selectedProject.milestones?.length || 0} milestones</span><span>{selectedProject.spend?.length || 0} spend entries</span><label className="ml-auto flex items-center gap-2">Status<select className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100" value={selectedProject.status} disabled={busy} onChange={(event) => void run(() => operationsApi.setProjectStatus(selectedProject.id, event.target.value as 'PLANNED' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'), 'Project status updated.')}><option value="PLANNED">Planned</option><option value="ACTIVE">Active</option><option value="ON_HOLD">On hold</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></select></label></div>
                 <div className="grid gap-3 lg:grid-cols-2">
@@ -406,6 +422,7 @@ export const OperationsWorkspace: React.FC = () => {
             <div className="space-y-2">{meetings.map((meeting) => <button key={meeting.id} onClick={() => setSelectedMeetingId(meeting.id)} className={`w-full rounded-xl border p-3 text-left ${selectedMeetingId === meeting.id ? 'border-amber-600 bg-amber-950/20' : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'}`}><div className="flex items-start justify-between gap-2"><div><div className="font-semibold text-slate-100">{meeting.title}</div><div className="text-xs text-slate-500">{dateTime(meeting.startsAt)} · {meeting.location || 'No location'}</div></div><Status value={meeting.status} /></div><div className="mt-2 flex gap-3 text-[11px] text-slate-500"><span>{meeting.decisions?.length || 0} decisions</span><span>{meeting.actions?.length || 0} actions</span></div></button>)}{!meetings.length && <p className="py-8 text-center text-sm text-slate-500">No meetings scheduled.</p>}</div>
           </Panel>
 
+          {selectedMeetingId && !selectedMeeting && <p className="rounded-xl border border-slate-700 bg-slate-950/45 p-4 text-sm text-slate-400">This meeting is unavailable or no longer exists.</p>}
           {selectedMeeting && canManageOperations && <Panel title={`Minutes · ${selectedMeeting.title}`} action={<button className={secondaryButton} onClick={() => setSelectedMeetingId('')}>Close</button>}>
             <div className="space-y-4">
               <label className="block text-xs text-slate-400">Minutes<textarea className={`${inputClass} min-h-28`} value={meetingNotes.minutes} onChange={(e) => setMeetingNotes({ ...meetingNotes, minutes: e.target.value })} placeholder="Record discussion, resolutions and context." /></label>

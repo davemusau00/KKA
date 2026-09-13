@@ -4,6 +4,7 @@ import { apiUrl } from '../../config/runtime';
 import { authApi, type CurrentAuthUser } from '../../lib/api/auth.api';
 import { PdfPlacementEditor, type PlacedAsset } from './PdfPlacementEditor';
 import { TemplateStudio } from './TemplateStudio';
+import { parseWorkspaceLocation } from '../../lib/routing/workspaceRoutes';
 interface Version { id:string; versionNumber:number; mimeType:string; status:string; checksumSha256:string }
 interface DocumentRecord {id:string; title:string; matterId:string; versions:Version[]; currentVersionId?:string}
 interface Asset { id:string; displayName:string; active:boolean; versions:Array<{id:string;version:number}> }
@@ -26,6 +27,8 @@ export function DocumentStudio() {
     if(docId)setOperations(await apiClient.get<Operation[]>('/document-operations',{params:{documentId:docId}}));
   }
   useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
+  useEffect(()=>{const applyDetailRoute=()=>{const route=parseWorkspaceLocation(window.location.pathname,window.location.search);if(route.resourceType==='document'&&route.resourceId){setDocId(route.resourceId);setVersionId('');}};applyDetailRoute();window.addEventListener('popstate',applyDetailRoute);return()=>window.removeEventListener('popstate',applyDetailRoute);},[]);
+  useEffect(()=>{const selected=documents.find(d=>d.id===docId);if(selected&&!versionId)setVersionId(selected.currentVersionId||selected.versions[0]?.id||'');},[documents,docId,versionId]);
   useEffect(()=>{setItems([]);setPreview('');if(docId)apiClient.get<Operation[]>('/document-operations',{params:{documentId:docId}}).then(setOperations).catch(e=>setMessage(e.message));},[docId]);
   useEffect(()=>{if(!docId)return;const timer=window.setInterval(()=>{apiClient.get<Operation[]>('/document-operations',{params:{documentId:docId}}).then(rows=>{setOperations(rows);if(rows.some(r=>r.status==='COMPLETED'))apiClient.get<DocumentRecord[]>('/documents').then(setDocuments).catch(()=>{});}).catch(()=>{});},4000);return()=>clearInterval(timer);},[docId]);
   useEffect(()=>()=>{if(preview.startsWith('blob:'))URL.revokeObjectURL(preview);},[preview]);
@@ -40,7 +43,7 @@ export function DocumentStudio() {
     {!user&&<p>Sign in to use stored documents. No document changes are saved offline.</p>}
     {tab==='templates'?<TemplateStudio documentId={docId} canManage={permits('admin.settings_manage')} canGenerate={permits('document.upload')} onMessage={setMessage} />:<>
     <div className="grid lg:grid-cols-[minmax(230px,1fr)_minmax(0,3fr)] gap-5"><aside className="space-y-4"><label className="block">Stored document<select className="admin-input" value={docId} onChange={e=>{const d=documents.find(d=>d.id===e.target.value);setDocId(e.target.value);setVersionId(d?.currentVersionId||d?.versions[0]?.id||'');}}><option value="">Choose document</option>{documents.map(d=><option key={d.id} value={d.id}>{d.title}</option>)}</select></label>
-      {!documents.length&&<p>No accessible stored documents.</p>}
+      {docId&&!document&&<p className="rounded-xl border border-slate-700 bg-slate-950/45 p-3 text-sm text-slate-400">This document is unavailable or no longer exists.</p>}{!documents.length&&<p>No accessible stored documents.</p>}
       {permits('document.upload')&&<form className="admin-card space-y-3" onSubmit={e=>{e.preventDefault();void run(createDocument);}}><h2 className="font-semibold">New document</h2><label>Matter<select className="admin-input" value={matterId} onChange={e=>setMatterId(e.target.value)}><option value="">Choose matter</option>{matters.map(m=><option key={m.id} value={m.id}>{m.internalReference} · {m.title}</option>)}</select></label><label>Title<input className="admin-input" value={title} onChange={e=>setTitle(e.target.value)} /></label><label>Document type<input className="admin-input" value={docType} onChange={e=>setDocType(e.target.value)} /></label><label>Initial file (optional)<input className="w-full" type="file" onChange={e=>setFile(e.target.files?.[0]??null)} /></label><button className="admin-btn-primary" disabled={busy||!matterId||title.trim().length<2}>Create document</button></form>}
     </aside><main className="space-y-4 min-w-0">{document&&<>
       <h2 className="text-xl font-semibold">{document.title}</h2><label>Version<select className="admin-input" value={versionId} onChange={e=>{setVersionId(e.target.value);setItems([]);setPreview('');}}><option value="">Choose version</option>{document.versions.map(v=><option key={v.id} value={v.id}>v{v.versionNumber} · {v.mimeType==='application/pdf'?'PDF':'Editable file'} · {v.status}</option>)}</select></label>

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
 import { z } from "zod";
 import type { FastifyReply } from "fastify";
-import { LoginSchema, AcceptInviteSchema, InviteTokenSchema, RequestPasswordResetSchema, ResetPasswordSchema } from "@kka/contracts";
+import { LoginSchema, AcceptInviteSchema, InviteTokenSchema, RequestPasswordResetSchema, ResetPasswordSchema, UpdateOnboardingSchema } from "@kka/contracts";
 import { AuthService } from "./auth.service";
 import { CurrentUser, Public, RequirePermissions } from "../../platform/auth/decorators";
 import type { AuthenticatedRequest, RequestUser } from "../../platform/auth/auth.types";
@@ -95,6 +95,16 @@ export class AuthController {
   @Get("me")
   me(@CurrentUser() user: RequestUser) {
     return user;
+  }
+
+  @Get("onboarding")
+  onboarding(@CurrentUser() user: RequestUser) {
+    return this.auth.onboardingState(user.id);
+  }
+
+  @Post("onboarding")
+  updateOnboarding(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.auth.updateOnboarding(user, UpdateOnboardingSchema.parse(body));
   }
 
 }

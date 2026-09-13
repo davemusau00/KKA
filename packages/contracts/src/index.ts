@@ -32,6 +32,17 @@ export const ResetPasswordSchema = z.object({
   password: z.string().min(12).max(256)
 });
 
+export const UpdateOnboardingSchema = z.object({
+  action: z.enum(["START", "SET_STEP", "COMPLETE_STEP", "COMPLETE_TOUR", "VIEW_MANUAL", "POSTPONE", "COMPLETE"]),
+  currentStepKey: z.string().min(1).max(100).optional(),
+  stepKey: z.string().min(1).max(100).optional(),
+  dismissedUntil: z.string().datetime().optional()
+}).superRefine((value, context) => {
+  if (value.action === "SET_STEP" && !value.currentStepKey) context.addIssue({ code: "custom", path: ["currentStepKey"], message: "currentStepKey is required when setting the current step" });
+  if (value.action === "COMPLETE_STEP" && !value.stepKey) context.addIssue({ code: "custom", path: ["stepKey"], message: "stepKey is required when completing a step" });
+  if (value.action === "POSTPONE" && !value.dismissedUntil) context.addIssue({ code: "custom", path: ["dismissedUntil"], message: "dismissedUntil is required when postponing onboarding" });
+});
+
 export const InviteUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(2).max(200),
@@ -329,6 +340,7 @@ export const CreateKnowledgeItemSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof LoginSchema>;
+export type UpdateOnboardingInput = z.infer<typeof UpdateOnboardingSchema>;
 export type CreateMatterInput = z.infer<typeof CreateMatterSchema>;
 export type CreateCalendarEventInput = z.infer<typeof CreateCalendarEventSchema>;
 
