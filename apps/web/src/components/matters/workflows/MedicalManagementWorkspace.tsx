@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   HeartPulse,
   Activity,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { MedicalCaseData, Matter, InjuryRecord, MedicalReportRequest } from '../../../types';
 
 interface MedicalManagementWorkspaceProps {
@@ -105,6 +106,65 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
   };
   const [localData, setLocalData] = useState<MedicalCaseData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loading, setLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    setLoading(true);
+    apiClient.get<any>(`/personal-injury/${matter.id}`)
+      .then((profile) => {
+        if (!active) return;
+        if (!profile) {
+          setLoadError('No personal injury case record exists for this matter.');
+          return;
+        }
+        const persisted: MedicalCaseData = {
+          injuries: (profile.injuries || []).map((i: any) => ({
+            id: i.id,
+            bodyPart: i.bodyPart || '',
+            description: i.description,
+            severity: i.severity,
+            permanentEffects: i.permanentEffects || '',
+            disabilityPercent: i.disabilityPercent ? Number(i.disabilityPercent) : undefined,
+          })),
+          medicalProviders: [],
+          treatmentEpisodes: (profile.treatments || []).map((t: any) => ({
+            id: t.id,
+            facilityName: t.facilityName,
+            admissionDate: t.admissionDate ? String(t.admissionDate).slice(0, 10) : '',
+            dischargeDate: t.dischargeDate ? String(t.dischargeDate).slice(0, 10) : '',
+            treatmentSummary: t.treatmentSummary || '',
+            costAmount: Number(t.costAmount ?? 0),
+            receiptNumber: t.receiptNumber || '',
+          })),
+          p3Form: { issuedByDoctor: '', policeStationRef: '', dateExamined: '', degreeOfHarm: 'Harm', status: 'requested' },
+          imagingAndRecords: [],
+          medicalReportRequests: (profile.medicalReports || []).map((r: any) => ({
+            id: r.id,
+            doctorName: r.doctorName,
+            specialty: r.specialty || '',
+            facility: r.facility || '',
+            requestedAt: r.requestedAt ? String(r.requestedAt).slice(0, 10) : '',
+            feeAmount: Number(r.feeAmount ?? 0),
+            status: r.status || 'requested',
+            permanentDisabilityPercent: r.permanentDisabilityPercent ? Number(r.permanentDisabilityPercent) : undefined,
+            futureTreatmentEstimate: r.futureTreatmentEstimate ? Number(r.futureTreatmentEstimate) : undefined,
+            futureTreatmentNotes: r.futureTreatmentNotes || '',
+            notes: r.notes || '',
+          })),
+          permanentDisabilityOverallPercent: 0,
+          futureTreatmentEstimateTotal: 0,
+          totalMedicalExpensesIncurred: (profile.treatments || []).reduce((sum: number, t: any) => sum + Number(t.costAmount ?? 0), 0),
+        };
+        setLocalData(persisted);
+        setLoadError('');
+      })
+      .catch((error) => active && setLoadError(error?.message || 'Unable to load server medical records.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
 
   // New injury form
   const [showInjuryForm, setShowInjuryForm] = useState(false);
@@ -128,33 +188,56 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
     futureTreatmentNotes: '',
   });
 
-  const handleSave = () => {
-    if (!runtimeConfig.enableDemoMode) return;
-    updateMedicalCase(matter.id, localData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+  const handleSave = async () => {
+    if (runtimeConfig.enableDemoMode) {
+      updateMedicalCase(matter.id, localData);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    }
+    // In server mode, individual mutations (addInjury, addReport) persist directly.
+    // This button can be used to signal sync success for demo mode only.
   };
 
-  const handleAddInjury = () => {
+  const handleAddInjury = async () => {
     if (!injuryForm.bodyPart?.trim()) return;
-    const newInj: InjuryRecord = {
-      id: `inj-${Date.now()}`,
-      bodyPart: injuryForm.bodyPart,
-      description: injuryForm.description || 'Documented trauma',
-      severity: injuryForm.severity || 'moderate',
-      permanentEffects: injuryForm.permanentEffects || '',
-    };
-    setLocalData((prev) => ({
-      ...prev,
-      injuries: [...prev.injuries, newInj],
-    }));
-    setShowInjuryForm(false);
-    setInjuryForm({
-      bodyPart: '',
-      description: '',
-      severity: 'moderate',
-      permanentEffects: '',
-    });
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        const newInj: InjuryRecord = {
+          id: `inj-${Date.now()}`,
+          bodyPart: injuryForm.bodyPart,
+          description: injuryForm.description || 'Documented trauma',
+          severity: injuryForm.severity || 'moderate',
+          permanentEffects: injuryForm.permanentEffects || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          injuries: [...prev.injuries, newInj],
+        }));
+      } else {
+        const serverInj = await apiClient.post<any>(`/personal-injury/${matter.id}/injuries`, {
+          description: injuryForm.description || 'Documented trauma',
+          severity: injuryForm.severity || 'moderate',
+          bodyPart: injuryForm.bodyPart.trim(),
+          permanentEffects: injuryForm.permanentEffects || undefined,
+        });
+        const newInj: InjuryRecord = {
+          id: serverInj.id,
+          bodyPart: serverInj.bodyPart || '',
+          description: serverInj.description,
+          severity: serverInj.severity,
+          permanentEffects: serverInj.permanentEffects || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          injuries: [...prev.injuries, newInj],
+        }));
+        setLoadError('');
+      }
+      setShowInjuryForm(false);
+      setInjuryForm({ bodyPart: '', description: '', severity: 'moderate', permanentEffects: '' });
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to add injury.');
+    }
   };
 
   const handleRemoveInjury = (id: string) => {
@@ -164,35 +247,65 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
     }));
   };
 
-  const handleAddReport = () => {
+  const handleAddReport = async () => {
     if (!reportForm.doctorName?.trim()) return;
-    const newRep: MedicalReportRequest = {
-      id: `rep-${Date.now()}`,
-      doctorName: reportForm.doctorName,
-      specialty: reportForm.specialty || 'Consultant Surgeon',
-      facility: reportForm.facility || 'Nairobi',
-      requestedAt: new Date().toISOString().slice(0, 10),
-      feeAmount: Number(reportForm.feeAmount) || 25000,
-      status: reportForm.status || 'complete',
-      permanentDisabilityPercent: Number(reportForm.permanentDisabilityPercent) || 0,
-      futureTreatmentEstimate: Number(reportForm.futureTreatmentEstimate) || 0,
-      futureTreatmentNotes: reportForm.futureTreatmentNotes || 'Comprehensive examination completed.',
-    };
-    setLocalData((prev) => ({
-      ...prev,
-      medicalReportRequests: [...prev.medicalReportRequests, newRep],
-    }));
-    setShowReportForm(false);
-    setReportForm({
-      doctorName: '',
-      specialty: 'Consultant Orthopaedic Surgeon',
-      facility: 'Nairobi',
-      feeAmount: 25000,
-      status: 'complete',
-      permanentDisabilityPercent: 20,
-      futureTreatmentEstimate: 150000,
-      futureTreatmentNotes: '',
-    });
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        const newRep: MedicalReportRequest = {
+          id: `rep-${Date.now()}`,
+          doctorName: reportForm.doctorName,
+          specialty: reportForm.specialty || 'Consultant Surgeon',
+          facility: reportForm.facility || 'Nairobi',
+          requestedAt: new Date().toISOString().slice(0, 10),
+          feeAmount: Number(reportForm.feeAmount) || 25000,
+          status: reportForm.status || 'requested',
+          permanentDisabilityPercent: Number(reportForm.permanentDisabilityPercent) || 0,
+          futureTreatmentEstimate: Number(reportForm.futureTreatmentEstimate) || 0,
+          futureTreatmentNotes: reportForm.futureTreatmentNotes || 'Comprehensive examination completed.',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          medicalReportRequests: [...prev.medicalReportRequests, newRep],
+        }));
+      } else {
+        const serverRep = await apiClient.post<any>(`/personal-injury/${matter.id}/medical-reports`, {
+          doctorName: reportForm.doctorName.trim(),
+          specialty: reportForm.specialty || undefined,
+          facility: reportForm.facility || undefined,
+          feeAmount: Number(reportForm.feeAmount) || 0,
+          status: reportForm.status || 'REQUESTED',
+          notes: reportForm.futureTreatmentNotes || undefined,
+        });
+        const newRep: MedicalReportRequest = {
+          id: serverRep.id,
+          doctorName: serverRep.doctorName,
+          specialty: serverRep.specialty || '',
+          facility: serverRep.facility || '',
+          requestedAt: serverRep.requestedAt ? String(serverRep.requestedAt).slice(0, 10) : new Date().toISOString().slice(0, 10),
+          feeAmount: Number(serverRep.feeAmount ?? 0),
+          status: serverRep.status || 'requested',
+          notes: serverRep.notes || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          medicalReportRequests: [...prev.medicalReportRequests, newRep],
+        }));
+        setLoadError('');
+      }
+      setShowReportForm(false);
+      setReportForm({
+        doctorName: '',
+        specialty: 'Consultant Orthopaedic Surgeon',
+        facility: 'Nairobi',
+        feeAmount: 25000,
+        status: 'requested',
+        permanentDisabilityPercent: 20,
+        futureTreatmentEstimate: 150000,
+        futureTreatmentNotes: '',
+      });
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to add medical report request.');
+    }
   };
 
   const handleRemoveReport = (id: string) => {
@@ -204,7 +317,13 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
 
   return (
     <div className="space-y-6 text-xs">
-      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server medical record is connected to this workspace. Example injuries, treatment, reports, and disability findings are hidden.</p>}
+      {!runtimeConfig.enableDemoMode && (
+        <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">
+          This workspace reads server injuries, treatment episodes, and medicolegal report requests. Use the Add buttons below to create records — each saves immediately to the server.
+        </p>
+      )}
+      {loading && <p role="status" className="text-slate-400">Loading server medical records…</p>}
+      {loadError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{loadError}</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -228,14 +347,15 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
               Medical File Synced
             </span>
           )}
-          <button
-            onClick={handleSave}
-            disabled={!runtimeConfig.enableDemoMode}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>Save Medical Record</span>
-          </button>
+          {runtimeConfig.enableDemoMode && (
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Medical Record</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ShieldAlert,
   Send,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { ClaimNegotiationData, Matter, NegotiationLedgerItem } from '../../../types';
 
 interface ClaimNegotiationWorkspaceProps {
@@ -73,6 +74,52 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
   };
   const [localData, setLocalData] = useState<ClaimNegotiationData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loading, setLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    setLoading(true);
+    apiClient.get<any>(`/personal-injury/${matter.id}`)
+      .then((profile) => {
+        if (!active) return;
+        if (!profile) {
+          setLoadError('No personal injury case record exists for this matter.');
+          return;
+        }
+        const persisted: ClaimNegotiationData = {
+          insurer: {
+            name: '',
+            policyNumber: '',
+            claimReference: '',
+            contactPerson: '',
+            contactPhone: '',
+            contactEmail: '',
+            status: 'notice_sent',
+          },
+          negotiationLedger: (profile.negotiations || []).map((n: any) => ({
+            id: n.id,
+            date: n.occurredAt ? String(n.occurredAt).slice(0, 10) : new Date().toISOString().slice(0, 10),
+            party: n.direction === 'OUTGOING' ? 'firm' : 'insurer',
+            offerAmount: Number(n.amount ?? 0),
+            status: n.status || 'sent',
+            notes: n.notes || '',
+          })),
+          settlementApproval: {
+            recommendedAmount: profile.settlement ? Number(profile.settlement.grossAmount ?? 0) : 0,
+            clientAuthorized: profile.settlement ? Boolean(profile.settlement.clientApproved) : false,
+            partnerApproved: profile.settlement ? Boolean(profile.settlement.partnerApproved) : false,
+            dischargeVoucherSigned: Boolean(profile.settlement?.dischargeDocumentId),
+          },
+        };
+        setLocalData(persisted);
+        setLoadError('');
+      })
+      .catch((error) => active && setLoadError(error?.message || 'Unable to load server negotiation records.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
 
   // New negotiation entry state
   const [showEntryForm, setShowEntryForm] = useState(false);
@@ -86,35 +133,78 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
     notes: '',
   });
 
-  const handleSave = () => {
-    if (!runtimeConfig.enableDemoMode) return;
-    updateClaimNegotiation(matter.id, localData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+  const handleSave = async () => {
+    const approval = localData.settlementApproval;
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        updateClaimNegotiation(matter.id, localData);
+      } else if (approval.recommendedAmount > 0) {
+        const professionalFees = Math.round(approval.recommendedAmount * 0.20);
+        const disbursements = 0;
+        const otherDeductions = 0;
+        const netClientAmount = approval.recommendedAmount - professionalFees - disbursements - otherDeductions;
+        await apiClient.put(`/personal-injury/${matter.id}/settlement`, {
+          grossAmount: approval.recommendedAmount,
+          clientFundsReceived: 0,
+          professionalFees,
+          disbursements,
+          otherDeductions,
+          netClientAmount,
+          clientApproved: approval.clientAuthorized,
+          partnerApproved: approval.partnerApproved,
+        });
+        setLoadError('');
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to save settlement authority.');
+    }
   };
 
-  const handleAddEntry = () => {
-    const newEntry: NegotiationLedgerItem = {
-      id: `neg-${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      party: entryForm.party,
-      offerAmount: entryForm.offerAmount,
-      status: entryForm.party === 'firm' ? 'sent' : 'considering',
-      notes: entryForm.notes || 'Offer recorded in negotiation ledger',
-    };
-    const updatedEntries = [...localData.negotiationLedger, newEntry];
-
-    setLocalData((prev) => ({
-      ...prev,
-      negotiationLedger: updatedEntries,
-    }));
-
-    setEntryForm({
-      party: 'insurer',
-      offerAmount: 1350000,
-      notes: '',
-    });
-    setShowEntryForm(false);
+  const handleAddEntry = async () => {
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        const newEntry: NegotiationLedgerItem = {
+          id: `neg-${Date.now()}`,
+          date: new Date().toISOString().slice(0, 10),
+          party: entryForm.party,
+          offerAmount: entryForm.offerAmount,
+          status: entryForm.party === 'firm' ? 'sent' : 'considering',
+          notes: entryForm.notes || 'Offer recorded in negotiation ledger',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          negotiationLedger: [...prev.negotiationLedger, newEntry],
+        }));
+      } else {
+        const serverEntry = await apiClient.post<any>(`/personal-injury/${matter.id}/negotiations`, {
+          party: entryForm.party === 'firm' ? 'FIRM' : 'INSURER',
+          direction: entryForm.party === 'firm' ? 'OUTGOING' : 'INCOMING',
+          amount: entryForm.offerAmount,
+          status: entryForm.party === 'firm' ? 'SENT' : 'RECEIVED',
+          notes: entryForm.notes || undefined,
+          occurredAt: new Date().toISOString(),
+        });
+        const newEntry: NegotiationLedgerItem = {
+          id: serverEntry.id,
+          date: serverEntry.occurredAt ? String(serverEntry.occurredAt).slice(0, 10) : new Date().toISOString().slice(0, 10),
+          party: serverEntry.direction === 'OUTGOING' ? 'firm' : 'insurer',
+          offerAmount: Number(serverEntry.amount ?? 0),
+          status: serverEntry.status || 'sent',
+          notes: serverEntry.notes || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          negotiationLedger: [...prev.negotiationLedger, newEntry],
+        }));
+        setLoadError('');
+      }
+      setEntryForm({ party: 'insurer', offerAmount: 0, notes: '' });
+      setShowEntryForm(false);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to record negotiation entry.');
+    }
   };
 
   const handleRemoveEntry = (id: string) => {
@@ -137,7 +227,13 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
 
   return (
     <div className="space-y-6 text-xs">
-      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server negotiation or settlement-authority record is connected. Example insurer offers and approvals are hidden.</p>}
+      {!runtimeConfig.enableDemoMode && (
+        <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">
+          This workspace reads server negotiation entries and settlement authority. Recording an offer saves immediately; the Save button persists settlement authority.
+        </p>
+      )}
+      {loading && <p role="status" className="text-slate-400">Loading server negotiation records…</p>}
+      {loadError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{loadError}</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -163,8 +259,8 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
           )}
           <button
             onClick={handleSave}
-            disabled={!runtimeConfig.enableDemoMode}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
+            disabled={loading}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Save Claim Record</span>

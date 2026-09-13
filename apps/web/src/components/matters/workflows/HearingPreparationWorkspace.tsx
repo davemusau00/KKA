@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Gavel,
   BookOpen,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { HearingBriefData, Matter } from '../../../types';
 
 interface HearingPreparationWorkspaceProps {
@@ -53,16 +54,66 @@ export const HearingPreparationWorkspace: React.FC<HearingPreparationWorkspacePr
   };
   const [localData, setLocalData] = useState<HearingBriefData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loading, setLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [loadError, setLoadError] = useState('');
 
-  const handleSave = () => {
-    if (!runtimeConfig.enableDemoMode) return;
-    updateHearingBrief(matter.id, localData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    setLoading(true);
+    apiClient.get<any>(`/personal-injury/${matter.id}`)
+      .then((profile) => {
+        if (!active) return;
+        const brief = profile?.hearingBrief;
+        if (brief) {
+          setLocalData((prev) => ({
+            ...prev,
+            courtName: brief.courtName || '',
+            hearingDate: brief.nextHearingDate ? String(brief.nextHearingDate).slice(0, 10) : '',
+            opposingCounsel: brief.opposingCounsel || '',
+            advocateNotes: brief.advocateNotes || '',
+            currentSettlementOffer: brief.currentSettlementOffer || '',
+            isReadyForHearing: Boolean(brief.ready),
+          }));
+        }
+        setLoadError('');
+      })
+      .catch((error) => active && setLoadError(error?.message || 'Unable to load server hearing brief.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
+
+  const handleSave = async () => {
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        updateHearingBrief(matter.id, localData);
+      } else {
+        await apiClient.put(`/personal-injury/${matter.id}/hearing-brief`, {
+          courtName: localData.courtName || undefined,
+          opposingCounsel: localData.opposingCounsel || undefined,
+          advocateNotes: localData.advocateNotes || undefined,
+          currentSettlementOffer: localData.currentSettlementOffer || undefined,
+          ready: localData.isReadyForHearing,
+          nextHearingDate: localData.hearingDate ? new Date(localData.hearingDate).toISOString() : undefined,
+        });
+        setLoadError('');
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to save trial brief.');
+    }
   };
 
   return (
     <div className="space-y-6 text-xs">
+      {!runtimeConfig.enableDemoMode && (
+        <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">
+          This workspace reads and writes the server hearing brief. Fill in the court details and save.
+        </p>
+      )}
+      {loading && <p role="status" className="text-slate-400">Loading server hearing brief…</p>}
+      {loadError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{loadError}</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -88,8 +139,8 @@ export const HearingPreparationWorkspace: React.FC<HearingPreparationWorkspacePr
           )}
           <button
             onClick={handleSave}
-            disabled={!runtimeConfig.enableDemoMode}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
+            disabled={loading}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Save Trial Brief</span>
