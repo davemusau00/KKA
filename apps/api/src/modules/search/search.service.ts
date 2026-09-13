@@ -11,19 +11,18 @@ export class SearchService {
     const term = q.trim();
     if (term.length < 2) return { matters: [], clients: [], documents: [], tasks: [], proceedings: [], directory: [] };
     const matterScope = await this.access.matterWhere(user);
-    const matterWhere = { ...matterScope };
     const [matters, clients, documents, tasks, proceedings, directory] = await Promise.all([
       this.prisma.client.matter.findMany({
-        where: { ...matterWhere, OR: [
+        where: { AND: [matterScope, { OR: [
           { internalReference: { contains: term, mode: "insensitive" } },
           { title: { contains: term, mode: "insensitive" } },
           { summary: { contains: term, mode: "insensitive" } }
-        ] },
+        ] }] },
         select: { id: true, internalReference: true, title: true, status: true, currentStageId: true },
         take: 20
       }),
       this.prisma.client.client.findMany({
-        where: { firmId: user.firmId, matters: { some: matterWhere }, OR: [
+        where: { firmId: user.firmId, matters: { some: matterScope }, OR: [
           { displayName: { contains: term, mode: "insensitive" } },
           { clientNumber: { contains: term, mode: "insensitive" } },
           { phone: { contains: term } },
@@ -33,7 +32,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.document.findMany({
-        where: { matter: matterWhere, OR: [
+        where: { matter: matterScope, OR: [
           { title: { contains: term, mode: "insensitive" } },
           { documentType: { contains: term, mode: "insensitive" } }
         ] },
@@ -41,7 +40,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.task.findMany({
-        where: { matter: matterWhere, OR: [
+        where: { matter: matterScope, OR: [
           { title: { contains: term, mode: "insensitive" } },
           { description: { contains: term, mode: "insensitive" } }
         ] },
@@ -49,7 +48,7 @@ export class SearchService {
         take: 20
       }),
       this.prisma.client.courtProceeding.findMany({
-        where: { matter: matterWhere, OR: [
+        where: { matter: matterScope, OR: [
           { caseNumber: { contains: term, mode: "insensitive" } },
           { courtName: { contains: term, mode: "insensitive" } }
         ] },

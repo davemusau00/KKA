@@ -3,9 +3,11 @@ import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { PersonalInjuryService } from "./personal-injury.service";
+import { FeatureFlag } from "../../platform/features/feature-flags.decorator";
 
 const money = z.coerce.number().nonnegative();
 @Controller("personal-injury")
+@FeatureFlag("module.personal_injury")
 export class PersonalInjuryController {
   constructor(private readonly pi: PersonalInjuryService) {}
 

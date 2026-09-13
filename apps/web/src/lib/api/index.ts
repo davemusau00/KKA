@@ -14,3 +14,5 @@ export * from './settings.api';
 export * from './tasks.api';
 export * from './calendar.api';
 export * from './deadlines.api';
+export * from './operations.api';
+export * from './knowledge.api';

@@ -107,3 +107,20 @@ test("administrators can inspect and revoke only same-firm server sessions, with
   assert.equal(audit[1].action, "auth.sessions_admin_revoked");
   await assert.rejects(() => service.revokeUserSessions("other-firm", "admin-1", user.id), (error: unknown) => error instanceof BadRequestException);
 });
+
+test("home-branch assignment is firm-scoped, records membership, and audits the persisted change", async () => {
+  const writes: any[] = [];
+  const service = new UsersService({ client: {
+    user: { findFirst: async () => ({ id: user.id, homeBranchId: "branch-old" }) },
+    branch: { findFirst: async ({ where }: any) => where.id === "branch-new" ? { id: "branch-new" } : null },
+    $transaction: async (work: any) => work({
+      user: { update: async (input: any) => { writes.push(input); return { ...user, homeBranchId: input.data.homeBranchId }; } },
+      userBranch: { upsert: async (input: any) => { writes.push(input); return {}; } }
+    })
+  } } as any, { record: async () => ({ id: "audit-5" }) } as any);
+  const result = await service.setHomeBranch("firm-1", "admin-1", user.id, "branch-new");
+  assert.equal(result.user.homeBranchId, "branch-new");
+  assert.equal(result.auditId, "audit-5");
+  assert.equal(writes[1].where.userId_branchId.branchId, "branch-new");
+  await assert.rejects(() => service.setHomeBranch("firm-1", "admin-1", user.id, "branch-other"), (error: unknown) => error instanceof BadRequestException);
+});

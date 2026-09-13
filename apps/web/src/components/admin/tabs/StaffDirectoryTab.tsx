@@ -22,6 +22,7 @@ import { INITIAL_ROLES } from '../../../data/rbacData';
 import { runtimeConfig } from '../../../config/runtime';
 import { BackendUser, usersApi } from '../../../lib/api/users.api';
 import { authApi } from '../../../lib/api/auth.api';
+import { BackendBranch, organizationApi } from '../../../lib/api/organization.api';
 
 export const ALL_ROLES_LIST: RoleId[] = [
   'managing_partner',
@@ -66,13 +67,17 @@ export const StaffDirectoryTab: React.FC = () => {
   const [newHomeBranchId, setNewHomeBranchId] = useState<BranchId>('branch-nairobi');
   const [newBarNumber, setNewBarNumber] = useState('');
   const [serverUsers, setServerUsers] = useState<BackendUser[]>([]);
+  const [serverBranches, setServerBranches] = useState<BackendBranch[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const loadServerUsers = async () => {
     if (runtimeConfig.enableDemoMode) return;
-    try { setServerUsers(await usersApi.list()); }
+    try {
+      const [nextUsers, nextBranches] = await Promise.all([usersApi.list(), organizationApi.listBranches()]);
+      setServerUsers(nextUsers); setServerBranches(nextBranches);
+    }
     catch (cause: any) { setActionError(cause?.message || 'Unable to load the authoritative staff directory.'); }
   };
 
@@ -85,6 +90,9 @@ export const StaffDirectoryTab: React.FC = () => {
       role: roles[0] || 'administrator', roles, homeBranchId: user.homeBranchId || '', isActive: user.status === 'ACTIVE',
     };
   });
+  const displayedBranches = runtimeConfig.enableDemoMode ? branches : serverBranches.map((branch) => ({
+    id: branch.id as BranchId, name: branch.name, code: branch.code, address: branch.address || '', phone: branch.phone || '', email: branch.email || '', isActive: branch.active
+  }));
 
   // Filtered users list
   const filteredUsers = useMemo(() => {
@@ -156,7 +164,11 @@ export const StaffDirectoryTab: React.FC = () => {
     if (runtimeConfig.enableDemoMode) updateUserRoles(editingUserRoles.id, editingUserRoles.roles);
     else {
       setIsSubmitting(true); setActionError(null);
-      try { await usersApi.setRoles(editingUserRoles.id, editingUserRoles.roles); await loadServerUsers(); }
+      try {
+        await usersApi.setRoles(editingUserRoles.id, editingUserRoles.roles);
+        await usersApi.setHomeBranch(editingUserRoles.id, editingUserRoles.homeBranchId || null);
+        await loadServerUsers();
+      }
       catch (cause: any) { setActionError(cause?.message || 'Unable to update roles.'); return; }
       finally { setIsSubmitting(false); }
     }
@@ -258,7 +270,7 @@ export const StaffDirectoryTab: React.FC = () => {
             <Briefcase className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-bold font-mono text-slate-100">{branches.length}</div>
+            <div className="text-xl font-bold font-mono text-slate-100">{displayedBranches.length}</div>
             <div className="text-xs text-slate-400">Registry Branches</div>
           </div>
         </div>
@@ -284,7 +296,7 @@ export const StaffDirectoryTab: React.FC = () => {
             className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-300 focus:outline-none"
           >
             <option value="all">All Branches</option>
-            {branches.map((b) => (
+            {displayedBranches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name} ({b.code})
               </option>
@@ -328,7 +340,7 @@ export const StaffDirectoryTab: React.FC = () => {
           {filteredUsers.map((u) => {
             const isSelf = u.id === currentUser.id;
             const isInvitePending = !runtimeConfig.enableDemoMode && serverUsers.find((user) => user.id === u.id)?.status === 'INVITED';
-            const branch = branches.find((b) => b.id === u.homeBranchId);
+            const branch = displayedBranches.find((b) => b.id === u.homeBranchId);
             const roleDef = INITIAL_ROLES[u.role];
 
             return (
@@ -543,7 +555,7 @@ export const StaffDirectoryTab: React.FC = () => {
                     onChange={(e) => setNewHomeBranchId(e.target.value as BranchId)}
                     className="admin-input"
                   >
-                    {branches.map((b) => (
+                    {displayedBranches.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name} ({b.code})
                       </option>
@@ -673,11 +685,11 @@ export const StaffDirectoryTab: React.FC = () => {
                       ...editingUserRoles,
                       homeBranchId: branchId,
                     });
-                    updateUserBranch(editingUserRoles.id, branchId);
+                    if (runtimeConfig.enableDemoMode) updateUserBranch(editingUserRoles.id, branchId);
                   }}
                   className="admin-input"
                 >
-                  {branches.map((b) => (
+                  {displayedBranches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name} ({b.code})
                     </option>

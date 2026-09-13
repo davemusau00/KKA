@@ -9,6 +9,7 @@ import { AuditService } from "../../platform/audit/audit.service";
 import { NumberingService } from "../numbering/numbering.service";
 import { RecordAccessService } from "../../platform/auth/record-access.service";
 import type { RequestUser } from "../../platform/auth/auth.types";
+import type { Prisma } from "@kka/database";
 
 @Injectable()
 export class MattersService {
@@ -92,21 +93,19 @@ export class MattersService {
     user: RequestUser
   ): Promise<any[]> {
     const matterScope = await this.access.matterWhere(user);
+    const filtersWhere: Prisma.MatterWhereInput = {
+      ...(filters.status ? { status: filters.status as any } : {}),
+      ...(filters.branchId ? { responsibleBranchId: filters.branchId } : {}),
+      ...(filters.practiceArea ? { practiceArea: filters.practiceArea } : {}),
+      ...(filters.stageOwnerId ? { currentStageOwnerId: filters.stageOwnerId } : {}),
+      ...(filters.q ? { OR: [
+        { internalReference: { contains: filters.q, mode: "insensitive" } },
+        { title: { contains: filters.q, mode: "insensitive" } },
+        { client: { displayName: { contains: filters.q, mode: "insensitive" } } }
+      ] } : {})
+    };
     return this.prisma.client.matter.findMany({
-      where: {
-        ...matterScope,
-        ...(filters.status ? { status: filters.status as any } : {}),
-        ...(filters.branchId ? { responsibleBranchId: filters.branchId } : {}),
-        ...(filters.practiceArea ? { practiceArea: filters.practiceArea } : {}),
-        ...(filters.stageOwnerId ? { currentStageOwnerId: filters.stageOwnerId } : {}),
-        ...(filters.q ? {
-          OR: [
-            { internalReference: { contains: filters.q, mode: "insensitive" } },
-            { title: { contains: filters.q, mode: "insensitive" } },
-            { client: { displayName: { contains: filters.q, mode: "insensitive" } } }
-          ]
-        } : {})
-      },
+      where: { AND: [matterScope, filtersWhere] },
       include: {
         client: { select: { id: true, displayName: true, phone: true } },
         responsibleBranch: { select: { id: true, name: true, code: true } },
@@ -252,8 +251,8 @@ export class MattersService {
     return this.get(firmId, matter.id);
   }
 
-  async update(firmId: string, actorId: string, id: string, input: Record<string, unknown>) {
-    const existing = await this.prisma.client.matter.findFirst({ where: { id, firmId } });
+  async update(user: RequestUser, id: string, input: Record<string, unknown>) {
+    const existing = await this.prisma.client.matter.findFirst({ where: { id, ...(await this.access.matterWhere(user)) } });
     if (!existing) throw new NotFoundException("Matter not found");
 
     const allowedKeys = [
@@ -268,8 +267,8 @@ export class MattersService {
     });
 
     await this.audit.record({
-      firmId,
-      actorUserId: actorId,
+      firmId: user.firmId,
+      actorUserId: user.id,
       action: "matter.updated",
       entityType: "matter",
       entityId: id,
@@ -279,9 +278,9 @@ export class MattersService {
     return matter;
   }
 
-  async validateTransition(firmId: string, matterId: string, toStageNumber: number) {
+  async validateTransition(user: RequestUser, matterId: string, toStageNumber: number) {
     const matter = await this.prisma.client.matter.findFirst({
-      where: { id: matterId, firmId },
+      where: { id: matterId, ...(await this.access.matterWhere(user)) },
       include: {
         workflowVersion: {
           include: { stages: true }
@@ -352,7 +351,7 @@ export class MattersService {
     if (currentStage?.requiresApproval) {
       const approval = await this.prisma.client.approvalRequest.findFirst({
         where: {
-          firmId,
+          firmId: user.firmId,
           type: "STAGE_GATE",
           entityType: "Matter",
           entityId: matterId,
@@ -373,8 +372,7 @@ export class MattersService {
   }
 
   async transition(
-    firmId: string,
-    actorId: string,
+    user: RequestUser,
     matterId: string,
     input: {
       toStageNumber: number;
@@ -386,7 +384,7 @@ export class MattersService {
       overrideReason?: string;
     }
   ) {
-    const validation = await this.validateTransition(firmId, matterId, input.toStageNumber);
+    const validation = await this.validateTransition(user, matterId, input.toStageNumber);
     if (!validation.canAdvance && !input.override) {
       throw new BadRequestException({ message: "Stage transition blocked", ...validation });
     }
@@ -395,7 +393,7 @@ export class MattersService {
     }
 
     const matter = await this.prisma.client.matter.findFirst({
-      where: { id: matterId, firmId },
+      where: { id: matterId, ...(await this.access.matterWhere(user)) },
       include: { workflowVersion: { include: { stages: true } } }
     });
     if (!matter) throw new NotFoundException("Matter not found");
@@ -423,7 +421,7 @@ export class MattersService {
           matterId,
           fromStageNumber: matter.currentStageId,
           toStageNumber: input.toStageNumber,
-          fromUserId: actorId,
+          fromUserId: user.id,
           toUserId: input.newOwnerUserId,
           handoffNotes: input.handoffNotes,
           criticalNextAction: input.criticalNextAction,
@@ -460,7 +458,7 @@ export class MattersService {
             stageNumber: input.toStageNumber,
             title: String(taskDef.title),
             assignedToId: input.newOwnerUserId,
-            createdById: actorId,
+            createdById: user.id,
             priority: (taskDef.priority ?? "MEDIUM") as any,
             dueAt: new Date(Date.now() + Number(taskDef.dueInDays ?? 3) * 86400_000)
           }
@@ -481,8 +479,8 @@ export class MattersService {
     });
 
     await this.audit.record({
-      firmId,
-      actorUserId: actorId,
+      firmId: user.firmId,
+      actorUserId: user.id,
       action: input.override ? "matter.stage_transition_overridden" : "matter.stage_transitioned",
       entityType: "matter",
       entityId: matterId,
@@ -496,24 +494,24 @@ export class MattersService {
       }
     });
 
-    return this.get(firmId, matterId);
+    return this.get(user.firmId, matterId, user);
   }
 
-  async acknowledgeHandoff(firmId: string, userId: string, handoffId: string) {
+  async acknowledgeHandoff(user: RequestUser, handoffId: string) {
     const handoff = await this.prisma.client.stageHandoff.findFirst({
-      where: { id: handoffId, matter: { firmId } }
+      where: { id: handoffId, matter: await this.access.matterWhere(user) }
     });
     if (!handoff) throw new NotFoundException("Handoff not found");
-    if (handoff.toUserId !== userId) throw new ForbiddenException("Only the handoff recipient can acknowledge it");
+    if (handoff.toUserId !== user.id) throw new ForbiddenException("Only the handoff recipient can acknowledge it");
     if (handoff.acknowledgedAt) return handoff;
 
     const updated = await this.prisma.client.stageHandoff.update({
       where: { id: handoffId },
-      data: { acknowledgedAt: new Date(), acknowledgedByUserId: userId }
+      data: { acknowledgedAt: new Date(), acknowledgedByUserId: user.id }
     });
     await this.audit.record({
-      firmId,
-      actorUserId: userId,
+      firmId: user.firmId,
+      actorUserId: user.id,
       action: "handoff.acknowledged",
       entityType: "handoff",
       entityId: handoffId,

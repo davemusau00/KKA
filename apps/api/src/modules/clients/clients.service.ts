@@ -74,13 +74,15 @@ export class ClientsService {
     return client;
   }
 
-  async update(firmId: string, actorId: string, id: string, input: Record<string, unknown>) {
-    const existing = await this.prisma.client.client.findFirst({ where: { id, firmId } });
+  async update(user: RequestUser, id: string, input: Record<string, unknown>) {
+    const existing = await this.prisma.client.client.findFirst({
+      where: { id, firmId: user.firmId, matters: { some: await this.access.matterWhere(user) } }
+    });
     if (!existing) throw new NotFoundException("Client not found");
     const client = await this.prisma.client.client.update({ where: { id }, data: input as any });
     await this.audit.record({
-      firmId,
-      actorUserId: actorId,
+      firmId: user.firmId,
+      actorUserId: user.id,
       action: "client.updated",
       entityType: "client",
       entityId: id,

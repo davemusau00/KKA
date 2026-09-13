@@ -11,19 +11,19 @@ export class CommunicationsController {
   @Get("channels")
   @RequirePermissions("module.comms")
   channels(@CurrentUser() user: RequestUser) {
-    return this.comms.listChannels(user.firmId, user.id);
+    return this.comms.listChannels(user);
   }
 
   @Get("channels/:id/messages")
   @RequirePermissions("module.comms")
   messages(@CurrentUser() user: RequestUser, @Param("id") id: string, @Query("before") before?: string) {
-    return this.comms.messages(user.firmId, user.id, id, before ? new Date(before) : undefined);
+    return this.comms.messages(user, id, before ? new Date(before) : undefined);
   }
 
   @Post("channels/:id/messages")
   @RequirePermissions("module.comms")
   send(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ text: z.string().min(1).max(20000), replyToId: z.string().optional() }).parse(body);
-    return this.comms.send(user.firmId, user.id, id, input.text, input.replyToId);
+    return this.comms.send(user, id, input.text, input.replyToId);
   }
 }

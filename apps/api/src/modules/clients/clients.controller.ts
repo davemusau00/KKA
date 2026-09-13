@@ -29,6 +29,6 @@ export class ClientsController {
   @Patch(":id")
   @RequirePermissions("matter.update")
   update(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
-    return this.clients.update(user.firmId, user.id, id, CreateClientSchema.partial().parse(body));
+    return this.clients.update(user, id, CreateClientSchema.partial().parse(body));
   }
 }

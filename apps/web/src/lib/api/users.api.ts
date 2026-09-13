@@ -35,6 +35,9 @@ export const usersApi = {
 
   setRoles: (id: string, roleKeys: string[]) =>
     apiClient.patch(`/users/${id}/roles`, { roleKeys }),
+
+  setHomeBranch: (id: string, homeBranchId: string | null) =>
+    apiClient.patch<{ user: BackendUser; auditId: string }>(`/users/${id}/home-branch`, { homeBranchId }),
 };
 
 export interface InviteResult {

@@ -36,7 +36,7 @@ export class MattersController {
   @Patch(":id")
   @RequirePermissions("matter.edit")
   update(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: Record<string, unknown>) {
-    return this.matters.update(user.firmId, user.id, id, body);
+    return this.matters.update(user, id, body);
   }
 
   @Get(":id/stage-validation/:toStage")
@@ -46,19 +46,19 @@ export class MattersController {
     @Param("id") id: string,
     @Param("toStage") toStage: string
   ) {
-    return this.matters.validateTransition(user.firmId, id, Number(toStage));
+    return this.matters.validateTransition(user, id, Number(toStage));
   }
 
   @Post(":id/stage-transitions")
   @RequirePermissions("matter.stage_advance")
   transition(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
-    return this.matters.transition(user.firmId, user.id, id, StageTransitionSchema.parse(body));
+    return this.matters.transition(user, id, StageTransitionSchema.parse(body));
   }
 
   @Post("handoffs/:handoffId/acknowledge")
   @RequirePermissions("matter.view")
   acknowledge(@CurrentUser() user: RequestUser, @Param("handoffId") handoffId: string) {
-    return this.matters.acknowledgeHandoff(user.firmId, user.id, handoffId);
+    return this.matters.acknowledgeHandoff(user, handoffId);
   }
 
   @Get(":id/timeline")

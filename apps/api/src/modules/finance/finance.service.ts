@@ -32,6 +32,12 @@ export class FinanceService {
     private readonly access: RecordAccessService
   ) {}
 
+  private async assertMatterAccess(user: RequestUser | undefined, matterId: string | null | undefined, resource: string) {
+    if (user && matterId && !(await this.access.canViewMatter(user, matterId))) {
+      throw new NotFoundException(`${resource} not found`);
+    }
+  }
+
   accounts(firmId: string) {
     return this.prisma.client.ledgerAccount.findMany({
       where: { firmId },
@@ -191,7 +197,7 @@ export class FinanceService {
     idempotencyKey: string;
     matterId?: string;
     clientId?: string;
-  }) {
+  }, user?: RequestUser) {
     if (input.sourceAccountId === input.destinationAccountId) {
       throw new BadRequestException("Source and destination accounts must differ");
     }
@@ -199,7 +205,11 @@ export class FinanceService {
       where: { firmId, sourceType: "FUND_TRANSFER", sourceId: input.idempotencyKey },
       include: { lines: { include: { account: true } } }
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.assertMatterAccess(user, existing.matterId, "Transfer");
+      return existing;
+    }
+    await this.assertMatterAccess(user, input.matterId, "Matter");
 
     const amount = money(Number(input.amount));
     if (!Number.isFinite(amount) || amount <= 0) throw new BadRequestException("Transfer amount must be positive");
@@ -219,7 +229,7 @@ export class FinanceService {
         { accountId: input.destinationAccountId, debit: amount, credit: 0, matterId: input.matterId, clientId: input.clientId },
         { accountId: input.sourceAccountId, debit: 0, credit: amount, matterId: input.matterId, clientId: input.clientId }
       ]
-    });
+    }, user);
     await this.audit.record({
       firmId, actorUserId: actorId, action: "finance.fund_transfer_posted",
       entityType: "journal_entry", entityId: entry.id, matterId: input.matterId, clientId: input.clientId,
@@ -240,7 +250,8 @@ export class FinanceService {
       sourceType?: string;
       sourceId?: string;
       lines: JournalLineInput[];
-    }
+    },
+    user?: RequestUser
   ) {
     if (!input.lines.length) throw new BadRequestException("Journal requires at least two lines");
     for (const line of input.lines) {
@@ -256,6 +267,9 @@ export class FinanceService {
         throw new BadRequestException("Journal line client attribution does not match the journal");
       }
     }
+
+    const attributedMatterIds = new Set([input.matterId, ...input.lines.map((line) => line.matterId)].filter((id): id is string => Boolean(id)));
+    for (const matterId of attributedMatterIds) await this.assertMatterAccess(user, matterId, "Matter");
 
     if (input.matterId) {
       const matter = await this.prisma.client.matter.findFirst({
@@ -281,7 +295,10 @@ export class FinanceService {
         where: { firmId, sourceType: input.sourceType, sourceId: input.sourceId },
         include: { lines: { include: { account: true } } }
       });
-      if (existing) return existing;
+      if (existing) {
+        await this.assertMatterAccess(user, existing.matterId, "Journal entry");
+        return existing;
+      }
     }
 
     await this.assertPeriodOpen(firmId, new Date(input.transactionDate));
@@ -354,12 +371,13 @@ export class FinanceService {
     return entry;
   }
 
-  async reverseJournal(firmId: string, actorId: string, entryId: string, reason: string) {
+  async reverseJournal(firmId: string, actorId: string, entryId: string, reason: string, user?: RequestUser) {
     const entry = await this.prisma.client.journalEntry.findFirst({
       where: { id: entryId, firmId, status: "POSTED" },
       include: { lines: true }
     });
     if (!entry) throw new NotFoundException("Posted journal entry not found");
+    await this.assertMatterAccess(user, entry.matterId, "Journal entry");
     const reversed = await this.postJournal(firmId, actorId, {
       branchId: entry.branchId ?? undefined,
       matterId: entry.matterId ?? undefined,
@@ -376,7 +394,7 @@ export class FinanceService {
         clientId: line.clientId ?? undefined,
         memo: `Reversal of ${entry.reference}`
       }))
-    });
+    }, user);
     await this.prisma.client.journalEntry.update({
       where: { id: entryId },
       data: { status: "REVERSED", reversedEntryId: reversed.id }
@@ -384,7 +402,8 @@ export class FinanceService {
     return reversed;
   }
 
-  async createExpense(firmId: string, actorId: string, input: any) {
+  async createExpense(firmId: string, actorId: string, input: any, user?: RequestUser) {
+    await this.assertMatterAccess(user, input.matterId, "Matter");
     const expenseNumber = await this.numbering.next({
       firmId,
       branchId: input.branchId,
@@ -415,9 +434,10 @@ export class FinanceService {
     return expense;
   }
 
-  async approveExpense(firmId: string, actorId: string, expenseId: string, approve: boolean, comment?: string) {
+  async approveExpense(firmId: string, actorId: string, expenseId: string, approve: boolean, comment?: string, user?: RequestUser) {
     const expense = await this.prisma.client.expenseRequest.findFirst({ where: { id: expenseId, firmId } });
     if (!expense) throw new NotFoundException("Expense request not found");
+    await this.assertMatterAccess(user, expense.matterId, "Expense request");
     if (expense.status !== "SUBMITTED") throw new BadRequestException("Only submitted expenses can be decided");
     const status = approve ? "APPROVED" : "REJECTED";
     const updated = await this.prisma.client.expenseRequest.update({
@@ -442,10 +462,12 @@ export class FinanceService {
     actorId: string,
     expenseId: string,
     accountId: string,
-    expenseLedgerAccountId: string
+    expenseLedgerAccountId: string,
+    user?: RequestUser
   ) {
     const expense = await this.prisma.client.expenseRequest.findFirst({ where: { id: expenseId, firmId } });
     if (!expense) throw new NotFoundException("Expense request not found");
+    await this.assertMatterAccess(user, expense.matterId, "Expense request");
     if (expense.status !== "APPROVED") throw new BadRequestException("Expense must be approved before disbursement");
 
     const journal = await this.postJournal(firmId, actorId, {
@@ -469,7 +491,7 @@ export class FinanceService {
           matterId: expense.matterId ?? undefined
         }
       ]
-    });
+    }, user);
 
     const updated = await this.prisma.client.expenseRequest.update({
       where: { id: expenseId },
@@ -483,11 +505,15 @@ export class FinanceService {
     return updated;
   }
 
-  async recordReceipt(firmId: string, actorId: string, input: any) {
+  async recordReceipt(firmId: string, actorId: string, input: any, user?: RequestUser) {
     const existing = await this.prisma.client.paymentReceipt.findFirst({
       where: { firmId, referenceNumber: input.referenceNumber }
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.assertMatterAccess(user, existing.matterId, "Payment receipt");
+      return existing;
+    }
+    await this.assertMatterAccess(user, input.matterId, "Matter");
     await this.assertPeriodOpen(firmId, new Date(input.receivedAt));
 
     const account = await this.prisma.client.ledgerAccount.findFirst({
@@ -527,7 +553,7 @@ export class FinanceService {
           { accountId: account.id, debit: input.amount, credit: 0, matterId: input.matterId, clientId: input.clientId },
           { accountId: counterpart.id, debit: 0, credit: input.amount, matterId: input.matterId, clientId: input.clientId }
         ]
-      });
+      }, user);
       journalEntryId = journal.id;
     }
 
@@ -569,9 +595,10 @@ export class FinanceService {
     return receipt;
   }
 
-  async clearReceipt(firmId: string, actorId: string, receiptId: string, clearingReference: string) {
+  async clearReceipt(firmId: string, actorId: string, receiptId: string, clearingReference: string, user?: RequestUser) {
     const receipt = await this.prisma.client.paymentReceipt.findFirst({ where: { id: receiptId, firmId } });
     if (!receipt) throw new NotFoundException("Payment receipt not found");
+    await this.assertMatterAccess(user, receipt.matterId, "Payment receipt");
     if (receipt.clearedAt) return receipt;
     const clearedAt = new Date();
     const updated = await this.prisma.client.paymentReceipt.updateMany({

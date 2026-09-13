@@ -4,8 +4,10 @@ import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { FinanceService } from "./finance.service";
+import { FeatureFlag } from "../../platform/features/feature-flags.decorator";
 
 @Controller("finance")
+@FeatureFlag("module.finance")
 export class FinanceController {
   constructor(private readonly finance: FinanceService) {}
 
@@ -79,47 +81,47 @@ export class FinanceController {
   @Post("journals")
   @RequirePermissions("finance.billing_manage")
   journal(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.finance.postJournal(user.firmId, user.id, PostJournalSchema.parse(body));
+    return this.finance.postJournal(user.firmId, user.id, PostJournalSchema.parse(body), user);
   }
 
   @Post("journals/:id/reverse")
   @RequirePermissions("finance.billing_manage")
   reverse(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ reason: z.string().min(3).max(2000) }).parse(body);
-    return this.finance.reverseJournal(user.firmId, user.id, id, input.reason);
+    return this.finance.reverseJournal(user.firmId, user.id, id, input.reason, user);
   }
 
   @Post("expenses")
   @RequirePermissions("finance.expense_create")
   expense(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.finance.createExpense(user.firmId, user.id, CreateExpenseSchema.parse(body));
+    return this.finance.createExpense(user.firmId, user.id, CreateExpenseSchema.parse(body), user);
   }
 
   @Post("expenses/:id/decision")
   @RequirePermissions("finance.expense_approve")
   expenseDecision(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ approve: z.boolean(), comment: z.string().optional() }).parse(body);
-    return this.finance.approveExpense(user.firmId, user.id, id, input.approve, input.comment);
+    return this.finance.approveExpense(user.firmId, user.id, id, input.approve, input.comment, user);
   }
 
   @Post("expenses/:id/disburse")
   @RequirePermissions("finance.expense_disburse")
   disburse(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ accountId: z.string(), expenseLedgerAccountId: z.string() }).parse(body);
-    return this.finance.disburseExpense(user.firmId, user.id, id, input.accountId, input.expenseLedgerAccountId);
+    return this.finance.disburseExpense(user.firmId, user.id, id, input.accountId, input.expenseLedgerAccountId, user);
   }
 
   @Post("receipts")
   @RequirePermissions("finance.trust_ledger")
   receipt(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.finance.recordReceipt(user.firmId, user.id, RecordReceiptSchema.parse(body));
+    return this.finance.recordReceipt(user.firmId, user.id, RecordReceiptSchema.parse(body), user);
   }
 
   @Post("receipts/:id/clear")
   @RequirePermissions("finance.reconciliation_manage")
   clearReceipt(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ clearingReference: z.string().trim().min(1).max(200) }).parse(body);
-    return this.finance.clearReceipt(user.firmId, user.id, id, input.clearingReference);
+    return this.finance.clearReceipt(user.firmId, user.id, id, input.clearingReference, user);
   }
 
   @Post("transfers")
@@ -135,7 +137,7 @@ export class FinanceController {
       matterId: z.string().optional(),
       clientId: z.string().optional()
     }).parse(body);
-    return this.finance.transfer(user.firmId, user.id, input);
+    return this.finance.transfer(user.firmId, user.id, input, user);
   }
 
   @Get("matters/:matterId/ledger")

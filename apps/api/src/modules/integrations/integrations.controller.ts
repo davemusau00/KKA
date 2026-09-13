@@ -3,8 +3,10 @@ import { IntegrationConnectionSchema } from "@kka/contracts";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { IntegrationsService } from "./integrations.service";
+import { FeatureFlag } from "../../platform/features/feature-flags.decorator";
 
 @Controller("integrations")
+@FeatureFlag("module.integrations")
 export class IntegrationsController {
   constructor(private readonly integrations: IntegrationsService) {}
 

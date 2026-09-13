@@ -40,4 +40,11 @@ export class UsersController {
     const input = z.object({ roleKeys: z.array(z.string()).min(1) }).parse(body);
     return this.users.replaceRoles(user.firmId, user.id, id, input.roleKeys);
   }
+
+  @Patch(":id/home-branch")
+  @RequirePermissions("admin.users_manage")
+  homeBranch(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ homeBranchId: z.string().nullable() }).parse(body);
+    return this.users.setHomeBranch(user.firmId, user.id, id, input.homeBranchId);
+  }
 }

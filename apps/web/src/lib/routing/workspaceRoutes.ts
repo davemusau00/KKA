@@ -18,7 +18,10 @@ const WORKSPACE_PATHS: Record<string, string> = {
   reports: "/reports",
   admin: "/admin",
   integrations: "/integrations",
-  website: "/website"
+  website: "/website",
+  operations: "/operations",
+  knowledge: "/knowledge",
+  help: "/help"
 };
 
 const WORKSPACE_BY_PATH = Object.fromEntries(Object.entries(WORKSPACE_PATHS).map(([workspace, path]) => [path, workspace]));

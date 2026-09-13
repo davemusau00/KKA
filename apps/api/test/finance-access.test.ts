@@ -27,6 +27,35 @@ test("matter ledger returns posted lines after shared matter access succeeds", a
   assert.deepEqual(await service(true).matterLedger(user, "matter-visible"), [{ id: "line-1" }]);
 });
 
+test("matter-linked finance writes reject restricted matters before journal, transfer, receipt, or expense persistence", async () => {
+  let writes = 0;
+  const finance = new FinanceService({ client: {
+    journalEntry: { findFirst: async () => null, create: async () => { writes += 1; return {}; } },
+    paymentReceipt: { findFirst: async () => ({ id: "receipt-1", matterId: "restricted" }), create: async () => { writes += 1; return {}; } },
+    expenseRequest: { create: async () => { writes += 1; return {}; } }
+  } } as any, {} as any, {} as any, { canViewMatter: async () => false } as any);
+  const journal = { matterId: "restricted", description: "Restricted posting", transactionDate: "2026-09-11T00:00:00.000Z", lines: [{ accountId: "a", debit: 10, credit: 0 }, { accountId: "b", debit: 0, credit: 10 }] };
+  await assert.rejects(() => finance.postJournal(user.firmId, user.id, journal, user), (error: unknown) => error instanceof NotFoundException);
+  await assert.rejects(() => finance.transfer(user.firmId, user.id, { sourceAccountId: "a", destinationAccountId: "b", amount: 10, description: "Restricted transfer", transactionDate: journal.transactionDate, idempotencyKey: "restricted-transfer", matterId: "restricted" }, user), (error: unknown) => error instanceof NotFoundException);
+  await assert.rejects(() => finance.recordReceipt(user.firmId, user.id, { accountId: "a", referenceNumber: "restricted-receipt", amount: 10, receivedAt: journal.transactionDate, matterId: "restricted" }, user), (error: unknown) => error instanceof NotFoundException);
+  await assert.rejects(() => finance.createExpense(user.firmId, user.id, { matterId: "restricted" }, user), (error: unknown) => error instanceof NotFoundException);
+  assert.equal(writes, 0);
+});
+
+test("reversal, expense approval/disbursement, and receipt clearing reject restricted resource matters before mutation", async () => {
+  let writes = 0;
+  const finance = new FinanceService({ client: {
+    journalEntry: { findFirst: async () => ({ id: "journal-1", matterId: "restricted", status: "POSTED", lines: [] }), update: async () => { writes += 1; return {}; } },
+    expenseRequest: { findFirst: async () => ({ id: "expense-1", matterId: "restricted", status: "APPROVED" }), update: async () => { writes += 1; return {}; } },
+    paymentReceipt: { findFirst: async () => ({ id: "receipt-1", matterId: "restricted", clearedAt: null }), updateMany: async () => { writes += 1; return { count: 1 }; } }
+  } } as any, {} as any, {} as any, { canViewMatter: async () => false } as any);
+  await assert.rejects(() => finance.reverseJournal(user.firmId, user.id, "journal-1", "Restricted reversal", user), (error: unknown) => error instanceof NotFoundException);
+  await assert.rejects(() => finance.approveExpense(user.firmId, user.id, "expense-1", true, undefined, user), (error: unknown) => error instanceof NotFoundException);
+  await assert.rejects(() => finance.disburseExpense(user.firmId, user.id, "expense-1", "cash", "expense", user), (error: unknown) => error instanceof NotFoundException);
+  await assert.rejects(() => finance.clearReceipt(user.firmId, user.id, "receipt-1", "CLR-1", user), (error: unknown) => error instanceof NotFoundException);
+  assert.equal(writes, 0);
+});
+
 test("journal retries return the existing source record instead of posting twice", async () => {
   let creates = 0;
   const finance = new FinanceService({

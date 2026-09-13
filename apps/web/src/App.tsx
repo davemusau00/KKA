@@ -17,6 +17,9 @@ import { ReportsWorkspace } from './components/reports/ReportsWorkspace';
 import { AdminWorkspace } from './components/admin/AdminWorkspace';
 import { IntegrationsWorkspace } from './components/integrations/IntegrationsWorkspace';
 import { WebsiteGrowthWorkspace } from './components/website/WebsiteGrowthWorkspace';
+import { OperationsWorkspace } from './components/operations/OperationsWorkspace';
+import { KnowledgeWorkspace } from './components/knowledge/KnowledgeWorkspace';
+import { HelpCenterWorkspace } from './components/help/HelpCenterWorkspace';
 import { parseWorkspaceLocation, serializeWorkspaceRoute } from './lib/routing/workspaceRoutes';
 import { InviteAcceptancePage } from './components/auth/InviteAcceptancePage';
 
@@ -77,6 +80,9 @@ const MainWorkspaceRouter: React.FC = () => {
       {activeWorkspace === 'admin' && <AdminWorkspace />}
       {activeWorkspace === 'integrations' && <IntegrationsWorkspace />}
       {activeWorkspace === 'website' && <WebsiteGrowthWorkspace />}
+      {activeWorkspace === 'operations' && <OperationsWorkspace />}
+      {activeWorkspace === 'knowledge' && <KnowledgeWorkspace />}
+      {activeWorkspace === 'help' && <HelpCenterWorkspace />}
     </AppShell>
   );
 };

@@ -174,4 +174,26 @@ export class UsersService {
       include: { roles: { include: { role: true } } }
     });
   }
+
+  async setHomeBranch(firmId: string, actorId: string, userId: string, homeBranchId: string | null) {
+    const user = await this.prisma.client.user.findFirst({ where: { id: userId, firmId }, select: { id: true, homeBranchId: true } });
+    if (!user) throw new NotFoundException("User not found");
+    if (homeBranchId) {
+      const branch = await this.prisma.client.branch.findFirst({ where: { id: homeBranchId, firmId, active: true }, select: { id: true } });
+      if (!branch) throw new BadRequestException("Home branch is invalid or inactive");
+    }
+    const updated = await this.prisma.client.$transaction(async (tx) => {
+      const account = await tx.user.update({ where: { id: userId }, data: { homeBranchId }, include: { roles: { include: { role: true } } } });
+      if (homeBranchId) await tx.userBranch.upsert({
+        where: { userId_branchId: { userId, branchId: homeBranchId } },
+        create: { userId, branchId: homeBranchId }, update: {}
+      });
+      const audit = await this.audit.record({
+        firmId, actorUserId: actorId, action: "user.home_branch_changed", entityType: "user", entityId: userId,
+        metadata: { previousHomeBranchId: user.homeBranchId, homeBranchId }
+      }, tx);
+      return { account, auditId: audit.id };
+    });
+    return { user: this.userDto(updated.account), auditId: updated.auditId };
+  }
 }

@@ -10,6 +10,8 @@ import { RealtimeModule } from "./platform/realtime/realtime.module";
 import { SessionGuard } from "./platform/auth/session.guard";
 import { PermissionsGuard } from "./platform/auth/permissions.guard";
 import { RecordAccessModule } from "./platform/auth/record-access.module";
+import { FeatureFlagsModule } from "./platform/features/feature-flags.module";
+import { FeatureFlagsGuard } from "./platform/features/feature-flags.guard";
 import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -55,6 +57,7 @@ import { WebsiteModule } from "./modules/website/website.module";
     StorageModule,
     RealtimeModule,
     RecordAccessModule,
+    FeatureFlagsModule,
     NumberingModule,
     HealthModule,
     AuthModule,
@@ -92,7 +95,8 @@ import { WebsiteModule } from "./modules/website/website.module";
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },
-    { provide: APP_GUARD, useClass: PermissionsGuard }
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: FeatureFlagsGuard }
   ]
 })
 export class AppModule {}
