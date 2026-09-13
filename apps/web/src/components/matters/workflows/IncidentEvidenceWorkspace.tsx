@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Car,
   FileText,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { runtimeConfig } from '../../../config/runtime';
+import { apiClient } from '../../../lib/api/client';
 import { IncidentEvidenceData, Matter, VehicleRecord, WitnessRecord, IncidentExhibit } from '../../../types';
 
 interface IncidentEvidenceWorkspaceProps {
