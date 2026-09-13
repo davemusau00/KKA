@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BadRequestException } from "@nestjs/common";
 import { OperationsService } from "../src/modules/operations/operations.service";
+import { ApprovalsService } from "../src/modules/approvals/approvals.service";
 import type { RequestUser } from "../src/platform/auth/auth.types";
 
 const operationsUser: RequestUser = { id: "user-1", firmId: "firm-1", email: "user@example.test", fullName: "User", homeBranchId: null, roleKeys: ["administrator"], permissions: ["module.operations", "operations.manage"] };
@@ -100,4 +101,15 @@ test("receipt expense creation requires the separate finance-expense permission"
 
   await assert.rejects(() => service.createExpenseFromReceipt(noFinanceUser, noFinanceUser.id, "receipt-1", { category: "Office", paymentSource: "OFFICE_FUNDS" }), /Finance expense permission/);
   assert.equal(receiptReads, 0);
+});
+
+test("purchase requisition approval uses the approval request and blocks requester self-approval", async () => {
+  let transactions = 0;
+  const approvals = new ApprovalsService({ client: {
+    approvalRequest: { findFirst: async () => ({ id: "approval-1", firmId: "firm-1", type: "PURCHASE_REQUISITION", entityType: "PurchaseRequisition", entityId: "requisition-1", status: "PENDING", requestedById: "requester-1", requiredRoleKeys: ["managing_partner"], assignedUserIds: [], decisions: [] }), updateMany: async () => ({ count: 1 }) },
+    $transaction: async () => { transactions += 1; }
+  } } as any, {} as any, {} as any);
+
+  await assert.rejects(() => approvals.decidePurchaseRequisition("firm-1", "requester-1", ["managing_partner"], "requisition-1", "APPROVED"), /Requester cannot approve/);
+  assert.equal(transactions, 0);
 });

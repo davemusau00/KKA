@@ -4,6 +4,7 @@ import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { OperationsService } from "./operations.service";
+import { ApprovalsService } from "../approvals/approvals.service";
 
 const MeetingUpdateSchema = z.object({
   title: z.string().min(2).max(300).optional(),
@@ -100,7 +101,7 @@ const StaffDocumentSchema = z.object({
 
 @Controller("operations")
 export class OperationsController {
-  constructor(private readonly ops: OperationsService) {}
+  constructor(private readonly ops: OperationsService, private readonly approvals: ApprovalsService) {}
 
   // ---------------------------------------------------------------------------
   // Internal projects and meetings
@@ -421,10 +422,10 @@ export class OperationsController {
   }
 
   @Post("purchase-requisitions/:id/decision")
-  @RequirePermissions("procurement.manage")
+  @RequirePermissions("approval.decide")
   requisitionDecision(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
-    const input = z.object({ decision: z.enum(["APPROVED", "REJECTED"]) }).parse(body);
-    return this.ops.decidePurchaseRequisition(user.firmId, user.id, id, input.decision);
+    const input = z.object({ decision: z.enum(["APPROVED", "REJECTED"]), comment: z.string().max(3000).optional() }).parse(body);
+    return this.approvals.decidePurchaseRequisition(user.firmId, user.id, user.roleKeys, id, input.decision, input.comment);
   }
 
   @Get("purchase-orders")

@@ -719,7 +719,6 @@ export class OperationsService {
     if (input.categoryId) {
       const category = await this.prisma.client.purchaseCategory.findFirst({ where: { id: input.categoryId, firmId, active: true } });
       if (!category) throw new BadRequestException("Purchase category is invalid or inactive");
-      if (category.approvalThreshold && Number(input.amount) > Number(category.approvalThreshold)) throw new BadRequestException("Requisition amount exceeds this category's configured approval threshold");
     }
 
     const requisitionNo = await this.numbering.next({
@@ -747,6 +746,8 @@ export class OperationsService {
         },
         include: { vendor: true }
       });
+      const category = input.categoryId ? await tx.purchaseCategory.findUnique({ where: { id: input.categoryId } }) : null;
+      const requiresThresholdApprover = Boolean(category?.approvalThreshold && Number(input.amount) > Number(category.approvalThreshold));
       await tx.approvalRequest.create({
         data: {
           firmId,
@@ -754,9 +755,9 @@ export class OperationsService {
           entityType: "PurchaseRequisition",
           entityId: requisition.id,
           requestedById: actorId,
-          requiredRoleKeys: ["administrator", "managing_partner"],
+          requiredRoleKeys: requiresThresholdApprover ? ["managing_partner"] : ["administrator", "managing_partner"],
           assignedUserIds: [],
-          payload: { requisitionNo, amount: input.amount }
+          payload: { requisitionNo, amount: input.amount, categoryId: input.categoryId ?? null, approvalThreshold: category?.approvalThreshold ? String(category.approvalThreshold) : null, requiresThresholdApprover }
         }
       });
       await this.audit.record({

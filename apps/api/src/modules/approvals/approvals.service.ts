@@ -86,6 +86,36 @@ export class ApprovalsService {
     });
   }
 
+  async decidePurchaseRequisition(
+    firmId: string,
+    actorId: string,
+    actorRoleKeys: string[],
+    requisitionId: string,
+    decision: "APPROVED" | "REJECTED",
+    comment?: string
+  ) {
+    const request = await this.prisma.client.approvalRequest.findFirst({
+      where: { firmId, type: "PURCHASE_REQUISITION", entityType: "PurchaseRequisition", entityId: requisitionId }, include: { decisions: true }
+    });
+    if (!request) throw new NotFoundException("Purchase requisition approval request not found");
+    if (request.status !== "PENDING") throw new BadRequestException("Purchase requisition approval is already resolved");
+    if (request.requiredRoleKeys.length && !actorRoleKeys.some((role) => request.requiredRoleKeys.includes(role)) && !request.assignedUserIds.includes(actorId)) throw new BadRequestException("User is not an eligible approver");
+    if (request.requestedById === actorId) throw new BadRequestException("Requester cannot approve or reject their own requisition");
+
+    const result = await this.prisma.client.$transaction(async (tx) => {
+      const requisition = await tx.purchaseRequisition.findFirst({ where: { id: requisitionId, firmId } });
+      if (!requisition) throw new NotFoundException("Purchase requisition not found");
+      if (requisition.status !== "SUBMITTED") throw new BadRequestException("Only submitted requisitions can be decided");
+      const changed = await tx.approvalRequest.updateMany({ where: { id: request.id, status: "PENDING" }, data: { status: decision, resolvedAt: new Date(), reason: comment } });
+      if (!changed.count) throw new BadRequestException("Purchase requisition approval is already resolved");
+      await tx.approvalDecision.create({ data: { approvalRequestId: request.id, decidedById: actorId, decision, comment } });
+      const updated = await tx.purchaseRequisition.update({ where: { id: requisitionId }, data: { status: decision, approvedById: actorId, approvedAt: decision === "APPROVED" ? new Date() : null }, include: { vendor: true, category: true } });
+      await this.audit.record({ firmId, actorUserId: actorId, action: decision === "APPROVED" ? "procurement.requisition_approved" : "procurement.requisition_rejected", entityType: "purchase_requisition", entityId: requisitionId, metadata: { approvalRequestId: request.id, comment } }, tx);
+      return updated;
+    });
+    return result;
+  }
+
   private async applyApprovedAction(firmId: string, actorId: string, request: any) {
     const payload = (request.payload ?? {}) as any;
 
