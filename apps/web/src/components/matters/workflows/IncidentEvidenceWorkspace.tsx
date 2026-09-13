@@ -104,6 +104,70 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
   };
   const [localData, setLocalData] = useState<IncidentEvidenceData>(safeData);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loading, setLoading] = useState(!runtimeConfig.enableDemoMode);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (runtimeConfig.enableDemoMode) return;
+    let active = true;
+    setLoading(true);
+    apiClient.get<any>(`/personal-injury/${matter.id}`)
+      .then((profile) => {
+        if (!active) return;
+        if (!profile) {
+          setLoadError('No personal injury case record exists for this matter.');
+          return;
+        }
+        const persisted: IncidentEvidenceData = {
+          incident: {
+            date: profile.incidentDate ? String(profile.incidentDate).slice(0, 10) : '',
+            time: profile.incidentTime || '',
+            location: profile.incidentLocation || '',
+            description: profile.accidentNarrative || '',
+            obNumber: profile.obNumber || '',
+            policeStation: profile.policeStation || '',
+            investigatingOfficer: profile.investigatingOfficer || '',
+            officerPhone: profile.investigatingPhone || '',
+            roadConditions: profile.roadConditions || '',
+          },
+          vehicles: (profile.vehicles || []).map((v: any) => ({
+            id: v.id,
+            registrationNumber: v.registrationNo,
+            makeModel: v.makeModel || '',
+            driverName: v.driverName || '',
+            driverLicenseNo: v.driverLicenseNo || '',
+            ownerName: v.ownerName || '',
+            insuranceCompany: v.insuranceCompany || '',
+            policyNumber: v.policyNumber || '',
+            ntsaSearchObtained: Boolean(v.ntsaSearchObtained),
+            ntsaSearchRef: v.ntsaSearchRef || '',
+            notes: v.notes || '',
+          })),
+          witnesses: (profile.witnesses || []).map((w: any) => ({
+            id: w.id,
+            name: w.name,
+            contact: w.contact || '',
+            statementRequested: Boolean(w.statementRequested),
+            statementReceived: Boolean(w.statementReceived),
+            statementDate: w.statementDate ? String(w.statementDate).slice(0, 10) : '',
+            keyObservations: w.keyObservations || '',
+          })),
+          exhibits: (profile.evidence || []).map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            category: e.category,
+            dateObtained: e.obtainedAt ? String(e.obtainedAt).slice(0, 10) : '',
+            obtainedBy: '',
+            notes: e.notes || '',
+          })),
+        };
+        setLocalData(persisted);
+        setLoadError('');
+      })
+      .catch((error) => active && setLoadError(error?.message || 'Unable to load server incident dossier.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [matter.id]);
 
   // New vehicle form state
   const [showVehicleForm, setShowVehicleForm] = useState(false);
@@ -129,44 +193,100 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
     keyObservations: '',
   });
 
-  const handleSave = () => {
-    if (!runtimeConfig.enableDemoMode) return;
-    updateIncidentEvidence(matter.id, localData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+  const handleSave = async () => {
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        updateIncidentEvidence(matter.id, localData);
+      } else {
+        await apiClient.put(`/personal-injury/${matter.id}/profile`, {
+          incidentDate: localData.incident.date ? new Date(localData.incident.date).toISOString() : undefined,
+          incidentTime: localData.incident.time || undefined,
+          incidentLocation: localData.incident.location || undefined,
+          accidentNarrative: localData.incident.description || undefined,
+          obNumber: localData.incident.obNumber || undefined,
+          policeStation: localData.incident.policeStation || undefined,
+          investigatingOfficer: localData.incident.investigatingOfficer || undefined,
+          investigatingPhone: localData.incident.officerPhone || undefined,
+          roadConditions: localData.incident.roadConditions || undefined,
+        });
+        setLoadError('');
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to save incident profile.');
+    }
   };
 
-  const handleAddVehicle = () => {
+  const handleAddVehicle = async () => {
     if (!vehForm.registrationNumber?.trim()) return;
-    const newVeh: VehicleRecord = {
-      id: `veh-${Date.now()}`,
-      registrationNumber: vehForm.registrationNumber.toUpperCase(),
-      makeModel: vehForm.makeModel || 'Vehicle',
-      driverName: vehForm.driverName || 'Unknown Driver',
-      driverLicenseNo: vehForm.driverLicenseNo || '',
-      ownerName: vehForm.ownerName || 'Unknown Owner',
-    insuranceCompany: vehForm.insuranceCompany || '',
-      policyNumber: vehForm.policyNumber || '',
-      ntsaSearchObtained: Boolean(vehForm.ntsaSearchObtained),
-      ntsaSearchRef: vehForm.ntsaSearchRef || '',
-      notes: vehForm.notes || '',
-    };
-    setLocalData((prev) => ({
-      ...prev,
-      vehicles: [...prev.vehicles, newVeh],
-    }));
-    setShowVehicleForm(false);
-    setVehForm({
-      registrationNumber: '',
-      makeModel: '',
-      driverName: '',
-      driverLicenseNo: '',
-      ownerName: '',
-      insuranceCompany: '',
-      policyNumber: '',
-      ntsaSearchObtained: false,
-      notes: '',
-    });
+    const regNo = vehForm.registrationNumber.trim().toUpperCase();
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        const newVeh: VehicleRecord = {
+          id: `veh-${Date.now()}`,
+          registrationNumber: regNo,
+          makeModel: vehForm.makeModel || 'Vehicle',
+          driverName: vehForm.driverName || 'Unknown Driver',
+          driverLicenseNo: vehForm.driverLicenseNo || '',
+          ownerName: vehForm.ownerName || 'Unknown Owner',
+          insuranceCompany: vehForm.insuranceCompany || '',
+          policyNumber: vehForm.policyNumber || '',
+          ntsaSearchObtained: Boolean(vehForm.ntsaSearchObtained),
+          ntsaSearchRef: vehForm.ntsaSearchRef || '',
+          notes: vehForm.notes || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          vehicles: [...prev.vehicles, newVeh],
+        }));
+      } else {
+        const serverVeh = await apiClient.post<any>(`/personal-injury/${matter.id}/vehicles`, {
+          registrationNo: regNo,
+          makeModel: vehForm.makeModel || undefined,
+          ownerName: vehForm.ownerName || undefined,
+          driverName: vehForm.driverName || undefined,
+          driverLicenseNo: vehForm.driverLicenseNo || undefined,
+          insuranceCompany: vehForm.insuranceCompany || undefined,
+          policyNumber: vehForm.policyNumber || undefined,
+          ntsaSearchObtained: Boolean(vehForm.ntsaSearchObtained),
+          ntsaSearchRef: vehForm.ntsaSearchRef || undefined,
+          notes: vehForm.notes || undefined,
+        });
+        const newVeh: VehicleRecord = {
+          id: serverVeh.id,
+          registrationNumber: serverVeh.registrationNo,
+          makeModel: serverVeh.makeModel || '',
+          driverName: serverVeh.driverName || '',
+          driverLicenseNo: serverVeh.driverLicenseNo || '',
+          ownerName: serverVeh.ownerName || '',
+          insuranceCompany: serverVeh.insuranceCompany || '',
+          policyNumber: serverVeh.policyNumber || '',
+          ntsaSearchObtained: Boolean(serverVeh.ntsaSearchObtained),
+          ntsaSearchRef: serverVeh.ntsaSearchRef || '',
+          notes: serverVeh.notes || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          vehicles: [...prev.vehicles, newVeh],
+        }));
+      }
+      setShowVehicleForm(false);
+      setVehForm({
+        registrationNumber: '',
+        makeModel: '',
+        driverName: '',
+        driverLicenseNo: '',
+        ownerName: '',
+        insuranceCompany: '',
+        policyNumber: '',
+        ntsaSearchObtained: false,
+        notes: '',
+      });
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to add vehicle.');
+    }
   };
 
   const handleRemoveVehicle = (id: string) => {
@@ -176,29 +296,58 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
     }));
   };
 
-  const handleAddWitness = () => {
+  const handleAddWitness = async () => {
     if (!witForm.name?.trim()) return;
-    const newWit: WitnessRecord = {
-      id: `wit-${Date.now()}`,
-      name: witForm.name,
-      contact: witForm.contact || '',
-      statementRequested: Boolean(witForm.statementRequested),
-      statementReceived: Boolean(witForm.statementReceived),
-      statementDate: witForm.statementDate || new Date().toISOString().slice(0, 10),
-      keyObservations: witForm.keyObservations || '',
-    };
-    setLocalData((prev) => ({
-      ...prev,
-      witnesses: [...prev.witnesses, newWit],
-    }));
-    setShowWitnessForm(false);
-    setWitForm({
-      name: '',
-      contact: '',
-      statementRequested: true,
-      statementReceived: false,
-      keyObservations: '',
-    });
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        const newWit: WitnessRecord = {
+          id: `wit-${Date.now()}`,
+          name: witForm.name.trim(),
+          contact: witForm.contact || '',
+          statementRequested: Boolean(witForm.statementRequested),
+          statementReceived: Boolean(witForm.statementReceived),
+          statementDate: witForm.statementDate || new Date().toISOString().slice(0, 10),
+          keyObservations: witForm.keyObservations || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          witnesses: [...prev.witnesses, newWit],
+        }));
+      } else {
+        const serverWit = await apiClient.post<any>(`/personal-injury/${matter.id}/witnesses`, {
+          name: witForm.name.trim(),
+          contact: witForm.contact || undefined,
+          statementRequested: Boolean(witForm.statementRequested),
+          statementReceived: Boolean(witForm.statementReceived),
+          statementDate: witForm.statementDate ? new Date(witForm.statementDate).toISOString() : undefined,
+          keyObservations: witForm.keyObservations || undefined,
+        });
+        const newWit: WitnessRecord = {
+          id: serverWit.id,
+          name: serverWit.name,
+          contact: serverWit.contact || '',
+          statementRequested: Boolean(serverWit.statementRequested),
+          statementReceived: Boolean(serverWit.statementReceived),
+          statementDate: serverWit.statementDate ? String(serverWit.statementDate).slice(0, 10) : '',
+          keyObservations: serverWit.keyObservations || '',
+        };
+        setLocalData((prev) => ({
+          ...prev,
+          witnesses: [...prev.witnesses, newWit],
+        }));
+      }
+      setShowWitnessForm(false);
+      setWitForm({
+        name: '',
+        contact: '',
+        statementRequested: true,
+        statementReceived: false,
+        keyObservations: '',
+      });
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to add witness.');
+    }
   };
 
   const handleRemoveWitness = (id: string) => {
@@ -210,7 +359,13 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
 
   return (
     <div className="space-y-6 text-xs">
-      {!runtimeConfig.enableDemoMode && <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">No server incident or evidence record is connected to this workspace. Example facts are hidden and no browser-only save is available.</p>}
+      {!runtimeConfig.enableDemoMode && (
+        <p role="status" className="border border-amber-800 bg-amber-950/30 text-amber-200 rounded-lg p-3">
+          This workspace reads and writes the server incident dossier, police abstract, involved vehicles, and witness statements. An empty matter has no evidence records until an authorized user saves them.
+        </p>
+      )}
+      {loading && <p role="status" className="text-slate-400">Loading server incident dossier…</p>}
+      {loadError && <p role="alert" className="border border-rose-800 bg-rose-950/30 text-rose-200 rounded-lg p-3">{loadError}</p>}
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
         <div>
@@ -236,8 +391,8 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
           )}
           <button
             onClick={handleSave}
-            disabled={!runtimeConfig.enableDemoMode}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
+            disabled={loading}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Save Evidence Dossier</span>
