@@ -50,6 +50,7 @@ export const HelpCenterWorkspace: React.FC = () => {
   const filteredGuides = useMemo(() => guides.filter((guide) => `${guide.title} ${guide.body}`.toLowerCase().includes(query.toLowerCase())), [query]);
   const filteredFaq = useMemo(() => faq.filter(([question, answer]) => `${question} ${answer}`.toLowerCase().includes(query.toLowerCase())), [query]);
   const completed = useMemo(() => new Set(onboarding?.completedSteps ?? []), [onboarding]);
+  const completedGuideCount = useMemo(() => guides.filter((_guide, index) => completed.has(`HELP_${index}`)).length, [completed]);
 
   const markGuideComplete = async (index: number) => {
     if (!onboarding || completed.has(`HELP_${index}`)) return;
@@ -74,7 +75,7 @@ export const HelpCenterWorkspace: React.FC = () => {
 
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-5">
-          <div className="mb-4 flex items-center justify-between"><div><div className="flex items-center gap-2"><Compass className="h-4 w-4 text-amber-500" /><h2 className="font-semibold">Operational tour</h2></div><p className="mt-1 text-xs text-slate-500">Mark steps as understood. Progress is stored in your server-side onboarding record.</p></div><span className="text-xs text-slate-500">{loadingProgress ? 'Loading…' : `${completed.size}/${guides.length}`}</span></div>
+          <div className="mb-4 flex items-center justify-between"><div><div className="flex items-center gap-2"><Compass className="h-4 w-4 text-amber-500" /><h2 className="font-semibold">Operational tour</h2></div><p className="mt-1 text-xs text-slate-500">Mark steps as understood. Progress is stored in your server-side onboarding record.</p></div><span className="text-xs text-slate-500">{loadingProgress ? 'Loading…' : `${completedGuideCount}/${guides.length}`}</span></div>
           {progressError && <p role="status" className="mb-3 rounded-xl border border-amber-900/60 bg-amber-950/20 p-3 text-xs text-amber-200">{progressError}</p>}
           <div className="space-y-2">{filteredGuides.map((guide) => { const originalIndex = guides.indexOf(guide); const done = completed.has(`HELP_${originalIndex}`); return <button key={guide.title} disabled={loadingProgress || savingGuide === originalIndex || done || !onboarding} onClick={() => void markGuideComplete(originalIndex)} className={`w-full rounded-xl border p-4 text-left transition disabled:cursor-not-allowed ${done ? 'border-emerald-800 bg-emerald-950/15' : 'border-slate-800 bg-slate-950/45 hover:border-slate-700'}`}><div className="flex items-start gap-3">{done ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}<div><div className="font-semibold text-slate-100">{guide.title}{savingGuide === originalIndex ? ' · Saving…' : ''}</div><p className="mt-1 text-xs leading-relaxed text-slate-400">{guide.body}</p></div></div></button>; })}</div>
         </section>

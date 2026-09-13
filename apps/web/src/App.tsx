@@ -20,8 +20,10 @@ import { WebsiteGrowthWorkspace } from './components/website/WebsiteGrowthWorksp
 import { OperationsWorkspace } from './components/operations/OperationsWorkspace';
 import { KnowledgeWorkspace } from './components/knowledge/KnowledgeWorkspace';
 import { HelpCenterWorkspace } from './components/help/HelpCenterWorkspace';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 import { parseWorkspaceLocation, serializeWorkspaceRoute, type WorkspaceRoute } from './lib/routing/workspaceRoutes';
 import { InviteAcceptancePage } from './components/auth/InviteAcceptancePage';
+import { authApi, type OnboardingState } from './lib/api/auth.api';
 
 const MainWorkspaceRouter: React.FC = () => {
   const {
@@ -31,10 +33,26 @@ const MainWorkspaceRouter: React.FC = () => {
     setSelectedMatterId,
     selectedMatterTab,
     setSelectedMatterTab,
+    currentUser,
   } = useApp();
   const [routeReady, setRouteReady] = useState(false);
   const [resourceRoute, setResourceRoute] = useState<Pick<WorkspaceRoute, 'workspace' | 'resourceType' | 'resourceId'> | null>(null);
   const currentLocation = useRef('');
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void authApi.onboarding().then((state) => {
+      if (!active) return;
+      setOnboarding(state);
+      const postponed = state.dismissedUntil && new Date(state.dismissedUntil).getTime() > Date.now();
+      setShowOnboarding(state.status !== 'COMPLETED' && !postponed);
+    }).catch(() => {
+      // Do not show a pseudo-onboarding flow when the authoritative API is unavailable.
+    });
+    return () => { active = false; };
+  }, []);
 
   const applyLocation = useCallback((pathname: string, search: string) => {
     const route = parseWorkspaceLocation(pathname, search);
@@ -67,7 +85,7 @@ const MainWorkspaceRouter: React.FC = () => {
   }, [applyLocation]);
 
   return (
-    <AppShell>
+    <><AppShell>
       {activeWorkspace === 'dashboard' && <HomeDashboard />}
       {activeWorkspace === 'matters' && <MattersWorkspace />}
       {activeWorkspace === 'clients' && <ClientsWorkspace />}
@@ -86,6 +104,9 @@ const MainWorkspaceRouter: React.FC = () => {
       {activeWorkspace === 'knowledge' && <KnowledgeWorkspace />}
       {activeWorkspace === 'help' && <HelpCenterWorkspace />}
     </AppShell>
+    {onboarding && onboarding.status !== 'COMPLETED' && !showOnboarding && <button type="button" onClick={() => setShowOnboarding(true)} className="fixed bottom-4 right-4 z-50 rounded-full border border-amber-700/60 bg-slate-900 px-4 py-2 text-sm font-semibold text-amber-300 shadow-xl hover:bg-slate-800">Finish setup</button>}
+    {onboarding && showOnboarding && <OnboardingWizard user={currentUser} state={onboarding} onStateChange={(state) => { setOnboarding(state); setShowOnboarding(state.status !== 'COMPLETED'); }} onDismiss={() => setShowOnboarding(false)} onOpenWorkspace={setActiveWorkspace} />}
+    </>
   );
 };
 
