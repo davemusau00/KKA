@@ -6,6 +6,7 @@ import { NumberingService } from "../numbering/numbering.service";
 import { TasksService } from "../tasks/tasks.service";
 import { RecordAccessService } from "../../platform/auth/record-access.service";
 import { FinanceService } from "../finance/finance.service";
+import { CalculatedLeavePolicySchema } from '@kka/contracts';
 
 @Injectable()
 export class OperationsService {
@@ -27,17 +28,6 @@ export class OperationsService {
     if (count !== unique.length) throw new BadRequestException("One or more users are invalid for this firm");
   }
 
-  private chargeableWeekdays(startsOn: Date, endsOn: Date) {
-    let cursor = Date.UTC(startsOn.getUTCFullYear(), startsOn.getUTCMonth(), startsOn.getUTCDate());
-    const finalDay = Date.UTC(endsOn.getUTCFullYear(), endsOn.getUTCMonth(), endsOn.getUTCDate());
-    let days = 0;
-    while (cursor <= finalDay) {
-      const day = new Date(cursor).getUTCDay();
-      if (day !== 0 && day !== 6) days += 1;
-      cursor += 86_400_000;
-    }
-    return days;
-  }
 
   // ---------------------------------------------------------------------------
   // Projects and meetings
@@ -454,113 +444,6 @@ export class OperationsService {
     });
   }
 
-  async requestLeave(firmId: string, actorId: string, input: any) {
-    const user = await this.prisma.client.user.findFirst({ where: { id: actorId, firmId, status: "ACTIVE" } });
-    if (!user) throw new NotFoundException("Active user not found");
-    const startsOn = new Date(input.startsOn);
-    const endsOn = new Date(input.endsOn);
-    if (endsOn < startsOn) throw new BadRequestException("Leave end date cannot be before the start date");
-    const days = this.chargeableWeekdays(startsOn, endsOn);
-    if (!days) throw new BadRequestException("Leave request must include at least one weekday");
-
-    const overlap = await this.prisma.client.leaveRequest.findFirst({
-      where: {
-        userId: actorId,
-        status: { in: ["SUBMITTED", "APPROVED"] },
-        startsOn: { lte: endsOn },
-        endsOn: { gte: startsOn }
-      }
-    });
-    if (overlap) throw new BadRequestException("The requested dates overlap another active leave request");
-
-    const request = await this.prisma.client.leaveRequest.create({
-      data: {
-        userId: actorId,
-        type: input.type,
-        startsOn,
-        endsOn,
-        days,
-        reason: input.reason,
-        status: "SUBMITTED"
-      },
-      include: { requester: { select: { id: true, fullName: true, email: true, jobTitle: true } } }
-    });
-    await this.audit.record({
-      firmId,
-      actorUserId: actorId,
-      action: "hr.leave_submitted",
-      entityType: "leave_request",
-      entityId: request.id,
-      metadata: { type: request.type, startsOn: request.startsOn.toISOString(), endsOn: request.endsOn.toISOString(), days: String(request.days) }
-    });
-    return request;
-  }
-
-  async decideLeave(
-    firmId: string,
-    actorId: string,
-    id: string,
-    input: { decision: "APPROVED" | "REJECTED"; reason?: string }
-  ) {
-    const request = await this.prisma.client.leaveRequest.findFirst({
-      where: { id, requester: { firmId } },
-      include: { requester: { select: { id: true, fullName: true, email: true, jobTitle: true } } }
-    });
-    if (!request) throw new NotFoundException("Leave request not found");
-    if (request.status !== "SUBMITTED") throw new BadRequestException("Only submitted leave requests can be decided");
-    if (request.userId === actorId) throw new BadRequestException("A user cannot approve or reject their own leave request");
-
-    const updated = await this.prisma.client.leaveRequest.update({
-      where: { id },
-      data: {
-        status: input.decision,
-        approverId: actorId,
-        approvedAt: input.decision === "APPROVED" ? new Date() : null
-      },
-      include: {
-        requester: { select: { id: true, fullName: true, email: true, jobTitle: true } },
-        approver: { select: { id: true, fullName: true } }
-      }
-    });
-    await this.audit.record({
-      firmId,
-      actorUserId: actorId,
-      action: input.decision === "APPROVED" ? "hr.leave_approved" : "hr.leave_rejected",
-      entityType: "leave_request",
-      entityId: id,
-      metadata: { requesterId: request.userId, reason: input.reason ?? null }
-    });
-    return updated;
-  }
-
-  async cancelLeave(firmId: string, actorId: string, id: string, canManage: boolean) {
-    const request = await this.prisma.client.leaveRequest.findFirst({
-      where: { id, requester: { firmId } }
-    });
-    if (!request) throw new NotFoundException("Leave request not found");
-    if (request.userId !== actorId && !canManage) throw new ForbiddenException("You cannot cancel this leave request");
-    if (!["DRAFT", "SUBMITTED", "APPROVED"].includes(request.status)) {
-      throw new BadRequestException("This leave request can no longer be cancelled");
-    }
-
-    const updated = await this.prisma.client.leaveRequest.update({
-      where: { id },
-      data: { status: "CANCELLED" },
-      include: {
-        requester: { select: { id: true, fullName: true, email: true, jobTitle: true } },
-        approver: { select: { id: true, fullName: true } }
-      }
-    });
-    await this.audit.record({
-      firmId,
-      actorUserId: actorId,
-      action: "hr.leave_cancelled",
-      entityType: "leave_request",
-      entityId: id,
-      metadata: { requesterId: request.userId }
-    });
-    return updated;
-  }
 
   async hrRecords(viewer: RequestUser, userId: string) {
     const firmId = viewer.firmId;
@@ -627,19 +510,37 @@ export class OperationsService {
     return { credential: row, auditRef: audit.id };
   }
 
-  async upsertLeavePolicy(firmId: string, actorId: string, input: any) {
-    const row = await this.prisma.client.leavePolicy.upsert({ where: { firmId_key: { firmId, key: input.key } }, create: { firmId, key: input.key, name: input.name, annualEntitlementDays: input.annualEntitlementDays, carryoverLimitDays: input.carryoverLimitDays, active: input.active ?? true }, update: { name: input.name, annualEntitlementDays: input.annualEntitlementDays, carryoverLimitDays: input.carryoverLimitDays, active: input.active } });
-    const audit = await this.audit.record({ firmId, actorUserId: actorId, action: "hr.leave_policy_saved", entityType: "leave_policy", entityId: row.id, metadata: { key: row.key, active: row.active } });
-    return { policy: row, auditRef: audit.id };
+  async upsertLeavePolicy(firmId: string, actorId: string, raw: unknown) {
+    const input = CalculatedLeavePolicySchema.parse(raw);
+    return this.prisma.client.$transaction(async tx => {
+      const before = await tx.leavePolicy.findUnique({ where: { firmId_key: { firmId, key: input.key } } });
+      const policy = await tx.leavePolicy.upsert({
+        where: { firmId_key: { firmId, key: input.key } },
+        create: { firmId, ...input }, update: input
+      });
+      const audit = await this.audit.record({ firmId, actorUserId: actorId, action: "hr.leave_policy_saved", entityType: "leave_policy", entityId: policy.id, metadata: { before: before ? JSON.parse(JSON.stringify(before)) : null, after: JSON.parse(JSON.stringify(policy)) } }, tx);
+      return { policy, auditRef: audit.id };
+    });
   }
 
   async upsertLeaveBalance(firmId: string, actorId: string, userId: string, input: any) {
     await this.assertFirmUsers(firmId, [userId]);
     const policy = await this.prisma.client.leavePolicy.findFirst({ where: { firmId, key: input.policyKey, active: true } });
     if (!policy) throw new BadRequestException("Leave policy is not active in this firm");
-    const row = await this.prisma.client.leaveBalance.upsert({ where: { firmId_userId_policyKey_year: { firmId, userId, policyKey: input.policyKey, year: input.year } }, create: { firmId, userId, policyKey: input.policyKey, year: input.year, openingDays: input.openingDays ?? 0, accruedDays: input.accruedDays ?? 0, usedDays: input.usedDays ?? 0, adjustmentDays: input.adjustmentDays ?? 0, notes: input.notes, updatedById: actorId }, update: { openingDays: input.openingDays, accruedDays: input.accruedDays, usedDays: input.usedDays, adjustmentDays: input.adjustmentDays, notes: input.notes, updatedById: actorId } });
-    const audit = await this.audit.record({ firmId, actorUserId: actorId, action: "hr.leave_balance_saved", entityType: "leave_balance", entityId: row.id, metadata: { userId, policyKey: row.policyKey, year: row.year } });
-    return { balance: row, auditRef: audit.id };
+    if (input.usedDays !== undefined || input.accruedDays !== undefined) throw new BadRequestException("Accrual and usage are calculated and cannot be manually edited");
+    if (!input.notes?.trim()) throw new BadRequestException("A reason is required for a carryover or adjustment change");
+    return this.prisma.client.$transaction(async tx => {
+      const where = { firmId_userId_policyKey_year: { firmId, userId, policyKey: input.policyKey, year: input.year } };
+      const before = await tx.leaveBalance.findUnique({ where });
+      const row = await tx.leaveBalance.upsert({
+        where, create: { firmId, userId, policyKey: input.policyKey, year: input.year, openingDays: input.openingDays ?? 0, adjustmentDays: input.adjustmentDays ?? 0, notes: input.notes, updatedById: actorId },
+        update: { openingDays: input.openingDays, adjustmentDays: input.adjustmentDays, notes: input.notes, updatedById: actorId }
+      });
+      const audit = await this.audit.record({ firmId, actorUserId: actorId, action: "hr.leave_balance_saved", entityType: "leave_balance", entityId: row.id,
+        metadata: { userId, policyKey: row.policyKey, year: row.year, before: before ? { openingDays: String(before.openingDays), adjustmentDays: String(before.adjustmentDays) } : null,
+          after: { openingDays: String(row.openingDays), adjustmentDays: String(row.adjustmentDays) }, reason: input.notes } }, tx);
+      return { balance: row, auditRef: audit.id };
+    }, { isolationLevel: 'Serializable' });
   }
 
   async addHrNote(firmId: string, actorId: string, userId: string, input: any) {

@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
-import { CreateMeetingSchema } from "@kka/contracts";
+import { CreateMeetingSchema, CalculatedLeavePolicySchema, CalculatedLeaveRequestSchema, LeavePreviewSchema, LeaveDecisionSchema, LeaveCancelSchema } from "@kka/contracts";
 import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
 import { OperationsService } from "./operations.service";
 import { ApprovalsService } from "../approvals/approvals.service";
+import { LeaveService } from './leave.service';
 
 const MeetingUpdateSchema = z.object({
   title: z.string().min(2).max(300).optional(),
@@ -67,23 +68,13 @@ const CredentialSchema = z.object({
   notes: z.string().max(5000).nullable().optional()
 });
 
-const LeavePolicySchema = z.object({
-  key: z.string().min(2).max(120),
-  name: z.string().min(2).max(300),
-  annualEntitlementDays: z.coerce.number().nonnegative().max(366),
-  carryoverLimitDays: z.coerce.number().nonnegative().max(366).nullable().optional(),
-  active: z.boolean().optional()
-});
-
 const LeaveBalanceSchema = z.object({
   policyKey: z.string().min(2).max(120),
   year: z.coerce.number().int().min(2000).max(2200),
-  openingDays: z.coerce.number().min(-366).max(366).optional(),
-  accruedDays: z.coerce.number().min(-366).max(366).optional(),
-  usedDays: z.coerce.number().min(-366).max(366).optional(),
+  openingDays: z.coerce.number().min(0).max(366).optional(),
   adjustmentDays: z.coerce.number().min(-366).max(366).optional(),
-  notes: z.string().max(5000).nullable().optional()
-});
+  notes: z.string().trim().min(3).max(5000)
+}).strict();
 
 const HrNoteSchema = z.object({
   category: z.string().min(2).max(120),
@@ -101,7 +92,7 @@ const StaffDocumentSchema = z.object({
 
 @Controller("operations")
 export class OperationsController {
-  constructor(private readonly ops: OperationsService, private readonly approvals: ApprovalsService) {}
+  constructor(private readonly ops: OperationsService, private readonly approvals: ApprovalsService, private readonly calculatedLeave: LeaveService) {}
 
   // ---------------------------------------------------------------------------
   // Internal projects and meetings
@@ -296,7 +287,7 @@ export class OperationsController {
   @Post("hr/leave-policies")
   @RequirePermissions("hr.manage")
   leavePolicy(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.ops.upsertLeavePolicy(user.firmId, user.id, LeavePolicySchema.parse(body));
+    return this.ops.upsertLeavePolicy(user.firmId, user.id, CalculatedLeavePolicySchema.parse(body));
   }
 
   @Post("hr/employees/:userId/leave-balances")
@@ -334,28 +325,25 @@ export class OperationsController {
 
   @Post("leave")
   leaveRequest(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    const input = z.object({
-      type: z.string().min(2),
-      startsOn: z.string().datetime(),
-      endsOn: z.string().datetime(),
-      reason: z.string().max(5000).optional()
-    }).parse(body);
-    return this.ops.requestLeave(user.firmId, user.id, input);
+    return this.calculatedLeave.request(user, CalculatedLeaveRequestSchema.parse(body));
   }
+
+  @Get('leave/policies')
+  employeeLeavePolicies(@CurrentUser() user: RequestUser) { return this.calculatedLeave.policies(user); }
+
+  @Post('leave/preview')
+  previewLeave(@CurrentUser() user: RequestUser, @Body() body: unknown) { return this.calculatedLeave.preview(user, LeavePreviewSchema.parse(body)); }
 
   @Post("leave/:id/decision")
   @RequirePermissions("hr.manage")
   leaveDecision(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
-    const input = z.object({
-      decision: z.enum(["APPROVED", "REJECTED"]),
-      reason: z.string().max(3000).optional()
-    }).parse(body);
-    return this.ops.decideLeave(user.firmId, user.id, id, input);
+    const input = LeaveDecisionSchema.parse(body);
+    return this.calculatedLeave.transition(user, id, input.decision, input.revision, input.reason);
   }
 
   @Post("leave/:id/cancel")
-  cancelLeave(@CurrentUser() user: RequestUser, @Param("id") id: string) {
-    return this.ops.cancelLeave(user.firmId, user.id, id, user.permissions.includes("hr.manage"));
+  cancelLeave(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    return this.calculatedLeave.transition(user, id, 'CANCELLED', LeaveCancelSchema.parse(body).revision);
   }
 
   // ---------------------------------------------------------------------------

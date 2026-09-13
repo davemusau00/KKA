@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { LeaveRequestForm } from './LeaveRequestForm';
 import {
   Briefcase,
   Building2,
@@ -138,7 +139,6 @@ export const OperationsWorkspace: React.FC = () => {
     finally { setBusy(false); }
   }
 
-  const [leaveForm, setLeaveForm] = useState({ type: 'Annual Leave', startsOn: '', endsOn: '', reason: '' });
   const [employeeForm, setEmployeeForm] = useState({ userId: '', employeeNumber: '', employmentType: 'FULL_TIME', startDate: '', managerUserId: '', leavePolicyKey: 'STANDARD', cpdsRequiredAnnual: '0', notes: '' });
   const [departmentForm, setDepartmentForm] = useState({ name: '', code: '', branchId: '', managerId: '', costCentre: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', kraPin: '', contactName: '', phone: '', email: '', address: '' });
@@ -226,18 +226,8 @@ export const OperationsWorkspace: React.FC = () => {
 
       {!loading && tab === 'people' && <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-5">
-          <Panel title="Request leave" description="The server calculates inclusive weekdays from the selected dates; public holidays and entitlement checks remain a later policy slice.">
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => {
-              if (!leaveForm.startsOn || !leaveForm.endsOn) throw new Error('Choose the leave dates.');
-              await operationsApi.requestLeave({ type: leaveForm.type, startsOn: new Date(`${leaveForm.startsOn}T00:00:00`).toISOString(), endsOn: new Date(`${leaveForm.endsOn}T23:59:59`).toISOString(), reason: leaveForm.reason || undefined });
-              setLeaveForm({ type: 'Annual Leave', startsOn: '', endsOn: '', reason: '' });
-            }, 'Leave request submitted.'); }}>
-              <label className="block text-xs text-slate-400">Leave type<select className={inputClass} value={leaveForm.type} onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}><option>Annual Leave</option><option>Sick Leave</option><option>Compassionate Leave</option><option>Maternity Leave</option><option>Paternity Leave</option><option>Study Leave</option><option>Unpaid Leave</option></select></label>
-              <div className="grid grid-cols-2 gap-3"><label className="text-xs text-slate-400">Starts<input type="date" className={inputClass} value={leaveForm.startsOn} onChange={(e) => setLeaveForm({ ...leaveForm, startsOn: e.target.value })} /></label><label className="text-xs text-slate-400">Ends<input type="date" className={inputClass} value={leaveForm.endsOn} onChange={(e) => setLeaveForm({ ...leaveForm, endsOn: e.target.value })} /></label></div>
-              <p className="rounded-xl border border-slate-800 bg-slate-950/45 p-3 text-xs text-slate-500">Chargeable weekdays are calculated by the server when this request is submitted.</p>
-              <label className="block text-xs text-slate-400">Reason<textarea className={`${inputClass} min-h-24`} value={leaveForm.reason} onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })} /></label>
-              <button className={primaryButton} disabled={busy}>Submit leave request</button>
-            </form>
+          <Panel title="Request leave" description="Preview your policy calendar and leave balance before submitting.">
+            <LeaveRequestForm onSaved={load} />
           </Panel>
 
           {canHr && <Panel title="Employee profile" description="Create or update the internal employment profile attached to a firm user.">
@@ -275,8 +265,8 @@ export const OperationsWorkspace: React.FC = () => {
                 <div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-semibold text-slate-100">{row.requester?.fullName || currentUser.fullName} · {row.type}</div><div className="mt-1 text-xs text-slate-400">{day(row.startsOn)} → {day(row.endsOn)} · {String(row.days)} day(s)</div></div><Status value={row.status} /></div>
                 {row.reason && <p className="mt-2 text-xs text-slate-300">{row.reason}</p>}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {canHr && row.status === 'SUBMITTED' && row.userId !== currentUser.id && <><button className={primaryButton} disabled={busy} onClick={() => void run(() => operationsApi.decideLeave(row.id, 'APPROVED'), 'Leave approved.')}>Approve</button><button className={secondaryButton} disabled={busy} onClick={() => void run(() => operationsApi.decideLeave(row.id, 'REJECTED'), 'Leave rejected.')}>Reject</button></>}
-                  {(row.userId === currentUser.id || canHr) && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(row.status) && <button className={secondaryButton} disabled={busy} onClick={() => void run(() => operationsApi.cancelLeave(row.id), 'Leave cancelled.')}>Cancel</button>}
+                  {canHr && row.status === 'SUBMITTED' && row.userId !== currentUser.id && <><button className={primaryButton} disabled={busy} onClick={() => void run(() => operationsApi.decideLeave(row.id, 'APPROVED', row.revision), 'Leave approved.')}>Approve</button><button className={secondaryButton} disabled={busy} onClick={() => void run(() => operationsApi.decideLeave(row.id, 'REJECTED', row.revision), 'Leave rejected.')}>Reject</button></>}
+                  {(row.userId === currentUser.id || canHr) && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(row.status) && <button className={secondaryButton} disabled={busy} onClick={() => void run(() => operationsApi.cancelLeave(row.id, row.revision), 'Leave cancelled.')}>Cancel</button>}
                 </div>
               </div>)}
             </div>

@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { CalculatedLeaveRequest, LeavePreview, LeavePreviewInput } from '@contracts';
 
 export type LeaveStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type PurchaseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
@@ -56,6 +57,8 @@ export interface EmployeeRowDto {
 export interface LeaveRequestDto {
   id: string;
   userId: string;
+  policyKey?: string | null;
+  revision: number;
   type: string;
   startsOn: string;
   endsOn: string;
@@ -241,7 +244,7 @@ export const operationsApi = {
   leavePolicies: () => apiClient.get<LeavePolicyDto[]>('/operations/hr/leave-policies'),
   saveLeavePolicy: (input: { key: string; name: string; annualEntitlementDays: number; carryoverLimitDays?: number | null; active?: boolean }) =>
     apiClient.post<AuditedMutation<LeavePolicyDto>>('/operations/hr/leave-policies', input),
-  saveLeaveBalance: (userId: string, input: { policyKey: string; year: number; openingDays?: number; accruedDays?: number; usedDays?: number; adjustmentDays?: number; notes?: string | null }) =>
+  saveLeaveBalance: (userId: string, input: { policyKey: string; year: number; openingDays?: number; adjustmentDays?: number; notes: string }) =>
     apiClient.post<AuditedMutation<LeaveBalanceDto>>(`/operations/hr/employees/${userId}/leave-balances`, input),
   addHrNote: (userId: string, input: { category: string; body: string; visibleToUserIds?: string[] }) =>
     apiClient.post<AuditedMutation<HrRestrictedNoteDto>>(`/operations/hr/employees/${userId}/restricted-notes`, input),
@@ -251,11 +254,13 @@ export const operationsApi = {
     apiClient.post<AuditedMutation<EmployeeProfileDto>>(`/operations/hr/employees/${userId}/offboard`, input),
 
   leave: (scope: 'self' | 'all' = 'self') => apiClient.get<LeaveRequestDto[]>('/operations/leave', { params: { scope } }),
-  requestLeave: (input: { type: string; startsOn: string; endsOn: string; reason?: string }) =>
+  employeeLeavePolicies: () => apiClient.get<LeavePolicyDto[]>('/operations/leave/policies'),
+  previewLeave: (input: LeavePreviewInput) => apiClient.post<LeavePreview>('/operations/leave/preview', input),
+  requestLeave: (input: CalculatedLeaveRequest) =>
     apiClient.post<LeaveRequestDto>('/operations/leave', input),
-  decideLeave: (id: string, decision: 'APPROVED' | 'REJECTED', reason?: string) =>
-    apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/decision`, { decision, reason }),
-  cancelLeave: (id: string) => apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/cancel`),
+  decideLeave: (id: string, decision: 'APPROVED' | 'REJECTED', revision: number, reason?: string) =>
+    apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/decision`, { decision, revision, reason }),
+  cancelLeave: (id: string, revision: number) => apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/cancel`, { revision }),
 
   vendors: () => apiClient.get<VendorDto[]>('/operations/vendors'),
   createVendor: (input: { name: string; kraPin?: string; contactName?: string; phone?: string; email?: string; address?: string }) =>

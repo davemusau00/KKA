@@ -5,10 +5,11 @@ import { FinanceModule } from "../finance/finance.module";
 import { ApprovalsModule } from "../approvals/approvals.module";
 import { OperationsController } from "./operations.controller";
 import { OperationsService } from "./operations.service";
+import { LeaveService } from './leave.service';
 @Module({
   imports: [TasksModule, RecordAccessModule, FinanceModule, ApprovalsModule],
   controllers: [OperationsController],
-  providers: [OperationsService],
+  providers: [OperationsService, LeaveService],
   exports: [OperationsService]
 })
 export class OperationsModule {}
