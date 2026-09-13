@@ -26,6 +26,7 @@ import {
   getTasksDependentOn,
   wouldCreateCircularDependency,
 } from '../../utils/taskDependencies';
+import { parseWorkspaceLocation, navigateToResource } from '../../lib/routing/workspaceRoutes';
 
 export const TasksWorkspace: React.FC = () => {
   const [mounted, setMounted] = useState(false);
@@ -48,6 +49,31 @@ export const TasksWorkspace: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'dependencies'>('list');
   const [filterScope, setFilterScope] = useState<'my' | 'all' | 'overdue' | 'blocked'>('my');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const applyDetailRoute = () => {
+      const route = parseWorkspaceLocation(window.location.pathname, window.location.search);
+      if (route.workspace === 'tasks' && route.resourceType === 'task' && route.resourceId) {
+        setSelectedTaskId(route.resourceId);
+      } else if (route.workspace === 'tasks' && !route.resourceId) {
+        setSelectedTaskId(null);
+      }
+    };
+    applyDetailRoute();
+    window.addEventListener('popstate', applyDetailRoute);
+    return () => window.removeEventListener('popstate', applyDetailRoute);
+  }, []);
+
+  const handleSelectTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    navigateToResource({ workspace: 'tasks', resourceType: 'task', resourceId: taskId });
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
+    navigateToResource({ workspace: 'tasks' });
+  };
 
   // Blocked alert modal state
   const [blockedNotice, setBlockedNotice] = useState<{
@@ -396,9 +422,11 @@ export const TasksWorkspace: React.FC = () => {
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`font-semibold text-sm break-words max-w-full ${
+                          onClick={() => handleSelectTask(t.id)}
+                          className={`font-semibold text-sm break-words max-w-full cursor-pointer hover:text-amber-400 transition ${
                             t.status === 'completed' ? 'line-through text-slate-500' : 'text-slate-100'
                           }`}
+                          title="Click to view task details"
                         >
                           {t.title}
                         </span>
@@ -469,8 +497,15 @@ export const TasksWorkspace: React.FC = () => {
                         )}
 
                         <button
-                          onClick={() => setEditingDepTask(t)}
+                          onClick={() => handleSelectTask(t.id)}
                           className="text-amber-400 hover:underline flex items-center gap-1"
+                        >
+                          <Info className="w-3 h-3" /> Task Record
+                        </button>
+
+                        <button
+                          onClick={() => setEditingDepTask(t)}
+                          className="text-slate-400 hover:text-slate-200 hover:underline flex items-center gap-1"
                         >
                           <GitBranch className="w-3 h-3" /> Edit Dependencies
                         </button>
@@ -831,6 +866,239 @@ export const TasksWorkspace: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      {/* Focused Task Detail Modal for URL Deep-Linking */}
+      {selectedTaskId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6">
+            {(() => {
+              const task = tasks.find((t) => t.id === selectedTaskId);
+              if (!task) {
+                return (
+                  <div className="text-center py-8 space-y-4">
+                    <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
+                    <h3 className="text-lg font-serif font-bold text-slate-100">Task Record Not Found</h3>
+                    <p className="text-slate-400 text-xs max-w-sm mx-auto">
+                      The task ID <code className="font-mono text-amber-400">{selectedTaskId}</code> does not exist or your account does not have permission to access it.
+                    </p>
+                    <button
+                      onClick={handleCloseTaskDetail}
+                      className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 font-semibold text-xs"
+                    >
+                      Return to Tasks
+                    </button>
+                  </div>
+                );
+              }
+
+              const taskMatter = matters.find((m) => m.id === task.matterId);
+              const assignee = users.find((u) => u.id === task.assignedTo);
+              const creator = users.find((u) => u.id === task.createdBy);
+              const evalResult = evaluateTaskDependencies(task, tasks);
+              const downstream = getTasksDependentOn(task.id, tasks);
+              const prerequisites = tasks.filter((t) => task.dependsOnTaskIds?.includes(t.id));
+              const isOverdue = new Date(task.dueAt).getTime() < Date.now() && task.status !== 'completed';
+
+              return (
+                <>
+                  <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-bold ${
+                            task.priority === 'critical'
+                              ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                              : task.priority === 'high'
+                              ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {task.priority} Priority
+                        </span>
+                        <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                          {task.status}
+                        </span>
+                        {evalResult.isBlocked && task.status !== 'completed' && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Blocked
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="text-xl font-serif font-bold text-slate-100">{task.title}</h2>
+                      <p className="text-xs text-slate-500 font-mono">Task ID: {task.id}</p>
+                    </div>
+                    <button
+                      onClick={handleCloseTaskDetail}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                      title="Close"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Associated Matter Reference */}
+                  {taskMatter && (
+                    <div
+                      onClick={() => {
+                        setSelectedMatterId(taskMatter.id);
+                        setActiveWorkspace('matters');
+                        navigateToResource({ workspace: 'matters', matterId: taskMatter.id });
+                      }}
+                      className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-amber-600/50 cursor-pointer flex items-center justify-between transition group"
+                    >
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-slate-500">Associated Matter</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-amber-400 font-bold text-xs">{taskMatter.internalReference}</span>
+                          <span className="text-slate-200 text-xs font-medium">{taskMatter.title}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-slate-400 group-hover:text-amber-400 transition text-xs">
+                        <span>Open Matter File</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Task Description */}
+                  {task.description && (
+                    <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-slate-500">Task Scope / Description</span>
+                      <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">{task.description}</p>
+                    </div>
+                  )}
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-500">Assigned Advocate / Staff</span>
+                      <div className="flex items-center gap-2 text-slate-200 mt-1 font-medium">
+                        <User className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{assignee?.fullName || 'Unassigned'}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-500">Status Control</span>
+                      <div className="mt-1">
+                        <select
+                          value={task.status}
+                          onChange={(e) => handleStatusChange(task, e.target.value as TaskStatus)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs font-medium outline-none"
+                        >
+                          <option value="todo">To Do</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="review">Review</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-500">Due Date</span>
+                      <div className={`flex items-center gap-2 mt-1 font-mono ${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>
+                        <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{new Date(task.dueAt).toLocaleDateString()}</span>
+                        {isOverdue && <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-800">OVERDUE</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-500">Official Statutory Cutoff</span>
+                      <div className="flex items-center gap-2 text-slate-300 mt-1 font-mono">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{task.officialDeadlineAt ? new Date(task.officialDeadlineAt).toLocaleDateString() : 'None'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prerequisites Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono uppercase font-bold text-slate-300 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Prerequisite Tasks ({prerequisites.length})</span>
+                      </span>
+                      <button
+                        onClick={() => {
+                          setEditingDepTask(task);
+                          handleCloseTaskDetail();
+                        }}
+                        className="text-amber-400 hover:underline text-[11px] flex items-center gap-1"
+                      >
+                        <GitBranch className="w-3 h-3" /> Edit Dependencies
+                      </button>
+                    </div>
+
+                    {prerequisites.length === 0 ? (
+                      <div className="p-3 rounded-xl border border-dashed border-slate-800 text-slate-500 text-xs text-center">
+                        No prerequisite dependencies. This task can be worked on immediately.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {prerequisites.map((pt) => (
+                          <div
+                            key={pt.id}
+                            onClick={() => handleSelectTask(pt.id)}
+                            className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center justify-between text-xs transition"
+                          >
+                            <div className="min-w-0 flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${pt.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                              <span className="text-slate-200 truncate">{pt.title}</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase shrink-0">
+                              {pt.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Downstream Blocked Tasks */}
+                  {downstream.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-mono uppercase font-bold text-slate-300 flex items-center gap-1.5">
+                        <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Tasks Waiting on This Completion ({downstream.length})</span>
+                      </span>
+                      <div className="space-y-1.5">
+                        {downstream.map((dt) => (
+                          <div
+                            key={dt.id}
+                            onClick={() => handleSelectTask(dt.id)}
+                            className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center justify-between text-xs transition"
+                          >
+                            <span className="text-slate-300 truncate">{dt.title}</span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase shrink-0">
+                              {dt.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Modal Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                    <button
+                      onClick={() => {
+                        setEditingDepTask(task);
+                        handleCloseTaskDetail();
+                      }}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition"
+                    >
+                      <GitBranch className="w-4 h-4 text-amber-500" />
+                      <span>Manage Dependencies</span>
+                    </button>
+                    <button
+                      onClick={handleCloseTaskDetail}
+                      className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
     </div>

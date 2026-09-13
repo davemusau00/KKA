@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Scale,
   Calendar,
@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CalendarEvent, CourtFilingPackage, ServiceQueueItem } from '../../types';
+import { parseWorkspaceLocation, navigateToResource } from '../../lib/routing/workspaceRoutes';
 
 type CourtView = 'diary' | 'filing_queue' | 'service_queue' | 'outcomes' | 'new';
 
@@ -84,6 +85,56 @@ export const CourtOperationsWorkspace: React.FC = () => {
 
   const [selectedServiceToUpdate, setSelectedServiceToUpdate] = useState<ServiceQueueItem | null>(null);
   const [attemptNotes, setAttemptNotes] = useState('');
+
+  useEffect(() => {
+    const applyDetailRoute = () => {
+      const route = parseWorkspaceLocation(window.location.pathname, window.location.search);
+      if (route.workspace !== 'court') return;
+      if (route.resourceType === 'court_event' && route.resourceId) {
+        setView('diary');
+        const ev = calendarEvents.find((e) => e.id === route.resourceId);
+        if (ev) setSelectedEvent(ev);
+      } else if (route.resourceType === 'filing' && route.resourceId) {
+        setView('filing_queue');
+        const f = courtFilingPackages.find((fp) => fp.id === route.resourceId);
+        if (f) setSelectedFilingToUpdate(f);
+      } else if (route.resourceType === 'service_record' && route.resourceId) {
+        setView('service_queue');
+        const s = serviceQueue.find((sq) => sq.id === route.resourceId);
+        if (s) setSelectedServiceToUpdate(s);
+      } else if (route.resourceType === 'proceeding' && route.resourceId) {
+        setView('diary');
+      }
+    };
+    applyDetailRoute();
+    window.addEventListener('popstate', applyDetailRoute);
+    return () => window.removeEventListener('popstate', applyDetailRoute);
+  }, [calendarEvents, courtFilingPackages, serviceQueue]);
+
+  const handleSelectEvent = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    navigateToResource({ workspace: 'court', resourceType: 'court_event', resourceId: event.id });
+  };
+  const handleCloseEvent = () => {
+    setSelectedEvent(null);
+    navigateToResource({ workspace: 'court' });
+  };
+  const handleSelectFiling = (filing: CourtFilingPackage) => {
+    setSelectedFilingToUpdate(filing);
+    navigateToResource({ workspace: 'court', resourceType: 'filing', resourceId: filing.id });
+  };
+  const handleCloseFiling = () => {
+    setSelectedFilingToUpdate(null);
+    navigateToResource({ workspace: 'court' });
+  };
+  const handleSelectService = (item: ServiceQueueItem) => {
+    setSelectedServiceToUpdate(item);
+    navigateToResource({ workspace: 'court', resourceType: 'service_record', resourceId: item.id });
+  };
+  const handleCloseService = () => {
+    setSelectedServiceToUpdate(null);
+    navigateToResource({ workspace: 'court' });
+  };
 
   // New court date form
   const [newTitle, setNewTitle] = useState('');
@@ -171,7 +222,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
     if (!selectedEvent) return;
     const result = await recordCourtOutcome(selectedEvent.id, outcomeStatus, outcomeNotes, nextDate || undefined);
     if (!result.success) return;
-    setSelectedEvent(null);
+    handleCloseEvent();
     setOutcomeNotes('');
     setNextDate('');
   };
@@ -185,7 +236,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
       status: 'submitted_cts',
       submittedAt: new Date().toISOString(),
     });
-    setSelectedFilingToUpdate(null);
+    handleCloseFiling();
     setCtsInput('');
     setCaseNoInput('');
   };
@@ -215,7 +266,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
       attempts,
       status: 'attempted',
     });
-    setSelectedServiceToUpdate(null);
+    handleCloseService();
     setAttemptNotes('');
   };
 
@@ -435,7 +486,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
                           {(cStatus === 'scheduled' || cStatus === 'attended') && (
                             <button
                               onClick={() => {
-                                setSelectedEvent(event);
+                                handleSelectEvent(event);
                                 setView('outcomes');
                               }}
                               className="px-3 py-1.5 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-emerald-100 text-[11px] font-bold flex items-center gap-1 transition shadow"
@@ -565,7 +616,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
                           {pkg.status !== 'stamped_filed' && (
                             <button
                               onClick={() => {
-                                setSelectedFilingToUpdate(pkg);
+                                handleSelectFiling(pkg);
                                 setCtsInput(pkg.ctsReference || '');
                                 setCaseNoInput(pkg.courtCaseNumber || '');
                               }}
@@ -696,7 +747,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
                           {item.status !== 'served' && item.status !== 'filed' && (
                             <button
                               onClick={() => {
-                                setSelectedServiceToUpdate(item);
+                                handleSelectService(item);
                                 setAttemptNotes('');
                               }}
                               className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-1.5 transition text-xs shadow"
@@ -850,7 +901,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                   <button
                     type="button"
-                    onClick={() => setSelectedEvent(null)}
+                    onClick={handleCloseEvent}
                     className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 text-xs"
                   >
                     Back to List
@@ -978,7 +1029,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Update CTS E-Filing Details</h3>
               <button
-                onClick={() => setSelectedFilingToUpdate(null)}
+                onClick={handleCloseFiling}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 ✕
@@ -1012,7 +1063,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedFilingToUpdate(null)}
+                  onClick={handleCloseFiling}
                   className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white transition"
                 >
                   Cancel
@@ -1036,7 +1087,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Record Process Server Attempt</h3>
               <button
-                onClick={() => setSelectedServiceToUpdate(null)}
+                onClick={handleCloseService}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 ✕
@@ -1065,7 +1116,7 @@ export const CourtOperationsWorkspace: React.FC = () => {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedServiceToUpdate(null)}
+                  onClick={handleCloseService}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
                 >
                   Cancel

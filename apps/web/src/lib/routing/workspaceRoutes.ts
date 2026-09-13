@@ -78,3 +78,11 @@ export function serializeWorkspaceRoute(route: WorkspaceRoute): string {
   }
   return WORKSPACE_PATHS[route.workspace] || "/";
 }
+
+export function navigateToResource(route: WorkspaceRoute): void {
+  const url = serializeWorkspaceRoute(route);
+  if (window.location.pathname + window.location.search !== url) {
+    window.history.pushState({}, '', url);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+}
