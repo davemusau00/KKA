@@ -67,6 +67,40 @@ test("meeting attendance accepts only an existing firm participant", async () =>
   assert.equal(updates, 0);
 });
 
+test("editing meeting participants preserves attendance rows for people who remain invited", async () => {
+  let deleteWhere: unknown;
+  let createArgs: unknown;
+  const transactionClient = {
+    meeting: { update: async () => ({ id: "meeting-1" }) },
+    meetingParticipant: {
+      deleteMany: async ({ where }: { where: unknown }) => { deleteWhere = where; },
+      createMany: async (args: unknown) => { createArgs = args; }
+    }
+  };
+  const service = new OperationsService({ client: {
+    meeting: {
+      findFirst: async () => ({ id: "meeting-1", firmId: "firm-1", matterId: null }),
+      findUnique: async () => ({ id: "meeting-1", participants: [], decisions: [], actions: [] })
+    },
+    user: { count: async () => 2 },
+    $transaction: async (callback: (tx: typeof transactionClient) => Promise<unknown>) => callback(transactionClient)
+  } } as any, { record: async () => ({ id: "audit-1" }) } as any, {} as any, {} as any);
+
+  await service.updateMeeting("firm-1", "user-1", "meeting-1", { participantUserIds: ["user-1", "user-2"] });
+  assert.deepEqual(deleteWhere, { meetingId: "meeting-1", userId: { notIn: ["user-1", "user-2"] } });
+  assert.deepEqual(createArgs, { data: [{ meetingId: "meeting-1", userId: "user-1" }, { meetingId: "meeting-1", userId: "user-2" }], skipDuplicates: true });
+});
+
+test("project status rejects a project outside the firm before mutation", async () => {
+  let updates = 0;
+  const service = new OperationsService({ client: {
+    internalProject: { findFirst: async () => null, update: async () => { updates += 1; } }
+  } } as any, {} as any, {} as any, {} as any);
+
+  await assert.rejects(() => service.setProjectStatus("firm-1", "user-1", "outside-project", "ACTIVE"), /Project not found/);
+  assert.equal(updates, 0);
+});
+
 test("project matter links reject a restricted matter before creating the link", async () => {
   let writes = 0;
   const service = new OperationsService({ client: {

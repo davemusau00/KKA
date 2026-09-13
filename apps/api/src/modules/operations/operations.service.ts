@@ -106,6 +106,15 @@ export class OperationsService {
     return project;
   }
 
+  async setProjectStatus(firmId: string, actorId: string, projectId: string, status: string) {
+    const project = await this.prisma.client.internalProject.findFirst({ where: { id: projectId, firmId } });
+    if (!project) throw new NotFoundException("Project not found");
+    if (project.status === status) return { project, auditRef: project.id };
+    const updated = await this.prisma.client.internalProject.update({ where: { id: projectId }, data: { status } });
+    const audit = await this.audit.record({ firmId, actorUserId: actorId, action: "operations.project_status_changed", entityType: "internal_project", entityId: projectId, metadata: { from: project.status, to: status } });
+    return { project: updated, auditRef: audit.id };
+  }
+
   async addProjectMilestone(firmId: string, actorId: string, projectId: string, input: any) {
     const project = await this.prisma.client.internalProject.findFirst({ where: { id: projectId, firmId } });
     if (!project) throw new NotFoundException("Project not found");
@@ -223,11 +232,15 @@ export class OperationsService {
       await tx.meeting.update({ where: { id: meetingId }, data });
 
       if (input.participantUserIds) {
-        await tx.meetingParticipant.deleteMany({ where: { meetingId } });
-        if (input.participantUserIds.length) {
+        const participantUserIds = [...new Set(input.participantUserIds as string[])];
+        if (participantUserIds.length) {
+          await tx.meetingParticipant.deleteMany({ where: { meetingId, userId: { notIn: participantUserIds } } });
           await tx.meetingParticipant.createMany({
-            data: [...new Set(input.participantUserIds as string[])].map((userId: string) => ({ meetingId, userId }))
+            data: participantUserIds.map((userId) => ({ meetingId, userId })),
+            skipDuplicates: true
           });
+        } else {
+          await tx.meetingParticipant.deleteMany({ where: { meetingId } });
         }
       }
 

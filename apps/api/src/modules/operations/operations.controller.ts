@@ -129,6 +129,13 @@ export class OperationsController {
     return this.ops.createProject(user.firmId, user.id, input);
   }
 
+  @Post("projects/:id/status")
+  @RequirePermissions("operations.manage")
+  projectStatus(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ status: z.enum(["PLANNED", "ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"]) }).parse(body);
+    return this.ops.setProjectStatus(user.firmId, user.id, id, input.status);
+  }
+
   @Post("projects/:id/matters")
   @RequirePermissions("operations.manage")
   linkProjectMatter(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {

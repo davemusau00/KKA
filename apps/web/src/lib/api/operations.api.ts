@@ -300,6 +300,9 @@ export const operationsApi = {
     budget?: number;
     memberUserIds?: string[];
   }) => apiClient.post<InternalProjectDto>('/operations/projects', input),
+  setProjectStatus: (id: string, status: 'PLANNED' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED') => apiClient.post(`/operations/projects/${id}/status`, { status }),
+  linkProjectMatter: (id: string, matterId: string) => apiClient.post(`/operations/projects/${id}/matters`, { matterId }),
+  linkProjectDocument: (id: string, documentId: string) => apiClient.post(`/operations/projects/${id}/documents`, { documentId }),
   addProjectMilestone: (id: string, input: { title: string; description?: string; dueAt?: string; ownerUserId?: string }) => apiClient.post(`/operations/projects/${id}/milestones`, input),
   completeProjectMilestone: (id: string) => apiClient.post(`/operations/project-milestones/${id}/complete`),
   recordProjectSpend: (id: string, input: { description: string; amount: number; occurredAt: string; financeReference?: string }) => apiClient.post(`/operations/projects/${id}/spend`, input),
