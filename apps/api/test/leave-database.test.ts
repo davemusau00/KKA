@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { createPrismaClient } from '@kka/database';
 import { LeaveService } from '../src/modules/operations/leave.service';
 import { AuditService } from '../src/platform/audit/audit.service';
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
 // Opt in explicitly; every row and migration belongs to a new disposable database.
 test('leave persists, isolates firms, handles concurrent submissions/decisions, audits and restores availability', { skip: process.env.RUN_LEAVE_DATABASE_TESTS !== '1', timeout: 180_000 }, async () => {
@@ -64,6 +64,26 @@ test('leave persists, isolates firms, handles concurrent submissions/decisions, 
     assert.equal(preview.position.usedDays, 0); assert.equal(preview.position.pendingDays, 0); assert.equal(preview.position.availableDays, 3);
     assert.ok(await db.auditEvent.findUnique({ where: { id: saved.auditRef } }));
     assert.equal(await db.auditEvent.count({ where: { action: { in: ['hr.leave_approved', 'hr.leave_rejected'] } } }), 1);
+    await assert.rejects(() => service.balance(user('outsider', 'other', ['hr.manage']), 'staff', 'ANNUAL', year), BadRequestException);
+    await assert.rejects(() => service.balance(staff, 'hr', 'ANNUAL', year), ForbiddenException);
+    const repeated = { policyKey: 'ANNUAL', startsOn: date(14), endsOn: date(15), idempotencyKey: randomUUID() };
+    const [one, two] = await Promise.all([service.request(staff, repeated), service.request(staff, repeated)]);
+    assert.equal(one.id, two.id); assert.equal(one.auditRef, two.auditRef);
+    await db.leavePolicy.update({ where: { firmId_key: { firmId: 'firm', key: 'ANNUAL' } }, data: { annualEntitlementDays: 1 } });
+    await assert.rejects(() => service.transition(hr, one.id, 'APPROVED', 0), BadRequestException);
+    assert.equal((await db.leaveRequest.findUniqueOrThrow({ where: { id: one.id } })).status, 'SUBMITTED');
+    await service.transition(staff, one.id, 'CANCELLED', 0);
+    await assert.rejects(() => service.transition(staff, one.id, 'CANCELLED', 0), ConflictException);
+    const legacy = await db.leaveRequest.create({ data: { userId: 'staff', type: 'Historical', startsOn: new Date(date(21)), endsOn: new Date(date(21)), days: 0.5, status: 'APPROVED' } });
+    assert.deepEqual((await service.balance(hr, 'staff', 'ANNUAL', year)).unclassifiedRequestIds, [legacy.id]);
+    await service.reconcileHistorical(hr, legacy.id, { policyKey: 'ANNUAL', revision: 0, reason: 'Reviewed legacy record against HR source' });
+    const reconciled = await service.balance(hr, 'staff', 'ANNUAL', year);
+    assert.equal(reconciled.usedDays, 0.5); assert.deepEqual(reconciled.unclassifiedRequestIds, []);
+    await db.leavePolicy.update({ where: { firmId_key: { firmId: 'firm', key: 'ANNUAL' } }, data: { annualEntitlementDays: 10 } });
+    const failingAuditService = new LeaveService(prisma, { record: async () => { throw new Error('Simulated audit failure'); } } as any);
+    const beforeCount = await db.leaveRequest.count();
+    await assert.rejects(() => failingAuditService.request(staff, { ...input, startsOn: date(28), endsOn: date(28), idempotencyKey: randomUUID() }), /Simulated audit failure/);
+    assert.equal(await db.leaveRequest.count(), beforeCount, 'Audit failure rolls back the leave write');
   } finally {
     await db.$disconnect();
     if (created) {

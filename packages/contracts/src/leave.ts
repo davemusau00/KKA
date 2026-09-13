@@ -34,4 +34,4 @@ export type LeavePosition = {
   adjustmentDays: number; usedDays: number; pendingDays: number; availableDays: number;
   projectedAvailableDays: number; minimumBalance: number; unclassifiedRequestIds: string[];
 };
-export type LeavePreview = { days: number; chargeableDates: string[]; position: LeavePosition; sufficient: boolean };
+export type LeavePreview = { days: number; chargeableDates: string[]; position: LeavePosition; projectedAfterRequest: number; sufficient: boolean };

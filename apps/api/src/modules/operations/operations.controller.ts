@@ -331,6 +331,12 @@ export class OperationsController {
   @Get('leave/policies')
   employeeLeavePolicies(@CurrentUser() user: RequestUser) { return this.calculatedLeave.policies(user); }
 
+  @Get('leave/balance')
+  calculatedLeaveBalance(@CurrentUser() user: RequestUser, @Query() query: unknown) {
+    const input = z.object({ userId: z.string().optional(), policyKey: z.string().min(2).max(80), year: z.coerce.number().int().min(2000).max(2200) }).strict().parse(query);
+    return this.calculatedLeave.balance(user, input.userId ?? user.id, input.policyKey, input.year);
+  }
+
   @Post('leave/preview')
   previewLeave(@CurrentUser() user: RequestUser, @Body() body: unknown) { return this.calculatedLeave.preview(user, LeavePreviewSchema.parse(body)); }
 

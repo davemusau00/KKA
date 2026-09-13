@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { CalculatedLeaveRequest, CalculatedLeavePolicyInput, LeavePreview, LeavePreviewInput } from '@contracts';
+import type { CalculatedLeaveRequest, CalculatedLeavePolicyInput, LeavePreview, LeavePreviewInput, LeavePosition } from '@contracts';
 
 export type LeaveStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type PurchaseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
@@ -35,7 +35,7 @@ export interface EmployeeAppraisalDto {
 export interface CpdRecordDto { id: string; userId: string; title: string; provider?: string | null; occurredOn: string; hours: string | number; notes?: string | null; }
 export interface AdvocateCredentialDto { id: string; userId: string; admissionNumber: string; admissionDate?: string | null; practicingCertificateNo?: string | null; certificateExpiresAt?: string | null; status: string; notes?: string | null; }
 export interface LeavePolicyDto { id: string; key: string; name: string; annualEntitlementDays: string | number; carryoverLimitDays?: string | number | null; active: boolean; }
-export interface LeaveBalanceDto { id: string; userId: string; policyKey: string; year: number; openingDays: string | number; accruedDays: string | number; usedDays: string | number; adjustmentDays: string | number; notes?: string | null; }
+export interface LeaveBalanceDto { id: string; userId: string; policyKey: string; year: number; openingDays: string | number; adjustmentDays: string | number; notes?: string | null; }
 export interface HrRestrictedNoteDto { id: string; userId: string; category: string; body: string; visibleToUserIds: string[]; createdAt: string; }
 export interface StaffDocumentDto { id: string; userId: string; category: string; title: string; storageState: 'MANUAL'; externalReference?: string | null; expiresAt?: string | null; notes?: string | null; createdAt: string; }
 export interface EmployeeHrRecordsDto {
@@ -255,6 +255,7 @@ export const operationsApi = {
 
   leave: (scope: 'self' | 'all' = 'self') => apiClient.get<LeaveRequestDto[]>('/operations/leave', { params: { scope } }),
   employeeLeavePolicies: () => apiClient.get<LeavePolicyDto[]>('/operations/leave/policies'),
+  calculatedLeaveBalance: (userId: string, policyKey: string, year: number) => apiClient.get<LeavePosition>('/operations/leave/balance', { params: { userId, policyKey, year } }),
   previewLeave: (input: LeavePreviewInput) => apiClient.post<LeavePreview>('/operations/leave/preview', input),
   requestLeave: (input: CalculatedLeaveRequest) =>
     apiClient.post<LeaveRequestDto>('/operations/leave', input),

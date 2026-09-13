@@ -21,7 +21,7 @@ for (const width of [360, 768, 1440]) test(`leave preview and retry preserve cal
     if (path.endsWith('/leave/preview')) {
       const body = route.request().postDataJSON();
       expect(body.startsOn).toBe('2026-09-14'); expect(body.endsOn).toBe('2026-09-15');
-      return route.fulfill({ json: { days: 2, chargeableDates: ['2026-09-14', '2026-09-15'], sufficient: true, position: { openingDays: 0, accruedDays: 24, adjustmentDays: 0, usedDays: 3, pendingDays: 1, availableDays: 21, projectedAvailableDays: 20, asOf: '2026-09-13', unclassifiedRequestIds: [] } } });
+      return route.fulfill({ json: { days: 2, chargeableDates: ['2026-09-14', '2026-09-15'], sufficient: true, projectedAfterRequest: 18, position: { openingDays: 0, accruedDays: 24, adjustmentDays: 0, usedDays: 3, pendingDays: 1, availableDays: 21, projectedAvailableDays: 20, asOf: '2026-09-13', unclassifiedRequestIds: [] } } });
     }
     if (path.endsWith('/leave')) {
       submissions.push(route.request().postDataJSON());

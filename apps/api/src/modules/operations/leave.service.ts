@@ -77,12 +77,22 @@ export class LeaveService {
     return this.transaction(async tx => { await this.actor(tx, user); return this.calculate(tx, user.firmId, user.id, input); });
   }
 
+  async balance(user: RequestUser, targetUserId: string, policyKey: string, year: number) {
+    if (targetUserId !== user.id && !user.permissions.includes('hr.manage')) throw new ForbiddenException('HR permission required');
+    return this.transaction(async tx => {
+      await this.actor(tx, user);
+      const result = await this.position(tx, user.firmId, targetUserId, policyKey, year);
+      return result.position;
+    });
+  }
+
   private async calculate(tx: Prisma.TransactionClient, firmId: string, userId: string, input: LeavePreviewInput) {
     const { policy, profile, position } = await this.position(tx, firmId, userId, input.policyKey, Number(input.startsOn.slice(0, 4)));
     if (input.startsOn < profile.startDate.toISOString().slice(0, 10) || profile.offboardedAt || (profile.endDate && input.endsOn > profile.endDate.toISOString().slice(0, 10))) throw new BadRequestException('Leave dates must be within the employment period');
     const chargeableDates = leaveDates(input.startsOn, input.endsOn, policy);
     if (!chargeableDates.length) throw new BadRequestException('The selected dates contain no chargeable days under this policy');
-    return { days: chargeableDates.length, chargeableDates, position, sufficient: !position.unclassifiedRequestIds.length && position.projectedAvailableDays - chargeableDates.length >= position.minimumBalance };
+    const projectedAfterRequest = Math.round((position.projectedAvailableDays - chargeableDates.length) * 100) / 100;
+    return { days: chargeableDates.length, chargeableDates, position, projectedAfterRequest, sufficient: !position.unclassifiedRequestIds.length && projectedAfterRequest >= position.minimumBalance };
   }
 
   async request(user: RequestUser, raw: CalculatedLeaveRequest) {

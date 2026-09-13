@@ -61,3 +61,13 @@ test("leave balances require an active firm policy before they can be persisted"
   await assert.rejects(() => service.upsertLeaveBalance("firm-1", "hr-1", "employee-1", { policyKey: "ANNUAL", year: 2026 }), BadRequestException);
   assert.equal(writes, 0);
 });
+
+test('calculated accrual and usage cannot be overwritten through HR balance administration', async () => {
+  const service = new OperationsService({ client: {
+    user: { count: async () => 1 }, leavePolicy: { findFirst: async () => ({ key: 'ANNUAL' }) },
+    $transaction: async () => assert.fail('Calculated fields must be rejected before a write transaction'),
+  } } as any, {} as any, {} as any, {} as any);
+  for (const field of ['usedDays', 'accruedDays']) {
+    await assert.rejects(() => service.upsertLeaveBalance('firm', 'hr', 'staff', { policyKey: 'ANNUAL', year: 2026, notes: 'Manual overwrite attempt', [field]: 0 }), BadRequestException);
+  }
+});

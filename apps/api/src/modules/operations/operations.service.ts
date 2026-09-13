@@ -459,7 +459,9 @@ export class OperationsService {
       this.prisma.client.hrRestrictedNote.findMany({ where: { firmId, userId, OR: [{ authorUserId: viewer.id }, { visibleToUserIds: { has: viewer.id } }] }, orderBy: { createdAt: "desc" } }),
       this.prisma.client.staffDocument.findMany({ where: { firmId, userId }, orderBy: { createdAt: "desc" } })
     ]);
-    return { profile, lifecycle, appraisals, cpd, credentials, balances, notes, documents };
+    // Old accrual/usage columns are retained for historical migration only.
+    // Expose correction inputs here; live balances come from LeaveService.
+    return { profile, lifecycle, appraisals, cpd, credentials, balances: balances.map(({ accruedDays, usedDays, ...inputs }) => inputs), notes, documents };
   }
 
   listLeavePolicies(firmId: string) {
