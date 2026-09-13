@@ -122,8 +122,21 @@ export class DocumentsService {
       include: { document: true }
     });
     if (!version) throw new NotFoundException("Document version not found");
+    return version;
+  }
+
+  async openAuthorizedVersionForDownload(firmId: string, actorId: string, version: { id: string; documentId: string; storagePath: string; document: { matterId: string } }) {
     const stream = await this.storage.openDocument(version.storagePath);
-    return { version, stream };
+    await this.audit.record({
+      firmId,
+      actorUserId: actorId,
+      action: "document.downloaded",
+      entityType: "document_version",
+      entityId: version.id,
+      matterId: version.document.matterId,
+      metadata: { documentId: version.documentId }
+    });
+    return stream;
   }
 
   async submitForReview(firmId: string, actorId: string, documentId: string, reviewerId: string, comment?: string) {

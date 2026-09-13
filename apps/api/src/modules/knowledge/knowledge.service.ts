@@ -32,7 +32,7 @@ export class KnowledgeService {
 
   async create(firmId: string, actorId: string, input: any) {
     if (input.documentId) {
-      const document = await this.prisma.client.document.findFirst({ where: { id: input.documentId, firmId } });
+      const document = await this.prisma.client.document.findFirst({ where: { id: input.documentId, matter: { firmId } } });
       if (!document) throw new BadRequestException("Linked document is not available in this firm");
     }
 
@@ -66,7 +66,7 @@ export class KnowledgeService {
     if (existing.status === "ARCHIVED") throw new BadRequestException("Archived knowledge items must be restored before editing");
 
     if (input.documentId) {
-      const document = await this.prisma.client.document.findFirst({ where: { id: input.documentId, firmId } });
+      const document = await this.prisma.client.document.findFirst({ where: { id: input.documentId, matter: { firmId } } });
       if (!document) throw new BadRequestException("Linked document is not available in this firm");
     }
 

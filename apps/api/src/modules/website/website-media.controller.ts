@@ -3,8 +3,10 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { CurrentUser, RequirePermissions } from '../../platform/auth/decorators';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { WebsiteMediaService } from './website-media.service';
+import { FeatureFlag } from '../../platform/features/feature-flags.decorator';
 
 @Controller('website/admin/media')
+@FeatureFlag('module.website')
 export class WebsiteMediaController {
   constructor(private readonly media: WebsiteMediaService) {}
 

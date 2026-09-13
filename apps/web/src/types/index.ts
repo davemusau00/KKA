@@ -35,61 +35,11 @@ export interface UserProfile {
   barNumber?: string;
 }
 
-export type PermissionKey =
-  // Module Access Permissions
-  | 'module.dashboard'
-  | 'module.matters'
-  | 'module.clients'
-  | 'module.tasks'
-  | 'module.calendar'
-  | 'module.documents'
-  | 'module.comms'
-  | 'module.finance'
-  | 'module.reports'
-  | 'module.admin'
-  | 'module.integrations'
-  | 'module.settings'
-  // Matter Permissions
-  | 'matter.view'
-  | 'matter.create'
-  | 'matter.edit'
-  | 'matter.delete'
-  | 'matter.stage_advance'
-  | 'matter.settlement_approve'
-  // Task Permissions
-  | 'task.view'
-  | 'task.create'
-  | 'task.edit'
-  | 'task.complete'
-  | 'task.delete'
-  // Document Permissions
-  | 'document.view'
-  | 'document.upload'
-  | 'document.review_submit'
-  | 'document.approve'
-  | 'document.sign'
-  | 'document.file'
-  | 'document.revert'
-  | 'document.delete'
-  // Finance Permissions
-  | 'finance.view'
-  | 'finance.expense_create'
-  | 'finance.expense_approve'
-  | 'finance.expense_disburse'
-  | 'finance.trust_ledger'
-  | 'finance.billing_manage'
-  // Administration Permissions
-  | 'admin.users_manage'
-  | 'admin.roles_manage'
-  | 'admin.workflows_manage'
-  | 'admin.branches_manage'
-  | 'admin.settings_manage'
-  | 'admin.audit_view'
-  // Legacy Aliases
+import type { PermissionKey as SharedPermissionKey } from '@contracts';
+
+export type PermissionKey = SharedPermissionKey
+  // Local demo aliases retained only for compatibility with prototype AppContext state.
   | 'matter.read'
-  | 'matter.update'
-  | 'matter.assign'
-  | 'matter.close'
   | 'document.read'
   | 'finance.expense.create'
   | 'finance.expense.approve'

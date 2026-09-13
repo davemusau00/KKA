@@ -7,6 +7,7 @@ import { FeatureFlagsGuard } from "../src/platform/features/feature-flags.guard"
 import { FEATURE_FLAG_KEY } from "../src/platform/features/feature-flags.decorator";
 import { FinanceController } from "../src/modules/finance/finance.controller";
 import { PortalController } from "../src/modules/portal/portal.controller";
+import { WebsiteAdminController } from "../src/modules/website/website-admin.controller";
 
 test("server feature flags default to enabled but an explicit disabled flag blocks the route", async () => {
   const disabled = new FeatureFlagsService({ client: { featureFlag: { findUnique: async () => ({ enabled: false }) } } } as any);
@@ -22,4 +23,5 @@ test("flag guard reads controller metadata before a flagged API handler executes
   assert.equal(checked, "module.portal");
   assert.equal(Reflect.getMetadata(FEATURE_FLAG_KEY, FinanceController), "module.finance");
   assert.equal(Reflect.getMetadata(FEATURE_FLAG_KEY, PortalController), "module.portal");
+  assert.equal(Reflect.getMetadata(FEATURE_FLAG_KEY, WebsiteAdminController), "module.website");
 });

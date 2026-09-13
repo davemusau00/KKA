@@ -18,3 +18,5 @@ export const permissionKeys = [
   "reports.firm.read", "reports.branch.read", "reports.finance.read", "reports.workflow.read",
   "operations.manage", "hr.manage", "procurement.manage", "assets.manage", "knowledge.manage", "integrations.manage"
 ] as const;
+
+export type PermissionKey = (typeof permissionKeys)[number];

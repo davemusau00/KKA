@@ -2,9 +2,11 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/
 import { CurrentUser, RequirePermissions } from '../../platform/auth/decorators';
 import type { RequestUser } from '../../platform/auth/auth.types';
 import { WebsiteAdminService } from './website-admin.service';
+import { FeatureFlag } from '../../platform/features/feature-flags.decorator';
 
 @Controller('website/admin')
 @RequirePermissions('website.view')
+@FeatureFlag('module.website')
 export class WebsiteAdminController {
   constructor(private readonly cms:WebsiteAdminService) {}
 

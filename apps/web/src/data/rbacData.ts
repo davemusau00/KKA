@@ -14,7 +14,7 @@ export interface RoleDefinition {
 export interface PermissionDefinition {
   key: PermissionKey;
   label: string;
-  category: 'Modules' | 'Matters' | 'Tasks' | 'Documents' | 'Finance' | 'Administration';
+  category: 'Modules' | 'Matters' | 'Tasks' | 'Documents' | 'Court' | 'Approvals' | 'Finance' | 'Operations' | 'Knowledge' | 'Administration';
   description: string;
 }
 
@@ -27,6 +27,10 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { key: 'module.calendar', label: 'Court Diary & Calendar', category: 'Modules', description: 'Access court appearances, mentions, and appointments' },
   { key: 'module.documents', label: 'Document Vault', category: 'Modules', description: 'Browse, preview, and manage legal document repository' },
   { key: 'module.comms', label: 'Communications & Chat', category: 'Modules', description: 'Internal matter channels, client messaging, and alerts' },
+  { key: 'module.court', label: 'Court Operations', category: 'Modules', description: 'Access proceedings, filing evidence, service, and court outcomes' },
+  { key: 'module.approvals', label: 'Approvals', category: 'Modules', description: 'Access governed approval queues and decisions' },
+  { key: 'module.operations', label: 'Operations & HR', category: 'Modules', description: 'Access internal projects, meetings, people, procurement, and assets' },
+  { key: 'module.knowledge', label: 'Knowledge', category: 'Modules', description: 'Access firm knowledge records and controlled publication' },
   { key: 'module.finance', label: 'Finance & Accounts', category: 'Modules', description: 'Billing, fee notes, client trust accounting, and expenses' },
   { key: 'module.reports', label: 'Analytical Reports', category: 'Modules', description: 'Firm throughput, profitability, and compliance reports' },
   { key: 'module.admin', label: 'Firm Administration', category: 'Modules', description: 'Staff directory, branches, and audit log inspection' },
@@ -58,6 +62,18 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { key: 'document.revert', label: 'Revert Versions', category: 'Documents', description: 'Rollback document to any previous historical version' },
   { key: 'document.delete', label: 'Delete Documents', category: 'Documents', description: 'Remove documents from the digital vault' },
 
+  // Court
+  { key: 'court.view', label: 'View Court Operations', category: 'Court', description: 'View proceedings, hearing dates, and court calendars' },
+  { key: 'court.proceeding_manage', label: 'Manage Proceedings', category: 'Court', description: 'Create and update court proceedings' },
+  { key: 'court.filing_manage', label: 'Manage Filing Evidence', category: 'Court', description: 'Record filing attempts and evidence-gated filing transitions' },
+  { key: 'court.service_manage', label: 'Manage Service Evidence', category: 'Court', description: 'Record service attempts, affidavits, and service transitions' },
+  { key: 'court.outcome_record', label: 'Record Court Outcomes', category: 'Court', description: 'Record authorized court outcomes and resulting workflow effects' },
+
+  // Approvals
+  { key: 'approval.view', label: 'View Approvals', category: 'Approvals', description: 'Inspect approval requests available to the current role' },
+  { key: 'approval.decide', label: 'Decide Approvals', category: 'Approvals', description: 'Approve or reject assigned governed requests' },
+  { key: 'approval.delegate', label: 'Delegate Approvals', category: 'Approvals', description: 'Delegate approval responsibility where workflow permits' },
+
   // Finance
   { key: 'finance.view', label: 'View Financials', category: 'Finance', description: 'Inspect billing, invoices, and expense claims' },
   { key: 'finance.expense_create', label: 'Submit Expense Request', category: 'Finance', description: 'File disbursement reimbursement and court fee claims' },
@@ -65,6 +81,15 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { key: 'finance.expense_disburse', label: 'Disburse Funds', category: 'Finance', description: 'Release payments from Petty Cash or Office Bank Accounts' },
   { key: 'finance.trust_ledger', label: 'Client Trust Accounting', category: 'Finance', description: 'Manage protected client trust funds under LSK rules' },
   { key: 'finance.billing_manage', label: 'Manage Billing & Rates', category: 'Finance', description: 'Configure advocate hourly rates and generate fee notes' },
+
+  // Operations, HR, procurement, and assets
+  { key: 'operations.manage', label: 'Manage Internal Operations', category: 'Operations', description: 'Create and govern internal projects, meetings, and operational work' },
+  { key: 'hr.manage', label: 'Manage People & HR', category: 'Operations', description: 'Manage employee records, leave, and controlled HR workflows' },
+  { key: 'procurement.manage', label: 'Manage Procurement', category: 'Operations', description: 'Manage vendors, requisitions, purchase orders, and receipts' },
+  { key: 'assets.manage', label: 'Manage Assets', category: 'Operations', description: 'Manage asset custody, condition, and operational lifecycle' },
+
+  // Knowledge
+  { key: 'knowledge.manage', label: 'Manage Knowledge', category: 'Knowledge', description: 'Create, review, publish, archive, and maintain firm knowledge records' },
 
   // Admin
   { key: 'admin.users_manage', label: 'Manage Staff Users', category: 'Administration', description: 'Create, edit, and deactivate law firm staff members' },

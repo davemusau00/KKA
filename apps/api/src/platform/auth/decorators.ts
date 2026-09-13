@@ -1,11 +1,12 @@
 import { createParamDecorator, ExecutionContext, SetMetadata } from "@nestjs/common";
+import type { PermissionKey } from "@kka/contracts";
 import type { RequestUser } from "./auth.types";
 
 export const PUBLIC_ROUTE = "kka:public";
 export const REQUIRED_PERMISSIONS = "kka:permissions";
 
 export const Public = () => SetMetadata(PUBLIC_ROUTE, true);
-export const RequirePermissions = (...permissions: string[]) =>
+export const RequirePermissions = (...permissions: PermissionKey[]) =>
   SetMetadata(REQUIRED_PERMISSIONS, permissions);
 
 export const CurrentUser = createParamDecorator(

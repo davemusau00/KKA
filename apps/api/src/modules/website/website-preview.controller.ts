@@ -7,11 +7,12 @@ import { RedisService } from '../../platform/redis/redis.service';
 import { StorageService } from '../../platform/storage/storage.service';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { SiteContentService } from './site-content.service';
+import { FeatureFlag } from '../../platform/features/feature-flags.decorator';
 const key=(token:string)=>'website:preview:'+createHash('sha256').update(token).digest('hex');
 @Controller('website')
 export class WebsitePreviewController {
  constructor(private readonly site:SiteContentService,private readonly redis:RedisService,private readonly storage:StorageService,private readonly prisma:PrismaService){}
- @Post('admin/preview') @RequirePermissions('website.edit')
+ @Post('admin/preview') @RequirePermissions('website.edit') @FeatureFlag('module.website')
  async create(@CurrentUser() user:RequestUser){
   const snapshot=await this.prisma.client.$transaction(tx=>this.site.capture(user.firmId,tx,true),{isolationLevel:'RepeatableRead',timeout:30000});
   const token=randomBytes(32).toString('base64url');

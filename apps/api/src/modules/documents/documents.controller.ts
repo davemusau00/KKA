@@ -63,8 +63,9 @@ export class DocumentsController {
     @Param("versionId") versionId: string,
     @Res({ passthrough: true }) reply: FastifyReply
   ) {
-    const { version, stream } = await this.documents.getVersionForDownload(user.firmId, versionId);
+    const version = await this.documents.getVersionForDownload(user.firmId, versionId);
     await this.access.document(user, version.documentId);
+    const stream = await this.documents.openAuthorizedVersionForDownload(user.firmId, user.id, version);
     reply.header("Content-Type", version.mimeType);
     reply.header("Cache-Control", "no-store");
     reply.header("Content-Disposition", `attachment; filename="${version.originalFilename.replace(/"/g, "")}"`);
