@@ -43,6 +43,24 @@ export class OrganizationController {
     return this.org.listBranches(user.firmId);
   }
 
+  @Get("departments")
+  @RequirePermissions("hr.manage")
+  departments(@CurrentUser() user: RequestUser) { return this.org.listDepartments(user.firmId); }
+
+  @Post("departments")
+  @RequirePermissions("hr.manage")
+  department(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const input = z.object({ name: z.string().min(2).max(200), code: z.string().min(2).max(30), branchId: z.string().optional(), managerId: z.string().optional(), costCentre: z.string().max(100).optional() }).parse(body);
+    return this.org.createDepartment(user.firmId, user.id, input);
+  }
+
+  @Patch("departments/:id")
+  @RequirePermissions("hr.manage")
+  updateDepartment(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ name: z.string().min(2).max(200).optional(), managerId: z.string().nullable().optional(), costCentre: z.string().max(100).nullable().optional(), active: z.boolean().optional() }).parse(body);
+    return this.org.updateDepartment(user.firmId, user.id, id, input);
+  }
+
   @Post("branches")
   @RequirePermissions("admin.branches_manage")
   createBranch(@CurrentUser() user: RequestUser, @Body() body: unknown) {

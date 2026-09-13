@@ -89,6 +89,33 @@ export class OrganizationService {
     });
   }
 
+  listDepartments(firmId: string) {
+    return this.prisma.client.department.findMany({ where: { firmId }, orderBy: [{ active: "desc" }, { name: "asc" }] });
+  }
+
+  private async assertDepartmentManager(firmId: string, managerId?: string | null) {
+    if (!managerId) return;
+    const manager = await this.prisma.client.user.findFirst({ where: { id: managerId, firmId, status: { in: ["ACTIVE", "INVITED"] } }, select: { id: true } });
+    if (!manager) throw new NotFoundException("Department manager is not active in this firm");
+  }
+
+  async createDepartment(firmId: string, actorId: string, data: { name: string; code: string; branchId?: string; managerId?: string; costCentre?: string }) {
+    await this.assertDepartmentManager(firmId, data.managerId);
+    if (data.branchId && !await this.prisma.client.branch.findFirst({ where: { id: data.branchId, firmId, active: true }, select: { id: true } })) throw new NotFoundException("Active branch not found");
+    const department = await this.prisma.client.department.create({ data: { firmId, name: data.name, code: data.code.toUpperCase(), branchId: data.branchId, managerId: data.managerId, costCentre: data.costCentre } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "department.created", entityType: "department", entityId: department.id, metadata: { code: department.code, managerId: department.managerId } });
+    return department;
+  }
+
+  async updateDepartment(firmId: string, actorId: string, id: string, data: { name?: string; managerId?: string | null; costCentre?: string | null; active?: boolean }) {
+    const existing = await this.prisma.client.department.findFirst({ where: { id, firmId } });
+    if (!existing) throw new NotFoundException("Department not found");
+    await this.assertDepartmentManager(firmId, data.managerId);
+    const department = await this.prisma.client.department.update({ where: { id }, data });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "department.updated", entityType: "department", entityId: id, metadata: { changedKeys: Object.keys(data) } });
+    return department;
+  }
+
   async createBranch(firmId: string, actorId: string, data: {
     name: string; code: string; address?: string; postalAddress?: string; phone?: string; email?: string;
     defaultCourtStation?: string; numberingPrefix?: string;
