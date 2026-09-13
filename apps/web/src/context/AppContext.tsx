@@ -133,6 +133,7 @@ import { evaluateTaskDependencies, canUpdateTaskStatus } from '../utils/taskDepe
 import { generateSequentialMatterReference } from '../utils/matterReference';
 import { directoryApi, organizationApi, usersApi, notificationsApi, healthApi, authApi, settingsApi, clientsApi, tasksApi, intakeApi, calendarApi, deadlinesApi } from '../lib/api';
 import { runtimeConfig } from '../config/runtime';
+import type { TourTrackKey } from '../components/onboarding/GuidedTourEngine';
 
 const EMPTY_USER: UserProfile = {
   id: '', fullName: '', email: '', phone: '', jobTitle: '', role: 'advocate', roles: [],
@@ -206,6 +207,10 @@ interface AppContextType {
   // Theme support
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+  // Guided Tour
+  activeTourTrack: TourTrackKey | null;
+  startTour: (track: TourTrackKey) => void;
+  dismissTour: () => void;
   
   // Personas & Branch Context
   currentUser: UserProfile;
@@ -491,6 +496,9 @@ const demoStorage = {
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Navigation
   const [activeWorkspace, setActiveWorkspace] = useState<string>('dashboard');
+  const [activeTourTrack, setActiveTourTrack] = useState<TourTrackKey | null>(null);
+  const startTour = useCallback((track: TourTrackKey) => { setActiveTourTrack(track); }, []);
+  const dismissTour = useCallback(() => { setActiveTourTrack(null); }, []);
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [selectedMatterTab, setSelectedMatterTab] = useState<string>('overview');
 
@@ -4009,6 +4017,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       value={{
         activeWorkspace,
         setActiveWorkspace,
+        activeTourTrack,
+        startTour,
+        dismissTour,
         selectedMatterId,
         setSelectedMatterId,
         selectedMatterTab,

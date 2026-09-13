@@ -40,6 +40,7 @@ import { MobileQuickActionsMenu } from '../common/MobileQuickActionsMenu';
 import { ConnectionStatusBadge } from '../common/ConnectionStatusBadge';
 import { FirmLogo } from '../common/FirmLogo';
 import { LoginModal } from '../auth/LoginModal';
+import { GuidedTourEngine } from '../onboarding/GuidedTourEngine';
 import { BranchId } from '../../types';
 import { runtimeConfig } from '../../config/runtime';
 
@@ -81,6 +82,8 @@ export const AppShell: React.FC<Props> = ({ children }) => {
     effectivePermissions,
     theme,
     toggleTheme,
+    activeTourTrack,
+    dismissTour,
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -195,7 +198,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
         {/* Center: Branch Context Selector & Search Bar */}
         <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl justify-end md:justify-center min-w-0">
           {/* Branch Filter Selector */}
-          <div className="relative hidden lg:flex items-center">
+          <div className="relative hidden lg:flex items-center" data-tour="branch-context">
             <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 absolute left-2.5 pointer-events-none" />
             <select
               value={currentBranchFilter}
@@ -211,6 +214,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
 
           {/* Global Search Bar (full on sm+, icon button on mobile) */}
           <button
+            data-tour="search-bar"
             onClick={() => setIsSearchOpen(true)}
             className="hidden sm:flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all flex-1 max-w-xs shadow-inner min-w-0"
             title="Search matters, court numbers, clients (⌘K)"
@@ -238,6 +242,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
 
           {/* Quick Create + Button */}
           <button
+            data-tour="quick-create"
             onClick={() => setIsQuickCreateOpen(true)}
             className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-semibold px-2 sm:px-3 py-1.5 rounded-lg shadow-md shadow-amber-950/40 transition-all active:scale-95 shrink-0"
             title="Quick Create Record"
@@ -284,6 +289,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
           {/* Notification Bell with Dropdown */}
           <div className="relative z-50">
             <button
+              data-tour="notifications-bell"
               onClick={() => setIsNotifOpen(!isNotifOpen)}
               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition relative shrink-0"
               aria-label="Notifications"
@@ -473,6 +479,7 @@ export const AppShell: React.FC<Props> = ({ children }) => {
               return (
                 <button
                   key={item.id}
+                  data-tour={`nav-${item.id}`}
                   onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
                     isActive
@@ -654,6 +661,13 @@ export const AppShell: React.FC<Props> = ({ children }) => {
       <OfflineSyncCenterModal />
       <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
       <MobileQuickActionsMenu />
+      {activeTourTrack && (
+        <GuidedTourEngine
+          track={activeTourTrack}
+          onOpenWorkspace={(ws) => handleNavClick(ws)}
+          onClose={dismissTour}
+        />
+      )}
     </div>
   );
 };
