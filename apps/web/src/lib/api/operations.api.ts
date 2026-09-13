@@ -91,6 +91,49 @@ export interface VendorDocumentDto { id: string; vendorId: string; category: str
 export interface VendorQuoteDto { id: string; requisitionId: string; vendorId: string; reference: string; amount: string | number; currency: string; validUntil?: string | null; notes?: string | null; }
 export interface AssetMaintenanceDto { id: string; assetId: string; vendorId?: string | null; type: string; description: string; cost?: string | number | null; status: string; externalReference?: string | null; notes?: string | null; }
 
+export interface ProjectFinancialsDto {
+  projectId: string;
+  projectName: string;
+  budget: number;
+  committed: number;
+  actual: number;
+  manualUnverified: number;
+  forecast: number;
+  remaining: number;
+  healthStatus: 'on_track' | 'at_risk' | 'over_budget';
+  utilizationPercent: number;
+  breakdown: {
+    approvedExpenses: any[];
+    paidExpenses: any[];
+    approvedRequisitions: any[];
+    approvedOrders: any[];
+    manualSpend: any[];
+    financePostedSpend: any[];
+  };
+}
+
+export interface MeetingSeriesDto {
+  id: string;
+  firmId: string;
+  title: string;
+  description?: string | null;
+  recurrenceRule: string;
+  startsAt: string;
+  durationMinutes: number;
+  location?: string | null;
+  projectId?: string | null;
+  matterId?: string | null;
+  organizerId: string;
+  agendaTemplate?: unknown;
+  defaultAttendeeIds: string[];
+  rollingHorizonDays: number;
+  lastGeneratedUntil?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  meetings?: MeetingDto[];
+}
+
 export interface PurchaseRequisitionDto {
   id: string;
   firmId: string;
@@ -308,6 +351,34 @@ export const operationsApi = {
   completeAssetMaintenance: (id: string, notes?: string) => apiClient.post<AssetMaintenanceDto>(`/operations/asset-maintenance/${id}/complete`, { notes }),
 
   projects: () => apiClient.get<InternalProjectDto[]>('/operations/projects'),
+projectFinancials: (id: string) => apiClient.get<ProjectFinancialsDto>(`/operations/projects/${id}/financials`),
+  meetingSeries: (params?: { projectId?: string; matterId?: string }) =>
+    apiClient.get<MeetingSeriesDto[]>('/operations/meeting-series', { params }),
+  createMeetingSeries: (input: {
+    title: string;
+    description?: string;
+    recurrenceRule: string;
+    startsAt: string;
+    durationMinutes?: number;
+    location?: string;
+    projectId?: string;
+    matterId?: string;
+    agendaTemplate?: unknown;
+    defaultAttendeeIds?: string[];
+    rollingHorizonDays?: number;
+  }) => apiClient.post<MeetingSeriesDto>('/operations/meeting-series', input),
+  getMeetingSeries: (id: string) => apiClient.get<MeetingSeriesDto>(`/operations/meeting-series/${id}`),
+  updateMeetingSeries: (id: string, input: {
+    scope: 'this' | 'future' | 'all';
+    meetingId?: string;
+    updates: {
+      title?: string;
+      description?: string;
+      location?: string | null;
+      status?: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    };
+  }) => apiClient.patch<MeetingSeriesDto>(`/operations/meeting-series/${id}`, input),
+  advanceMeetingSeries: (id: string) => apiClient.post<{ seriesProcessed: number; newOccurrencesCreated: number }>(`/operations/meeting-series/${id}/advance`),
   createProject: (input: {
     branchId?: string;
     name: string;

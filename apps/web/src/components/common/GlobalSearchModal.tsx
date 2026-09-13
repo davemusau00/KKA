@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, X, Briefcase, User, Calendar, CheckSquare, FileText, ArrowRight, CornerDownLeft, Loader2, Sparkles, Contact } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { searchApi, SearchResult } from '../../lib/api/search.api';
+import { navigateToResource } from '../../lib/routing/workspaceRoutes';
 
 export const GlobalSearchModal: React.FC = () => {
   const [mounted, setMounted] = useState(false);
