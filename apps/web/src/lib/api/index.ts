@@ -16,3 +16,4 @@ export * from './calendar.api';
 export * from './deadlines.api';
 export * from './operations.api';
 export * from './knowledge.api';
+export * from './communications.api';

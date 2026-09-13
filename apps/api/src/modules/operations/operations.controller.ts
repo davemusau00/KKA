@@ -13,6 +13,8 @@ const MeetingUpdateSchema = z.object({
   agenda: z.unknown().optional(),
   minutes: z.unknown().optional(),
   status: z.enum(["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+  recurrenceRule: z.string().max(500).nullable().optional(),
+  recurrenceUntil: z.string().datetime().nullable().optional(),
   participantUserIds: z.array(z.string()).optional()
 });
 
@@ -21,9 +23,78 @@ const EmployeeProfileSchema = z.object({
   employmentType: z.string().min(2).max(80),
   startDate: z.string().datetime(),
   endDate: z.string().datetime().nullable().optional(),
+  employmentStatus: z.enum(["ACTIVE", "ON_LEAVE", "SUSPENDED", "OFFBOARDED"]).optional(),
+  probationEndsAt: z.string().datetime().nullable().optional(),
   managerUserId: z.string().nullable().optional(),
   leavePolicyKey: z.string().max(120).nullable().optional(),
   cpdsRequiredAnnual: z.coerce.number().nonnegative().nullable().optional(),
+  notes: z.string().max(5000).nullable().optional()
+});
+
+const LifecycleItemSchema = z.object({
+  lifecycle: z.enum(["ONBOARDING", "OFFBOARDING"]),
+  key: z.string().min(2).max(120),
+  title: z.string().min(2).max(500),
+  dueAt: z.string().datetime().nullable().optional(),
+  notes: z.string().max(5000).nullable().optional()
+});
+
+const AppraisalSchema = z.object({
+  reviewerUserId: z.string().optional(),
+  periodStartsAt: z.string().datetime(),
+  periodEndsAt: z.string().datetime(),
+  status: z.enum(["DRAFT", "FINALIZED", "ACKNOWLEDGED"]).optional(),
+  rating: z.coerce.number().min(0).max(5).nullable().optional(),
+  summary: z.string().max(10000).nullable().optional(),
+  developmentPlan: z.string().max(10000).nullable().optional()
+});
+
+const CpdSchema = z.object({
+  title: z.string().min(2).max(500),
+  provider: z.string().max(500).nullable().optional(),
+  occurredOn: z.string().datetime(),
+  hours: z.coerce.number().positive().max(1000),
+  notes: z.string().max(5000).nullable().optional()
+});
+
+const CredentialSchema = z.object({
+  admissionNumber: z.string().min(2).max(120),
+  admissionDate: z.string().datetime().nullable().optional(),
+  practicingCertificateNo: z.string().max(120).nullable().optional(),
+  certificateExpiresAt: z.string().datetime().nullable().optional(),
+  status: z.enum(["ACTIVE", "EXPIRED", "SUSPENDED", "RETIRED"]).optional(),
+  notes: z.string().max(5000).nullable().optional()
+});
+
+const LeavePolicySchema = z.object({
+  key: z.string().min(2).max(120),
+  name: z.string().min(2).max(300),
+  annualEntitlementDays: z.coerce.number().nonnegative().max(366),
+  carryoverLimitDays: z.coerce.number().nonnegative().max(366).nullable().optional(),
+  active: z.boolean().optional()
+});
+
+const LeaveBalanceSchema = z.object({
+  policyKey: z.string().min(2).max(120),
+  year: z.coerce.number().int().min(2000).max(2200),
+  openingDays: z.coerce.number().min(-366).max(366).optional(),
+  accruedDays: z.coerce.number().min(-366).max(366).optional(),
+  usedDays: z.coerce.number().min(-366).max(366).optional(),
+  adjustmentDays: z.coerce.number().min(-366).max(366).optional(),
+  notes: z.string().max(5000).nullable().optional()
+});
+
+const HrNoteSchema = z.object({
+  category: z.string().min(2).max(120),
+  body: z.string().min(2).max(10000),
+  visibleToUserIds: z.array(z.string()).max(100).optional()
+});
+
+const StaffDocumentSchema = z.object({
+  category: z.string().min(2).max(120),
+  title: z.string().min(2).max(500),
+  externalReference: z.string().max(1000).nullable().optional(),
+  expiresAt: z.string().datetime().nullable().optional(),
   notes: z.string().max(5000).nullable().optional()
 });
 
@@ -38,7 +109,7 @@ export class OperationsController {
   @Get("projects")
   @RequirePermissions("module.operations")
   projects(@CurrentUser() user: RequestUser) {
-    return this.ops.listProjects(user.firmId);
+    return this.ops.listProjects(user);
   }
 
   @Post("projects")
@@ -57,6 +128,40 @@ export class OperationsController {
     return this.ops.createProject(user.firmId, user.id, input);
   }
 
+  @Post("projects/:id/matters")
+  @RequirePermissions("operations.manage")
+  linkProjectMatter(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ matterId: z.string() }).parse(body);
+    return this.ops.linkProjectMatter(user, user.id, id, input.matterId);
+  }
+
+  @Post("projects/:id/documents")
+  @RequirePermissions("operations.manage")
+  linkProjectDocument(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ documentId: z.string() }).parse(body);
+    return this.ops.linkProjectDocument(user, user.id, id, input.documentId);
+  }
+
+  @Post("projects/:id/milestones")
+  @RequirePermissions("operations.manage")
+  milestone(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ title: z.string().min(2).max(500), description: z.string().max(5000).optional(), dueAt: z.string().datetime().optional(), ownerUserId: z.string().optional() }).parse(body);
+    return this.ops.addProjectMilestone(user.firmId, user.id, id, input);
+  }
+
+  @Post("project-milestones/:id/complete")
+  @RequirePermissions("operations.manage")
+  completeMilestone(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.ops.completeProjectMilestone(user.firmId, user.id, id);
+  }
+
+  @Post("projects/:id/spend")
+  @RequirePermissions("operations.manage")
+  projectSpend(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ description: z.string().min(2).max(1000), amount: z.coerce.number().positive(), occurredAt: z.string().datetime(), financeReference: z.string().max(300).optional() }).parse(body);
+    return this.ops.recordProjectSpend(user.firmId, user.id, id, input);
+  }
+
   @Get("meetings")
   @RequirePermissions("module.operations")
   meetings(
@@ -72,13 +177,21 @@ export class OperationsController {
   @Post("meetings")
   @RequirePermissions("operations.manage")
   meeting(@CurrentUser() user: RequestUser, @Body() body: unknown) {
-    return this.ops.createMeeting(user.firmId, user.id, CreateMeetingSchema.parse(body));
+    const input = CreateMeetingSchema.extend({ recurrenceRule: z.string().max(500).optional(), recurrenceUntil: z.string().datetime().optional() }).parse(body);
+    return this.ops.createMeeting(user.firmId, user.id, input);
   }
 
   @Patch("meetings/:id")
   @RequirePermissions("operations.manage")
   updateMeeting(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     return this.ops.updateMeeting(user.firmId, user.id, id, MeetingUpdateSchema.parse(body));
+  }
+
+  @Post("meetings/:id/attendance/:userId")
+  @RequirePermissions("operations.manage")
+  attendance(@CurrentUser() user: RequestUser, @Param("id") id: string, @Param("userId") userId: string, @Body() body: unknown) {
+    const input = z.object({ attendanceStatus: z.enum(["PRESENT", "ABSENT", "APOLOGY", "LATE"]) }).parse(body);
+    return this.ops.setMeetingAttendance(user.firmId, user.id, id, userId, input.attendanceStatus);
   }
 
   @Post("meetings/:id/decisions")
@@ -103,6 +216,12 @@ export class OperationsController {
     return this.ops.addMeetingAction(user.firmId, user.id, id, input);
   }
 
+  @Post("meeting-actions/:id/complete")
+  @RequirePermissions("operations.manage")
+  completeMeetingAction(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.ops.completeMeetingAction(user.firmId, user.id, id);
+  }
+
   // ---------------------------------------------------------------------------
   // People operations and leave
   // ---------------------------------------------------------------------------
@@ -121,6 +240,80 @@ export class OperationsController {
     @Body() body: unknown
   ) {
     return this.ops.upsertEmployeeProfile(user.firmId, user.id, userId, EmployeeProfileSchema.parse(body));
+  }
+
+  @Get("hr/employees/:userId/records")
+  @RequirePermissions("hr.manage")
+  employeeRecords(@CurrentUser() user: RequestUser, @Param("userId") userId: string) {
+    return this.ops.hrRecords(user.firmId, userId);
+  }
+
+  @Post("hr/employees/:userId/lifecycle")
+  @RequirePermissions("hr.manage")
+  lifecycleItem(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.upsertLifecycleItem(user.firmId, user.id, userId, LifecycleItemSchema.parse(body));
+  }
+
+  @Post("hr/lifecycle/:id/completion")
+  @RequirePermissions("hr.manage")
+  lifecycleCompletion(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ completed: z.boolean() }).parse(body);
+    return this.ops.completeLifecycleItem(user.firmId, user.id, id, input.completed);
+  }
+
+  @Post("hr/employees/:userId/appraisals")
+  @RequirePermissions("hr.manage")
+  appraisal(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.recordAppraisal(user.firmId, user.id, userId, AppraisalSchema.parse(body));
+  }
+
+  @Post("hr/employees/:userId/cpd")
+  @RequirePermissions("hr.manage")
+  cpd(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.recordCpd(user.firmId, user.id, userId, CpdSchema.parse(body));
+  }
+
+  @Post("hr/employees/:userId/advocate-credentials")
+  @RequirePermissions("hr.manage")
+  advocateCredential(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.upsertAdvocateCredential(user.firmId, user.id, userId, CredentialSchema.parse(body));
+  }
+
+  @Get("hr/leave-policies")
+  @RequirePermissions("hr.manage")
+  leavePolicies(@CurrentUser() user: RequestUser) {
+    return this.ops.listLeavePolicies(user.firmId);
+  }
+
+  @Post("hr/leave-policies")
+  @RequirePermissions("hr.manage")
+  leavePolicy(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.ops.upsertLeavePolicy(user.firmId, user.id, LeavePolicySchema.parse(body));
+  }
+
+  @Post("hr/employees/:userId/leave-balances")
+  @RequirePermissions("hr.manage")
+  leaveBalance(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.upsertLeaveBalance(user.firmId, user.id, userId, LeaveBalanceSchema.parse(body));
+  }
+
+  @Post("hr/employees/:userId/restricted-notes")
+  @RequirePermissions("hr.manage")
+  hrNote(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.addHrNote(user.firmId, user.id, userId, HrNoteSchema.parse(body));
+  }
+
+  @Post("hr/employees/:userId/staff-documents")
+  @RequirePermissions("hr.manage")
+  staffDocument(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    return this.ops.recordStaffDocument(user.firmId, user.id, userId, StaffDocumentSchema.parse(body));
+  }
+
+  @Post("hr/employees/:userId/offboard")
+  @RequirePermissions("hr.manage")
+  offboardEmployee(@CurrentUser() user: RequestUser, @Param("userId") userId: string, @Body() body: unknown) {
+    const input = z.object({ offboardedAt: z.string().datetime(), reason: z.string().max(5000).optional() }).parse(body);
+    return this.ops.offboardEmployee(user.firmId, user.id, userId, input);
   }
 
   @Get("leave")
@@ -182,6 +375,24 @@ export class OperationsController {
     return this.ops.createVendor(user.firmId, user.id, input);
   }
 
+  @Post("vendors/:id/documents")
+  @RequirePermissions("procurement.manage")
+  vendorDocument(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ category: z.string().min(2).max(120), title: z.string().min(2).max(500), externalReference: z.string().max(1000).optional(), expiresAt: z.string().datetime().optional() }).parse(body);
+    return this.ops.recordVendorDocument(user.firmId, user.id, id, input);
+  }
+
+  @Get("purchase-categories")
+  @RequirePermissions("module.operations")
+  categories(@CurrentUser() user: RequestUser) { return this.ops.purchaseCategories(user.firmId); }
+
+  @Post("purchase-categories")
+  @RequirePermissions("procurement.manage")
+  category(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const input = z.object({ key: z.string().min(2).max(80), name: z.string().min(2).max(300), approvalThreshold: z.coerce.number().nonnegative().optional(), financeAccountCode: z.string().max(120).optional(), active: z.boolean().optional() }).parse(body);
+    return this.ops.savePurchaseCategory(user.firmId, user.id, input);
+  }
+
   @Get("purchase-requisitions")
   @RequirePermissions("module.operations")
   requisitions(@CurrentUser() user: RequestUser) {
@@ -194,10 +405,19 @@ export class OperationsController {
     const input = z.object({
       branchId: z.string(),
       vendorId: z.string().optional(),
+      categoryId: z.string().optional(),
       description: z.string().min(2),
-      amount: z.coerce.number().positive()
+      amount: z.coerce.number().positive(),
+      idempotencyKey: z.string().uuid()
     }).parse(body);
     return this.ops.createPurchaseRequisition(user.firmId, user.id, input);
+  }
+
+  @Post("purchase-requisitions/:id/quotes")
+  @RequirePermissions("procurement.manage")
+  quote(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ vendorId: z.string(), reference: z.string().min(2).max(300), amount: z.coerce.number().positive(), currency: z.string().length(3).optional(), validUntil: z.string().datetime().optional(), notes: z.string().max(5000).optional() }).parse(body);
+    return this.ops.recordVendorQuote(user.firmId, user.id, id, input);
   }
 
   @Post("purchase-requisitions/:id/decision")
@@ -213,6 +433,12 @@ export class OperationsController {
     return this.ops.listPurchaseOrders(user.firmId);
   }
 
+  @Get("purchase-receipts")
+  @RequirePermissions("module.operations")
+  purchaseReceipts(@CurrentUser() user: RequestUser) {
+    return this.ops.listPurchaseReceipts(user.firmId);
+  }
+
   @Post("purchase-orders")
   @RequirePermissions("procurement.manage")
   purchaseOrder(@CurrentUser() user: RequestUser, @Body() body: unknown) {
@@ -225,9 +451,26 @@ export class OperationsController {
   receivePurchaseOrder(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({
       receivedAt: z.string().datetime().optional(),
-      partial: z.boolean().default(false)
+      partial: z.boolean().default(false),
+      deliveryReference: z.string().min(2).max(300),
+      idempotencyKey: z.string().uuid(),
+      notes: z.string().max(5000).optional()
     }).parse(body ?? {});
     return this.ops.receivePurchaseOrder(user.firmId, user.id, id, input);
+  }
+
+  @Post("purchase-receipts/:id/assets")
+  @RequirePermissions("assets.manage")
+  assetFromReceipt(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ assetTag: z.string().max(120).optional(), category: z.string().min(2).max(120), name: z.string().min(2).max(500), serialNumber: z.string().max(300).optional(), notes: z.string().max(5000).optional() }).parse(body);
+    return this.ops.createAssetFromReceipt(user.firmId, user.id, id, input);
+  }
+
+  @Post("purchase-receipts/:id/expenses")
+  @RequirePermissions("procurement.manage")
+  expenseFromReceipt(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ category: z.string().min(2).max(120), description: z.string().max(5000).optional(), paymentSource: z.string().min(2).max(120) }).parse(body);
+    return this.ops.createExpenseFromReceipt(user, user.id, id, input);
   }
 
   // ---------------------------------------------------------------------------
@@ -272,6 +515,20 @@ export class OperationsController {
   returnAsset(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ conditionOnReturn: z.string().max(3000).optional() }).parse(body ?? {});
     return this.ops.returnAsset(user.firmId, user.id, id, input);
+  }
+
+  @Post("assets/:id/maintenance")
+  @RequirePermissions("assets.manage")
+  assetMaintenance(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ vendorId: z.string().optional(), type: z.string().min(2).max(120), description: z.string().min(2).max(5000), cost: z.coerce.number().nonnegative().optional(), externalReference: z.string().max(1000).optional(), notes: z.string().max(5000).optional() }).parse(body);
+    return this.ops.recordAssetMaintenance(user.firmId, user.id, id, input);
+  }
+
+  @Post("asset-maintenance/:id/complete")
+  @RequirePermissions("assets.manage")
+  completeAssetMaintenance(@CurrentUser() user: RequestUser, @Param("id") id: string, @Body() body: unknown) {
+    const input = z.object({ notes: z.string().max(5000).optional() }).parse(body ?? {});
+    return this.ops.completeAssetMaintenance(user.firmId, user.id, id, input.notes);
   }
 
   @Patch("assets/:id/status")

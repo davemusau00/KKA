@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { CommunicationsController } from "./communications.controller";
 import { CommunicationsService } from "./communications.service";
+import { NotificationsModule } from "../notifications/notifications.module";
 
-@Module({ controllers: [CommunicationsController], providers: [CommunicationsService], exports: [CommunicationsService] })
+@Module({ imports: [NotificationsModule], controllers: [CommunicationsController], providers: [CommunicationsService], exports: [CommunicationsService] })
 export class CommunicationsModule {}

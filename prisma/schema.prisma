@@ -895,6 +895,7 @@ model Matter {
   auditEvents        AuditEvent[]
   channels           CommunicationChannel[]
   meetings           Meeting[]
+  projectLinks       ProjectMatterLink[]
   customValues       CustomFieldValue[]
   personalInjuryCase PersonalInjuryCase?
 
@@ -1084,6 +1085,7 @@ model StageHandoffItem {
 
 model Task {
   id                 String         @id @default(cuid())
+  sourceMessageId    String?        @unique
   matterId           String?
   stageNumber        Int?
   calendarEventId    String?
@@ -1408,6 +1410,7 @@ model Document {
   taskLinks        TaskDocument[]
   calendarLinks    CalendarEventDocument[]
   markApplications DocumentMarkApplication[]
+  projectLinks     ProjectDocumentLink[]
 
   @@index([matterId, category])
   @@index([documentType])
@@ -1732,6 +1735,7 @@ model SigningTransaction {
 model CommunicationChannel {
   id          String   @id @default(cuid())
   firmId      String
+  channelKey  String?
   matterId    String?
   type        String
   name        String
@@ -1745,6 +1749,7 @@ model CommunicationChannel {
   messages    ChannelMessage[]
 
   @@index([matterId])
+  @@unique([firmId, channelKey])
 }
 
 model ChannelMembership {
@@ -1752,6 +1757,8 @@ model ChannelMembership {
   userId    String
   role      String?
   joinedAt  DateTime @default(now())
+  lastReadAt DateTime?
+  lastReadMessageId String?
 
   channel CommunicationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
@@ -1771,6 +1778,7 @@ model ChannelMessage {
 
   channel     CommunicationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   attachments MessageAttachment[]
+  mentions    MessageMention[]
 
   @@index([channelId, createdAt])
 }
@@ -1784,6 +1792,19 @@ model MessageAttachment {
   sizeBytes  BigInt?
 
   message ChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+model MessageMention {
+  id         String   @id @default(cuid())
+  messageId  String
+  userId     String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  message ChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt, createdAt])
 }
 
 model SenderIdentity {
@@ -2049,6 +2070,7 @@ model ExpenseRequest {
   approvedById        String?
   disbursedById       String?
   receiptDocumentId   String?
+  purchaseReceiptId   String?        @unique
   journalEntryId      String?
   status              ExpenseStatus @default(DRAFT)
   requestedAt         DateTime      @default(now())
@@ -2455,8 +2477,61 @@ model InternalProject {
   firm     Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
   members  ProjectMember[]
   meetings Meeting[]
+  milestones ProjectMilestone[]
+  spend ProjectSpend[]
+  matterLinks ProjectMatterLink[]
+  documentLinks ProjectDocumentLink[]
 
   @@index([firmId, status])
+}
+
+model ProjectMilestone {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  dueAt       DateTime?
+  status      String   @default("OPEN")
+  completedAt DateTime?
+  ownerUserId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId, status, dueAt])
+}
+
+model ProjectSpend {
+  id          String   @id @default(cuid())
+  projectId   String
+  description String
+  amount      Decimal  @db.Decimal(18, 2)
+  occurredAt  DateTime
+  source      String   @default("MANUAL")
+  financeReference String?
+  recordedById String
+  createdAt   DateTime @default(now())
+  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId, occurredAt])
+}
+
+model ProjectMatterLink {
+  projectId String
+  matterId String
+  linkedById String
+  createdAt DateTime @default(now())
+  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  @@id([projectId, matterId])
+}
+
+model ProjectDocumentLink {
+  projectId String
+  documentId String
+  linkedById String
+  createdAt DateTime @default(now())
+  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  @@id([projectId, documentId])
 }
 
 model ProjectMember {
@@ -2483,6 +2558,8 @@ model Meeting {
   minutes     Json?
   status      String    @default("SCHEDULED")
   organizerId String
+  recurrenceRule String?
+  recurrenceUntil DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -2524,6 +2601,9 @@ model MeetingAction {
   text       String
   assigneeId String?
   dueAt      DateTime?
+  status     String    @default("OPEN")
+  completedAt DateTime?
+  completedById String?
   createdAt  DateTime  @default(now())
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
@@ -2534,11 +2614,15 @@ model EmployeeProfile {
   userId             String    @unique
   employeeNumber     String    @unique
   employmentType     String
+  employmentStatus   String    @default("ACTIVE")
   startDate          DateTime
   endDate            DateTime?
   managerUserId      String?
   leavePolicyKey     String?
   cpdsRequiredAnnual Decimal?  @db.Decimal(8, 2)
+  probationEndsAt    DateTime?
+  offboardedAt       DateTime?
+  offboardingReason  String?
   notes              String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -2578,6 +2662,124 @@ model CpdRecord {
   @@index([userId, occurredOn])
 }
 
+model HrLifecycleChecklistItem {
+  id          String   @id @default(cuid())
+  firmId      String
+  userId      String
+  lifecycle   String
+  key         String
+  title       String
+  dueAt       DateTime?
+  status      String   @default("PENDING")
+  completedAt DateTime?
+  completedById String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([firmId, userId, lifecycle, key])
+  @@index([firmId, userId, lifecycle, status])
+}
+
+model EmployeeAppraisal {
+  id             String   @id @default(cuid())
+  firmId         String
+  userId         String
+  reviewerUserId String
+  periodStartsAt DateTime
+  periodEndsAt   DateTime
+  status         String   @default("DRAFT")
+  rating         Decimal? @db.Decimal(4, 2)
+  summary        String?
+  developmentPlan String?
+  acknowledgedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([firmId, userId, periodEndsAt])
+}
+
+model AdvocateCredential {
+  id                       String   @id @default(cuid())
+  firmId                   String
+  userId                   String
+  admissionNumber          String
+  admissionDate            DateTime?
+  practicingCertificateNo  String?
+  certificateExpiresAt     DateTime?
+  status                   String   @default("ACTIVE")
+  notes                    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@unique([firmId, admissionNumber])
+  @@index([firmId, userId, certificateExpiresAt])
+}
+
+model LeavePolicy {
+  id                    String   @id @default(cuid())
+  firmId                String
+  key                   String
+  name                  String
+  annualEntitlementDays Decimal  @db.Decimal(8, 2)
+  carryoverLimitDays    Decimal? @db.Decimal(8, 2)
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([firmId, key])
+}
+
+model LeaveBalance {
+  id             String   @id @default(cuid())
+  firmId         String
+  userId         String
+  policyKey      String
+  year           Int
+  openingDays    Decimal  @default(0) @db.Decimal(8, 2)
+  accruedDays    Decimal  @default(0) @db.Decimal(8, 2)
+  usedDays       Decimal  @default(0) @db.Decimal(8, 2)
+  adjustmentDays Decimal  @default(0) @db.Decimal(8, 2)
+  notes          String?
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([firmId, userId, policyKey, year])
+  @@index([firmId, userId, year])
+}
+
+model HrRestrictedNote {
+  id              String   @id @default(cuid())
+  firmId          String
+  userId          String
+  authorUserId    String
+  category        String
+  body            String
+  visibleToUserIds String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firmId, userId, createdAt])
+}
+
+model StaffDocument {
+  id             String   @id @default(cuid())
+  firmId         String
+  userId         String
+  category       String
+  title          String
+  storageState   String   @default("MANUAL")
+  externalReference String?
+  expiresAt      DateTime?
+  recordedById   String
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([firmId, userId, expiresAt])
+}
+
 model Vendor {
   id          String   @id @default(cuid())
   firmId      String
@@ -2594,8 +2796,26 @@ model Vendor {
   firm         Firm                  @relation(fields: [firmId], references: [id], onDelete: Cascade)
   requisitions PurchaseRequisition[]
   orders       PurchaseOrder[]
+  documents    VendorDocument[]
+  quotes       VendorQuote[]
+  maintenance  AssetMaintenance[]
 
   @@index([firmId, name])
+}
+
+model PurchaseCategory {
+  id                   String   @id @default(cuid())
+  firmId               String
+  key                  String
+  name                 String
+  approvalThreshold    Decimal? @db.Decimal(18, 2)
+  financeAccountCode   String?
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  requisitions PurchaseRequisition[]
+  @@unique([firmId, key])
 }
 
 model PurchaseRequisition {
@@ -2603,10 +2823,12 @@ model PurchaseRequisition {
   firmId        String
   branchId      String
   vendorId      String?
+  categoryId    String?
   requisitionNo String         @unique
   requestedById String
   description   String
   amount        Decimal        @db.Decimal(18, 2)
+  idempotencyKey String?
   status        PurchaseStatus @default(DRAFT)
   approvedById  String?
   approvedAt    DateTime?
@@ -2614,6 +2836,42 @@ model PurchaseRequisition {
   updatedAt     DateTime       @updatedAt
 
   vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  category PurchaseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  quotes VendorQuote[]
+
+  @@unique([firmId, idempotencyKey])
+}
+
+model VendorDocument {
+  id                String   @id @default(cuid())
+  vendorId          String
+  category          String
+  title             String
+  storageState      String   @default("MANUAL")
+  externalReference String?
+  expiresAt         DateTime?
+  recordedById      String
+  createdAt         DateTime @default(now())
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  @@index([vendorId, expiresAt])
+}
+
+model VendorQuote {
+  id              String   @id @default(cuid())
+  requisitionId   String
+  vendorId        String
+  reference       String
+  amount          Decimal  @db.Decimal(18, 2)
+  currency        String   @default("KES")
+  validUntil      DateTime?
+  status          String   @default("RECEIVED")
+  notes           String?
+  recordedById    String
+  createdAt       DateTime @default(now())
+  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  vendor      Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  @@unique([requisitionId, vendorId, reference])
+  @@index([requisitionId, status])
 }
 
 model PurchaseOrder {
@@ -2622,7 +2880,7 @@ model PurchaseOrder {
   branchId      String
   vendorId      String
   orderNo       String         @unique
-  requisitionId String?
+  requisitionId String?        @unique
   description   String
   amount        Decimal        @db.Decimal(18, 2)
   status        PurchaseStatus @default(APPROVED)
@@ -2633,6 +2891,26 @@ model PurchaseOrder {
   updatedAt     DateTime       @updatedAt
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  receipts PurchaseReceipt[]
+}
+
+model PurchaseReceipt {
+  id                String   @id @default(cuid())
+  firmId            String
+  purchaseOrderId   String
+  idempotencyKey    String
+  deliveryReference String
+  receivedAt        DateTime
+  receivedById      String
+  partial           Boolean  @default(false)
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  asset Asset?
+
+  @@unique([firmId, idempotencyKey])
+  @@index([purchaseOrderId, receivedAt])
 }
 
 model Asset {
@@ -2648,12 +2926,35 @@ model Asset {
   status         AssetStatus @default(IN_STOCK)
   warrantyEndsAt DateTime?
   notes          String?
+  purchaseReceiptId String? @unique
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   firm        Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
   branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
   assignments AssetAssignment[]
+  maintenance AssetMaintenance[]
+  purchaseReceipt PurchaseReceipt? @relation(fields: [purchaseReceiptId], references: [id], onDelete: SetNull)
+}
+
+model AssetMaintenance {
+  id                String   @id @default(cuid())
+  assetId           String
+  vendorId          String?
+  type              String
+  description       String
+  status            String   @default("OPEN")
+  openedAt          DateTime @default(now())
+  completedAt       DateTime?
+  cost              Decimal? @db.Decimal(18, 2)
+  externalReference String?
+  notes             String?
+  recordedById      String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  @@index([assetId, status, openedAt])
 }
 
 model AssetAssignment {

@@ -11,6 +11,10 @@ export interface EmployeeProfileDto {
   employmentType: string;
   startDate: string;
   endDate?: string | null;
+  employmentStatus: 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'OFFBOARDED';
+  probationEndsAt?: string | null;
+  offboardedAt?: string | null;
+  offboardingReason?: string | null;
   managerUserId?: string | null;
   leavePolicyKey?: string | null;
   cpdsRequiredAnnual?: string | number | null;
@@ -18,6 +22,26 @@ export interface EmployeeProfileDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface HrLifecycleItemDto {
+  id: string; userId: string; lifecycle: 'ONBOARDING' | 'OFFBOARDING'; key: string; title: string;
+  dueAt?: string | null; status: 'PENDING' | 'COMPLETED'; completedAt?: string | null; completedById?: string | null; notes?: string | null;
+}
+export interface EmployeeAppraisalDto {
+  id: string; userId: string; reviewerUserId: string; periodStartsAt: string; periodEndsAt: string;
+  status: 'DRAFT' | 'FINALIZED' | 'ACKNOWLEDGED'; rating?: string | number | null; summary?: string | null; developmentPlan?: string | null;
+}
+export interface CpdRecordDto { id: string; userId: string; title: string; provider?: string | null; occurredOn: string; hours: string | number; notes?: string | null; }
+export interface AdvocateCredentialDto { id: string; userId: string; admissionNumber: string; admissionDate?: string | null; practicingCertificateNo?: string | null; certificateExpiresAt?: string | null; status: string; notes?: string | null; }
+export interface LeavePolicyDto { id: string; key: string; name: string; annualEntitlementDays: string | number; carryoverLimitDays?: string | number | null; active: boolean; }
+export interface LeaveBalanceDto { id: string; userId: string; policyKey: string; year: number; openingDays: string | number; accruedDays: string | number; usedDays: string | number; adjustmentDays: string | number; notes?: string | null; }
+export interface HrRestrictedNoteDto { id: string; userId: string; category: string; body: string; visibleToUserIds: string[]; createdAt: string; }
+export interface StaffDocumentDto { id: string; userId: string; category: string; title: string; storageState: 'MANUAL'; externalReference?: string | null; expiresAt?: string | null; notes?: string | null; createdAt: string; }
+export interface EmployeeHrRecordsDto {
+  profile: EmployeeProfileDto | null; lifecycle: HrLifecycleItemDto[]; appraisals: EmployeeAppraisalDto[]; cpd: CpdRecordDto[];
+  credentials: AdvocateCredentialDto[]; balances: LeaveBalanceDto[]; notes: HrRestrictedNoteDto[]; documents: StaffDocumentDto[];
+}
+export interface AuditedMutation<T> { auditRef: string; item?: T; appraisal?: T; cpd?: T; credential?: T; policy?: T; balance?: T; note?: T; document?: T; profile?: T; }
 
 export interface EmployeeRowDto {
   id: string;
@@ -94,6 +118,18 @@ export interface PurchaseOrderDto {
   vendor?: VendorDto;
 }
 
+export interface PurchaseReceiptDto {
+  id: string;
+  purchaseOrderId: string;
+  deliveryReference: string;
+  receivedAt: string;
+  partial: boolean;
+  notes?: string | null;
+  purchaseOrder: PurchaseOrderDto;
+  asset?: AssetDto | null;
+  expense?: { id: string; expenseNumber: string; status: string; amount: string | number } | null;
+}
+
 export interface AssetAssignmentDto {
   id: string;
   assetId: string;
@@ -144,6 +180,8 @@ export interface InternalProjectDto {
   createdAt: string;
   updatedAt: string;
   members?: ProjectMemberDto[];
+  milestones?: Array<{ id: string; title: string; dueAt?: string | null; status: string; ownerUserId?: string | null }>;
+  spend?: Array<{ id: string; description: string; amount: string | number; occurredAt: string; source: string; financeReference?: string | null }>;
 }
 
 export interface MeetingDto {
@@ -159,6 +197,8 @@ export interface MeetingDto {
   minutes?: unknown;
   status: string;
   organizerId: string;
+  recurrenceRule?: string | null;
+  recurrenceUntil?: string | null;
   createdAt: string;
   updatedAt: string;
   participants?: Array<{
@@ -168,7 +208,7 @@ export interface MeetingDto {
     user?: { id: string; fullName: string; email: string; jobTitle?: string | null };
   }>;
   decisions?: Array<{ id: string; text: string; ownerUserId?: string | null; createdAt: string }>;
-  actions?: Array<{ id: string; taskId?: string | null; text: string; assigneeId?: string | null; dueAt?: string | null; createdAt: string }>;
+  actions?: Array<{ id: string; taskId?: string | null; text: string; assigneeId?: string | null; dueAt?: string | null; status: string; completedAt?: string | null; createdAt: string }>;
 }
 
 export const operationsApi = {
@@ -183,6 +223,27 @@ export const operationsApi = {
     cpdsRequiredAnnual?: number | null;
     notes?: string | null;
   }) => apiClient.patch<EmployeeRowDto>(`/operations/hr/employees/${userId}`, input),
+  employeeRecords: (userId: string) => apiClient.get<EmployeeHrRecordsDto>(`/operations/hr/employees/${userId}/records`),
+  saveLifecycleItem: (userId: string, input: { lifecycle: 'ONBOARDING' | 'OFFBOARDING'; key: string; title: string; dueAt?: string | null; notes?: string | null }) =>
+    apiClient.post<AuditedMutation<HrLifecycleItemDto>>(`/operations/hr/employees/${userId}/lifecycle`, input),
+  completeLifecycleItem: (id: string, completed: boolean) => apiClient.post<AuditedMutation<HrLifecycleItemDto>>(`/operations/hr/lifecycle/${id}/completion`, { completed }),
+  recordAppraisal: (userId: string, input: { reviewerUserId?: string; periodStartsAt: string; periodEndsAt: string; status?: 'DRAFT' | 'FINALIZED' | 'ACKNOWLEDGED'; rating?: number | null; summary?: string | null; developmentPlan?: string | null }) =>
+    apiClient.post<AuditedMutation<EmployeeAppraisalDto>>(`/operations/hr/employees/${userId}/appraisals`, input),
+  recordCpd: (userId: string, input: { title: string; provider?: string | null; occurredOn: string; hours: number; notes?: string | null }) =>
+    apiClient.post<AuditedMutation<CpdRecordDto>>(`/operations/hr/employees/${userId}/cpd`, input),
+  saveAdvocateCredential: (userId: string, input: { admissionNumber: string; admissionDate?: string | null; practicingCertificateNo?: string | null; certificateExpiresAt?: string | null; status?: 'ACTIVE' | 'EXPIRED' | 'SUSPENDED' | 'RETIRED'; notes?: string | null }) =>
+    apiClient.post<AuditedMutation<AdvocateCredentialDto>>(`/operations/hr/employees/${userId}/advocate-credentials`, input),
+  leavePolicies: () => apiClient.get<LeavePolicyDto[]>('/operations/hr/leave-policies'),
+  saveLeavePolicy: (input: { key: string; name: string; annualEntitlementDays: number; carryoverLimitDays?: number | null; active?: boolean }) =>
+    apiClient.post<AuditedMutation<LeavePolicyDto>>('/operations/hr/leave-policies', input),
+  saveLeaveBalance: (userId: string, input: { policyKey: string; year: number; openingDays?: number; accruedDays?: number; usedDays?: number; adjustmentDays?: number; notes?: string | null }) =>
+    apiClient.post<AuditedMutation<LeaveBalanceDto>>(`/operations/hr/employees/${userId}/leave-balances`, input),
+  addHrNote: (userId: string, input: { category: string; body: string; visibleToUserIds?: string[] }) =>
+    apiClient.post<AuditedMutation<HrRestrictedNoteDto>>(`/operations/hr/employees/${userId}/restricted-notes`, input),
+  recordStaffDocument: (userId: string, input: { category: string; title: string; externalReference?: string | null; expiresAt?: string | null; notes?: string | null }) =>
+    apiClient.post<AuditedMutation<StaffDocumentDto>>(`/operations/hr/employees/${userId}/staff-documents`, input),
+  offboardEmployee: (userId: string, input: { offboardedAt: string; reason?: string }) =>
+    apiClient.post<AuditedMutation<EmployeeProfileDto>>(`/operations/hr/employees/${userId}/offboard`, input),
 
   leave: (scope: 'self' | 'all' = 'self') => apiClient.get<LeaveRequestDto[]>('/operations/leave', { params: { scope } }),
   requestLeave: (input: { type: string; startsOn: string; endsOn: string; days: number; reason?: string }) =>
@@ -196,15 +257,18 @@ export const operationsApi = {
     apiClient.post<VendorDto>('/operations/vendors', input),
 
   requisitions: () => apiClient.get<PurchaseRequisitionDto[]>('/operations/purchase-requisitions'),
-  createRequisition: (input: { branchId: string; vendorId?: string; description: string; amount: number }) =>
+  createRequisition: (input: { branchId: string; vendorId?: string; description: string; amount: number; idempotencyKey: string }) =>
     apiClient.post<PurchaseRequisitionDto>('/operations/purchase-requisitions', input),
   decideRequisition: (id: string, decision: 'APPROVED' | 'REJECTED') =>
     apiClient.post<PurchaseRequisitionDto>(`/operations/purchase-requisitions/${id}/decision`, { decision }),
 
   orders: () => apiClient.get<PurchaseOrderDto[]>('/operations/purchase-orders'),
+  receipts: () => apiClient.get<PurchaseReceiptDto[]>('/operations/purchase-receipts'),
   createOrder: (requisitionId: string) => apiClient.post<PurchaseOrderDto>('/operations/purchase-orders', { requisitionId }),
-  receiveOrder: (id: string, input?: { receivedAt?: string; partial?: boolean }) =>
-    apiClient.post<PurchaseOrderDto>(`/operations/purchase-orders/${id}/receive`, input ?? {}),
+  receiveOrder: (id: string, input: { deliveryReference: string; idempotencyKey: string; receivedAt?: string; partial?: boolean; notes?: string }) =>
+    apiClient.post<{ order: PurchaseOrderDto; receipt: { id: string; deliveryReference: string; receivedAt: string; partial: boolean }; auditRef: string }>(`/operations/purchase-orders/${id}/receive`, input),
+  createAssetFromReceipt: (id: string, input: { assetTag?: string; category: string; name: string; serialNumber?: string; notes?: string }) => apiClient.post(`/operations/purchase-receipts/${id}/assets`, input),
+  createExpenseFromReceipt: (id: string, input: { category: string; description?: string; paymentSource: string }) => apiClient.post(`/operations/purchase-receipts/${id}/expenses`, input),
 
   assets: () => apiClient.get<AssetDto[]>('/operations/assets'),
   createAsset: (input: {
@@ -236,6 +300,9 @@ export const operationsApi = {
     budget?: number;
     memberUserIds?: string[];
   }) => apiClient.post<InternalProjectDto>('/operations/projects', input),
+  addProjectMilestone: (id: string, input: { title: string; description?: string; dueAt?: string; ownerUserId?: string }) => apiClient.post(`/operations/projects/${id}/milestones`, input),
+  completeProjectMilestone: (id: string) => apiClient.post(`/operations/project-milestones/${id}/complete`),
+  recordProjectSpend: (id: string, input: { description: string; amount: number; occurredAt: string; financeReference?: string }) => apiClient.post(`/operations/projects/${id}/spend`, input),
 
   meetings: (params?: { from?: string; to?: string; projectId?: string; matterId?: string }) =>
     apiClient.get<MeetingDto[]>('/operations/meetings', { params }),
@@ -248,6 +315,8 @@ export const operationsApi = {
     location?: string;
     agenda?: unknown;
     participantUserIds?: string[];
+    recurrenceRule?: string;
+    recurrenceUntil?: string;
   }) => apiClient.post<MeetingDto>('/operations/meetings', input),
   updateMeeting: (id: string, input: {
     title?: string;
@@ -258,9 +327,13 @@ export const operationsApi = {
     minutes?: unknown;
     status?: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
     participantUserIds?: string[];
+    recurrenceRule?: string | null;
+    recurrenceUntil?: string | null;
   }) => apiClient.patch<MeetingDto>(`/operations/meetings/${id}`, input),
   addMeetingDecision: (id: string, input: { text: string; ownerUserId?: string }) =>
     apiClient.post(`/operations/meetings/${id}/decisions`, input),
   addMeetingAction: (id: string, input: { text: string; assigneeId?: string; dueAt?: string; createTask?: boolean }) =>
     apiClient.post(`/operations/meetings/${id}/actions`, input),
+  setMeetingAttendance: (meetingId: string, userId: string, attendanceStatus: 'PRESENT' | 'ABSENT' | 'APOLOGY' | 'LATE') => apiClient.post(`/operations/meetings/${meetingId}/attendance/${userId}`, { attendanceStatus }),
+  completeMeetingAction: (id: string) => apiClient.post(`/operations/meeting-actions/${id}/complete`),
 };

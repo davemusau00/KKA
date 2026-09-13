@@ -403,6 +403,13 @@ export class FinanceService {
   }
 
   async createExpense(firmId: string, actorId: string, input: any, user?: RequestUser) {
+    if (input.purchaseReceiptId) {
+      const existing = await this.prisma.client.expenseRequest.findFirst({ where: { firmId, purchaseReceiptId: input.purchaseReceiptId } });
+      if (existing) {
+        await this.assertMatterAccess(user, existing.matterId, "Expense request");
+        return existing;
+      }
+    }
     await this.assertMatterAccess(user, input.matterId, "Matter");
     const expenseNumber = await this.numbering.next({
       firmId,
@@ -422,6 +429,7 @@ export class FinanceService {
         amount: input.amount,
         currency: input.currency,
         paymentSource: input.paymentSource,
+        purchaseReceiptId: input.purchaseReceiptId,
         requestedById: actorId,
         status: "SUBMITTED"
       }

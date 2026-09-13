@@ -19,11 +19,13 @@ import {
   operationsApi,
   type AssetDto,
   type AssetStatus,
+  type EmployeeHrRecordsDto,
   type EmployeeRowDto,
   type InternalProjectDto,
   type LeaveRequestDto,
   type MeetingDto,
   type PurchaseOrderDto,
+  type PurchaseReceiptDto,
   type PurchaseRequisitionDto,
   type VendorDto,
 } from '../../lib/api/operations.api';
@@ -78,10 +80,14 @@ export const OperationsWorkspace: React.FC = () => {
   const [message, setMessage] = useState('');
 
   const [employees, setEmployees] = useState<EmployeeRowDto[]>([]);
+  const [selectedHrEmployeeId, setSelectedHrEmployeeId] = useState('');
+  const [hrRecords, setHrRecords] = useState<EmployeeHrRecordsDto | null>(null);
+  const [hrRecordsLoading, setHrRecordsLoading] = useState(false);
   const [leave, setLeave] = useState<LeaveRequestDto[]>([]);
   const [vendors, setVendors] = useState<VendorDto[]>([]);
   const [requisitions, setRequisitions] = useState<PurchaseRequisitionDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
+  const [receipts, setReceipts] = useState<PurchaseReceiptDto[]>([]);
   const [assets, setAssets] = useState<AssetDto[]>([]);
   const [projects, setProjects] = useState<InternalProjectDto[]>([]);
   const [meetings, setMeetings] = useState<MeetingDto[]>([]);
@@ -94,17 +100,29 @@ export const OperationsWorkspace: React.FC = () => {
       const leavePromise = operationsApi.leave(canHr ? 'all' : 'self');
       const employeePromise = canHr ? operationsApi.employees() : Promise.resolve([] as EmployeeRowDto[]);
       const operationalPromises = canOpenOperations
-        ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.orders(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings()])
-        : Promise.resolve([[], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseOrderDto[], AssetDto[], InternalProjectDto[], MeetingDto[]]);
-      const [leaveRows, employeeRows, [vendorRows, requisitionRows, orderRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, operationalPromises]);
+        ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings()])
+        : Promise.resolve([[], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[]]);
+      const [leaveRows, employeeRows, [vendorRows, requisitionRows, orderRows, receiptRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, operationalPromises]);
       setLeave(leaveRows); setEmployees(employeeRows); setVendors(vendorRows); setRequisitions(requisitionRows);
-      setOrders(orderRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
+      setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load operations data.');
     } finally { setLoading(false); }
   }, [canHr, canOpenOperations]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const loadHrRecords = useCallback(async (userId: string) => {
+    if (!userId || !canHr) return;
+    setHrRecordsLoading(true);
+    try {
+      setHrRecords(await operationsApi.employeeRecords(userId));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to load the employee HR register.');
+    } finally { setHrRecordsLoading(false); }
+  }, [canHr]);
+
+  useEffect(() => { void loadHrRecords(selectedHrEmployeeId); }, [loadHrRecords, selectedHrEmployeeId]);
 
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true); setError(''); setMessage('');
@@ -117,9 +135,10 @@ export const OperationsWorkspace: React.FC = () => {
   const [employeeForm, setEmployeeForm] = useState({ userId: '', employeeNumber: '', employmentType: 'FULL_TIME', startDate: '', managerUserId: '', leavePolicyKey: 'STANDARD', cpdsRequiredAnnual: '0', notes: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', kraPin: '', contactName: '', phone: '', email: '', address: '' });
   const [reqForm, setReqForm] = useState({ branchId: defaultBranchId, vendorId: '', description: '', amount: '' });
+  const [receiptReferences, setReceiptReferences] = useState<Record<string, string>>({});
   const [assetForm, setAssetForm] = useState({ branchId: defaultBranchId, category: 'ICT', name: '', serialNumber: '', purchaseCost: '', notes: '' });
   const [projectForm, setProjectForm] = useState({ branchId: defaultBranchId, name: '', description: '', ownerUserId: currentUser.id, dueDate: '', budget: '' });
-  const [meetingForm, setMeetingForm] = useState({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '' });
+  const [meetingForm, setMeetingForm] = useState({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '', recurrenceRule: '' });
   const [selectedMeetingId, setSelectedMeetingId] = useState('');
   const [meetingNotes, setMeetingNotes] = useState({ minutes: '', decision: '', action: '', assigneeId: '', dueAt: '' });
 
@@ -132,6 +151,7 @@ export const OperationsWorkspace: React.FC = () => {
   }, [defaultBranchId]);
 
   const selectedMeeting = meetings.find((m) => m.id === selectedMeetingId) ?? null;
+  const selectedHrEmployee = employees.find((employee) => employee.id === selectedHrEmployeeId) ?? null;
   const pendingLeave = leave.filter((row) => row.status === 'SUBMITTED').length;
   const pendingProcurement = requisitions.filter((row) => row.status === 'SUBMITTED').length;
   const assignedAssets = assets.filter((row) => row.status === 'ASSIGNED').length;
@@ -229,8 +249,18 @@ export const OperationsWorkspace: React.FC = () => {
             </div>
           </Panel>
 
-          {canHr && <Panel title="Employment register" description="Employment metadata already modelled by the KKA data layer, now surfaced for administration.">
-            <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Employee</th><th>Number</th><th>Type</th><th>Start</th><th>Status</th></tr></thead><tbody>{employees.map((row) => <tr key={row.id} className="border-t border-slate-800"><td className="py-2.5"><div className="font-medium text-slate-200">{row.fullName}</div><div className="text-slate-500">{row.jobTitle || row.email}</div></td><td>{row.employeeProfile?.employeeNumber || 'Not profiled'}</td><td>{row.employeeProfile?.employmentType || '—'}</td><td>{day(row.employeeProfile?.startDate)}</td><td><Status value={row.status} /></td></tr>)}</tbody></table></div>
+          {canHr && <Panel title="Employment register" description="Select an employee to view the server-backed HR record. Restricted notes remain an HR-only view.">
+            <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Employee</th><th>Number</th><th>Type</th><th>Start</th><th>Status</th><th /></tr></thead><tbody>{employees.map((row) => <tr key={row.id} className={`border-t border-slate-800 ${selectedHrEmployeeId === row.id ? 'bg-amber-950/20' : ''}`}><td className="py-2.5"><div className="font-medium text-slate-200">{row.fullName}</div><div className="text-slate-500">{row.jobTitle || row.email}</div></td><td>{row.employeeProfile?.employeeNumber || 'Not profiled'}</td><td>{row.employeeProfile?.employmentType || '—'}</td><td>{day(row.employeeProfile?.startDate)}</td><td><Status value={row.employeeProfile?.employmentStatus || row.status} /></td><td><button className={secondaryButton} onClick={() => setSelectedHrEmployeeId(row.id)}>View record</button></td></tr>)}</tbody></table></div>
+          </Panel>}
+
+          {canHr && selectedHrEmployee && <Panel title={`${selectedHrEmployee.fullName} — HR record`} description="Lifecycle, CPD, credentials, leave balances and staff-document metadata are loaded from the authoritative HR register." action={<button className={secondaryButton} disabled={hrRecordsLoading} onClick={() => void loadHrRecords(selectedHrEmployee.id)}><RefreshCw className="mr-1 inline h-3.5 w-3.5" />Refresh record</button>}>
+            {hrRecordsLoading ? <p className="py-5 text-center text-sm text-slate-400">Loading employee record…</p> : !hrRecords ? <p className="py-5 text-center text-sm text-slate-500">No HR record loaded.</p> : <div className="grid gap-4 text-xs md:grid-cols-2">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 font-semibold text-slate-200">Lifecycle</div>{hrRecords.lifecycle.length ? hrRecords.lifecycle.map((item) => <div key={item.id} className="border-t border-slate-800 py-2"><div className="flex justify-between gap-2"><span>{item.title}</span><Status value={item.status} /></div><div className="mt-1 text-slate-500">{item.lifecycle.toLowerCase()} · due {day(item.dueAt)}</div></div>) : <span className="text-slate-500">No lifecycle items.</span>}</div>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 font-semibold text-slate-200">Leave balances</div>{hrRecords.balances.length ? hrRecords.balances.map((balance) => <div key={balance.id} className="border-t border-slate-800 py-2"><div>{balance.policyKey} · {balance.year}</div><div className="text-slate-500">Opening {String(balance.openingDays)} · accrued {String(balance.accruedDays)} · used {String(balance.usedDays)}</div></div>) : <span className="text-slate-500">No balance records for the current year.</span>}</div>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 font-semibold text-slate-200">CPD & credentials</div>{[...hrRecords.cpd.map((record) => ({ id: `cpd-${record.id}`, title: `${record.title} (${String(record.hours)}h)`, detail: `${record.provider || 'Provider not recorded'} · ${day(record.occurredOn)}` })), ...hrRecords.credentials.map((credential) => ({ id: `credential-${credential.id}`, title: credential.admissionNumber, detail: `${credential.status} · certificate expiry ${day(credential.certificateExpiresAt)}` }))].map((record) => <div key={record.id} className="border-t border-slate-800 py-2"><div>{record.title}</div><div className="text-slate-500">{record.detail}</div></div>)}{!hrRecords.cpd.length && !hrRecords.credentials.length && <span className="text-slate-500">No CPD or credential records.</span>}</div>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 font-semibold text-slate-200">Staff documents</div>{hrRecords.documents.length ? hrRecords.documents.map((document) => <div key={document.id} className="border-t border-slate-800 py-2"><div>{document.title} <Status value={document.storageState} /></div><div className="text-slate-500">{document.category} · expiry {day(document.expiresAt)}{document.externalReference ? ` · ${document.externalReference}` : ''}</div></div>) : <span className="text-slate-500">No staff-document metadata. Files are not uploaded by this screen.</span>}</div>
+              <div className="rounded-lg border border-amber-900/60 bg-amber-950/15 p-3 md:col-span-2"><div className="mb-2 font-semibold text-amber-200">Restricted HR notes</div>{hrRecords.notes.length ? hrRecords.notes.map((note) => <div key={note.id} className="border-t border-amber-900/40 py-2"><div>{note.category}</div><div className="mt-1 whitespace-pre-wrap text-slate-300">{note.body}</div></div>) : <span className="text-slate-500">No restricted notes.</span>}</div>
+            </div>}
           </Panel>}
         </div>
       </div>}
@@ -247,7 +277,7 @@ export const OperationsWorkspace: React.FC = () => {
           </Panel>}
 
           {canProcurement && <Panel title="Purchase requisition">
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!reqForm.branchId || !reqForm.description || !reqForm.amount) throw new Error('Complete branch, description and amount.'); await operationsApi.createRequisition({ branchId: reqForm.branchId, vendorId: reqForm.vendorId || undefined, description: reqForm.description, amount: Number(reqForm.amount) }); setReqForm({ ...reqForm, description: '', amount: '' }); }, 'Purchase requisition submitted.'); }}>
+            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!reqForm.branchId || !reqForm.description || !reqForm.amount) throw new Error('Complete branch, description and amount.'); await operationsApi.createRequisition({ branchId: reqForm.branchId, vendorId: reqForm.vendorId || undefined, description: reqForm.description, amount: Number(reqForm.amount), idempotencyKey: crypto.randomUUID() }); setReqForm({ ...reqForm, description: '', amount: '' }); }, 'Purchase requisition submitted.'); }}>
               <label className="block text-xs text-slate-400">Branch<select className={inputClass} value={reqForm.branchId} onChange={(e) => setReqForm({ ...reqForm, branchId: e.target.value })}>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
               <label className="block text-xs text-slate-400">Preferred vendor<select className={inputClass} value={reqForm.vendorId} onChange={(e) => setReqForm({ ...reqForm, vendorId: e.target.value })}><option value="">Choose later</option>{vendors.filter((vendor) => vendor.active).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></label>
               <textarea className={`${inputClass} min-h-24`} placeholder="What is being purchased and why?" value={reqForm.description} onChange={(e) => setReqForm({ ...reqForm, description: e.target.value })} />
@@ -263,7 +293,10 @@ export const OperationsWorkspace: React.FC = () => {
           </Panel>
 
           <Panel title="Purchase orders">
-            <div className="space-y-2">{orders.map((order) => <div key={order.id} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-mono text-xs text-amber-400">{order.orderNo}</div><div className="font-semibold">{order.vendor?.name || order.description}</div><div className="text-xs text-slate-500">{money(order.amount)} · ordered {day(order.orderedAt)}</div></div><Status value={order.status} /></div>{canProcurement && ['ORDERED', 'PARTIALLY_RECEIVED'].includes(order.status) && <div className="mt-3 flex gap-2"><button className={secondaryButton} disabled={busy} onClick={() => void run(() => operationsApi.receiveOrder(order.id, { partial: true }), 'Partial receipt recorded.')}>Partial receipt</button><button className={primaryButton} disabled={busy} onClick={() => void run(() => operationsApi.receiveOrder(order.id), 'Purchase order received.')}>Receive in full</button></div>}</div>)}{!orders.length && <p className="py-8 text-center text-sm text-slate-500">No purchase orders.</p>}</div>
+            <div className="space-y-2">{orders.map((order) => { const reference = receiptReferences[order.id] || ''; return <div key={order.id} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-mono text-xs text-amber-400">{order.orderNo}</div><div className="font-semibold">{order.vendor?.name || order.description}</div><div className="text-xs text-slate-500">{money(order.amount)} · ordered {day(order.orderedAt)}</div></div><Status value={order.status} /></div>{canProcurement && ['ORDERED', 'PARTIALLY_RECEIVED'].includes(order.status) && <div className="mt-3 space-y-2"><input className={inputClass} placeholder="Delivery note, GRN, or manual receipt reference" value={reference} onChange={(event) => setReceiptReferences((values) => ({ ...values, [order.id]: event.target.value }))} /><div className="flex gap-2"><button className={secondaryButton} disabled={busy || reference.trim().length < 2} onClick={() => void run(() => operationsApi.receiveOrder(order.id, { partial: true, deliveryReference: reference.trim(), idempotencyKey: crypto.randomUUID() }), 'Partial receipt recorded with delivery evidence.')}>Partial receipt</button><button className={primaryButton} disabled={busy || reference.trim().length < 2} onClick={() => void run(async () => { await operationsApi.receiveOrder(order.id, { deliveryReference: reference.trim(), idempotencyKey: crypto.randomUUID() }); setReceiptReferences((values) => ({ ...values, [order.id]: '' })); }, 'Purchase order received with delivery evidence.')}>Receive in full</button></div></div>}</div>; })}{!orders.length && <p className="py-8 text-center text-sm text-slate-500">No purchase orders.</p>}</div>
+          </Panel>
+          <Panel title="Receipt register" description="A recorded delivery reference can create one asset or one submitted expense request. Neither action records payment.">
+            <div className="space-y-2">{receipts.map((receipt) => <div key={receipt.id} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex items-start justify-between gap-2"><div><div className="font-mono text-xs text-amber-400">{receipt.deliveryReference}</div><div className="font-semibold">{receipt.purchaseOrder.description}</div><div className="text-xs text-slate-500">{receipt.purchaseOrder.orderNo} · {day(receipt.receivedAt)} · {money(receipt.purchaseOrder.amount)}</div></div><Status value={receipt.partial ? 'PARTIALLY_RECEIVED' : 'RECEIVED'} /></div><div className="mt-3 flex flex-wrap gap-2">{receipt.asset ? <span className="text-xs text-emerald-300">Asset: {receipt.asset.assetTag}</span> : canAssets ? <button className={secondaryButton} disabled={busy} onClick={() => { const name = window.prompt('Asset name'); const category = window.prompt('Asset category', 'ICT'); if (name && category) void run(() => operationsApi.createAssetFromReceipt(receipt.id, { name, category }), 'Asset created from recorded receipt.'); }}>Create asset</button> : null}{receipt.expense ? <span className="text-xs text-amber-300">Expense: {receipt.expense.expenseNumber} ({receipt.expense.status})</span> : canProcurement && hasUserPermission('finance.expense_create') ? <button className={secondaryButton} disabled={busy} onClick={() => { const category = window.prompt('Expense category', 'Procurement'); const paymentSource = window.prompt('Payment source', 'OFFICE_FUNDS'); if (category && paymentSource) void run(() => operationsApi.createExpenseFromReceipt(receipt.id, { category, paymentSource }), 'Submitted finance expense created from receipt.'); }}>Create expense request</button> : <span className="text-xs text-slate-500">Finance expense permission required for expense creation.</span>}</div></div>)}{!receipts.length && <p className="py-8 text-center text-sm text-slate-500">No delivery receipts recorded.</p>}</div>
           </Panel>
         </div>
       </div>}
@@ -298,11 +331,12 @@ export const OperationsWorkspace: React.FC = () => {
           </Panel>}
 
           {canManageOperations && <Panel title="Schedule meeting">
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!meetingForm.title || !meetingForm.startsAt) throw new Error('Meeting title and start time are required.'); await operationsApi.createMeeting({ projectId: meetingForm.projectId || undefined, title: meetingForm.title, startsAt: toIso(meetingForm.startsAt)!, endsAt: toIso(meetingForm.endsAt), location: meetingForm.location || undefined, agenda: meetingForm.agenda ? { text: meetingForm.agenda } : undefined }); setMeetingForm({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '' }); }, 'Meeting scheduled.'); }}>
+            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!meetingForm.title || !meetingForm.startsAt) throw new Error('Meeting title and start time are required.'); await operationsApi.createMeeting({ projectId: meetingForm.projectId || undefined, title: meetingForm.title, startsAt: toIso(meetingForm.startsAt)!, endsAt: toIso(meetingForm.endsAt), location: meetingForm.location || undefined, agenda: meetingForm.agenda ? { text: meetingForm.agenda } : undefined, recurrenceRule: meetingForm.recurrenceRule || undefined }); setMeetingForm({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '', recurrenceRule: '' }); }, 'Meeting scheduled.'); }}>
               <label className="block text-xs text-slate-400">Project<select className={inputClass} value={meetingForm.projectId} onChange={(e) => setMeetingForm({ ...meetingForm, projectId: e.target.value })}><option value="">Standalone meeting</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
               <input className={inputClass} placeholder="Meeting title" value={meetingForm.title} onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })} />
               <div className="grid grid-cols-2 gap-3"><input type="datetime-local" className={inputClass} value={meetingForm.startsAt} onChange={(e) => setMeetingForm({ ...meetingForm, startsAt: e.target.value })} /><input type="datetime-local" className={inputClass} value={meetingForm.endsAt} onChange={(e) => setMeetingForm({ ...meetingForm, endsAt: e.target.value })} /></div>
               <input className={inputClass} placeholder="Location / room" value={meetingForm.location} onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })} />
+              <input className={inputClass} placeholder="Recurrence rule (metadata only, e.g. FREQ=WEEKLY)" value={meetingForm.recurrenceRule} onChange={(e) => setMeetingForm({ ...meetingForm, recurrenceRule: e.target.value })} />
               <textarea className={`${inputClass} min-h-20`} placeholder="Agenda" value={meetingForm.agenda} onChange={(e) => setMeetingForm({ ...meetingForm, agenda: e.target.value })} />
               <button className={primaryButton} disabled={busy}>Schedule meeting</button>
             </form>
