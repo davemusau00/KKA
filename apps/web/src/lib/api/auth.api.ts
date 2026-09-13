@@ -14,11 +14,32 @@ export interface LoginResult {
   user: CurrentAuthUser;
 }
 
+export interface OnboardingState {
+  userId: string;
+  onboardingVersion: number;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  currentStepKey: string | null;
+  completedSteps: string[];
+  startedAt: string | null;
+  lastSeenAt: string | null;
+  completedAt: string | null;
+  tourCompletedAt: string | null;
+  manualViewedAt: string | null;
+  dismissedUntil: string | null;
+}
+
+export type OnboardingAction = 'START' | 'SET_STEP' | 'COMPLETE_STEP' | 'COMPLETE_TOUR' | 'VIEW_MANUAL' | 'POSTPONE' | 'COMPLETE';
+
 export const authApi = {
   login: (email: string, password: string) =>
     apiClient.post<LoginResult>('/auth/login', { email, password }),
 
   me: () => apiClient.get<CurrentAuthUser>('/auth/me'),
+
+  onboarding: () => apiClient.get<OnboardingState>('/auth/onboarding'),
+
+  updateOnboarding: (input: { action: OnboardingAction; currentStepKey?: string; stepKey?: string; dismissedUntil?: string }) =>
+    apiClient.post<{ state: OnboardingState; auditId: string }>('/auth/onboarding', input),
 
   logout: () => apiClient.post<{ ok: boolean }>('/auth/logout'),
 

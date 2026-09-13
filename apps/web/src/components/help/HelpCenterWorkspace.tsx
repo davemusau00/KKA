@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ChevronRight, CircleHelp, Compass, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { authApi, type OnboardingState } from '../../lib/api/auth.api';
 
 const guides = [
   { title: 'Open a new personal injury matter', body: 'Start in Clients & Intake. Complete conflict clearance and KYC, then convert the qualified intake into a matter. The server creates the authoritative matter number and workflow.' },
@@ -25,20 +26,43 @@ const faq = [
 export const HelpCenterWorkspace: React.FC = () => {
   const { currentUser, setActiveWorkspace } = useApp();
   const [query, setQuery] = useState('');
-  const [completed, setCompleted] = useState<Set<number>>(() => {
-    try { return new Set<number>(JSON.parse(localStorage.getItem('kka_help_progress') || '[]')); } catch { return new Set<number>(); }
-  });
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(true);
+  const [savingGuide, setSavingGuide] = useState<number | null>(null);
+  const [progressError, setProgressError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        let state = await authApi.onboarding();
+        if (!state.manualViewedAt) state = (await authApi.updateOnboarding({ action: 'VIEW_MANUAL' })).state;
+        if (active) setOnboarding(state);
+      } catch {
+        if (active) setProgressError('Help progress is unavailable. Checklist changes will not be saved.');
+      } finally {
+        if (active) setLoadingProgress(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   const filteredGuides = useMemo(() => guides.filter((guide) => `${guide.title} ${guide.body}`.toLowerCase().includes(query.toLowerCase())), [query]);
   const filteredFaq = useMemo(() => faq.filter(([question, answer]) => `${question} ${answer}`.toLowerCase().includes(query.toLowerCase())), [query]);
+  const completed = useMemo(() => new Set(onboarding?.completedSteps ?? []), [onboarding]);
 
-  const toggle = (index: number) => {
-    setCompleted((previous) => {
-      const next = new Set(previous);
-      if (next.has(index)) next.delete(index); else next.add(index);
-      localStorage.setItem('kka_help_progress', JSON.stringify([...next]));
-      return next;
-    });
+  const markGuideComplete = async (index: number) => {
+    if (!onboarding || completed.has(`HELP_${index}`)) return;
+    setSavingGuide(index);
+    setProgressError('');
+    try {
+      const result = await authApi.updateOnboarding({ action: 'COMPLETE_STEP', stepKey: `HELP_${index}` });
+      setOnboarding(result.state);
+    } catch {
+      setProgressError('Help progress could not be saved. No completion was recorded.');
+    } finally {
+      setSavingGuide(null);
+    }
   };
 
   return (
@@ -50,8 +74,9 @@ export const HelpCenterWorkspace: React.FC = () => {
 
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <section className="rounded-2xl border border-slate-800 bg-slate-900/55 p-5">
-          <div className="mb-4 flex items-center justify-between"><div><div className="flex items-center gap-2"><Compass className="h-4 w-4 text-amber-500" /><h2 className="font-semibold">Operational tour</h2></div><p className="mt-1 text-xs text-slate-500">Mark steps as understood. Progress is a local UI preference, not firm business data.</p></div><span className="text-xs text-slate-500">{completed.size}/{guides.length}</span></div>
-          <div className="space-y-2">{filteredGuides.map((guide) => { const originalIndex = guides.indexOf(guide); const done = completed.has(originalIndex); return <button key={guide.title} onClick={() => toggle(originalIndex)} className={`w-full rounded-xl border p-4 text-left transition ${done ? 'border-emerald-800 bg-emerald-950/15' : 'border-slate-800 bg-slate-950/45 hover:border-slate-700'}`}><div className="flex items-start gap-3">{done ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}<div><div className="font-semibold text-slate-100">{guide.title}</div><p className="mt-1 text-xs leading-relaxed text-slate-400">{guide.body}</p></div></div></button>; })}</div>
+          <div className="mb-4 flex items-center justify-between"><div><div className="flex items-center gap-2"><Compass className="h-4 w-4 text-amber-500" /><h2 className="font-semibold">Operational tour</h2></div><p className="mt-1 text-xs text-slate-500">Mark steps as understood. Progress is stored in your server-side onboarding record.</p></div><span className="text-xs text-slate-500">{loadingProgress ? 'Loading…' : `${completed.size}/${guides.length}`}</span></div>
+          {progressError && <p role="status" className="mb-3 rounded-xl border border-amber-900/60 bg-amber-950/20 p-3 text-xs text-amber-200">{progressError}</p>}
+          <div className="space-y-2">{filteredGuides.map((guide) => { const originalIndex = guides.indexOf(guide); const done = completed.has(`HELP_${originalIndex}`); return <button key={guide.title} disabled={loadingProgress || savingGuide === originalIndex || done || !onboarding} onClick={() => void markGuideComplete(originalIndex)} className={`w-full rounded-xl border p-4 text-left transition disabled:cursor-not-allowed ${done ? 'border-emerald-800 bg-emerald-950/15' : 'border-slate-800 bg-slate-950/45 hover:border-slate-700'}`}><div className="flex items-start gap-3">{done ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}<div><div className="font-semibold text-slate-100">{guide.title}{savingGuide === originalIndex ? ' · Saving…' : ''}</div><p className="mt-1 text-xs leading-relaxed text-slate-400">{guide.body}</p></div></div></button>; })}</div>
         </section>
 
         <div className="space-y-5">
