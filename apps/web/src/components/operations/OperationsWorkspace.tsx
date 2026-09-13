@@ -29,6 +29,7 @@ import {
   type PurchaseRequisitionDto,
   type VendorDto,
 } from '../../lib/api/operations.api';
+import { organizationApi, type BackendDepartment } from '../../lib/api/organization.api';
 
 type Tab = 'people' | 'procurement' | 'assets' | 'projects';
 
@@ -81,6 +82,7 @@ export const OperationsWorkspace: React.FC = () => {
   const [message, setMessage] = useState('');
 
   const [employees, setEmployees] = useState<EmployeeRowDto[]>([]);
+  const [departments, setDepartments] = useState<BackendDepartment[]>([]);
   const [selectedHrEmployeeId, setSelectedHrEmployeeId] = useState('');
   const [hrRecords, setHrRecords] = useState<EmployeeHrRecordsDto | null>(null);
   const [hrRecordsLoading, setHrRecordsLoading] = useState(false);
@@ -103,9 +105,10 @@ export const OperationsWorkspace: React.FC = () => {
       const operationalPromises = canOpenOperations
         ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings()])
         : Promise.resolve([[], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[]]);
-      const [leaveRows, employeeRows, [vendorRows, requisitionRows, orderRows, receiptRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, operationalPromises]);
+      const departmentPromise = canHr ? organizationApi.listDepartments() : Promise.resolve([] as BackendDepartment[]);
+      const [leaveRows, employeeRows, departmentRows, [vendorRows, requisitionRows, orderRows, receiptRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, departmentPromise, operationalPromises]);
       setLeave(leaveRows); setEmployees(employeeRows); setVendors(vendorRows); setRequisitions(requisitionRows);
-      setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
+      setDepartments(departmentRows); setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load operations data.');
     } finally { setLoading(false); }
@@ -134,6 +137,7 @@ export const OperationsWorkspace: React.FC = () => {
 
   const [leaveForm, setLeaveForm] = useState({ type: 'Annual Leave', startsOn: '', endsOn: '', days: '1', reason: '' });
   const [employeeForm, setEmployeeForm] = useState({ userId: '', employeeNumber: '', employmentType: 'FULL_TIME', startDate: '', managerUserId: '', leavePolicyKey: 'STANDARD', cpdsRequiredAnnual: '0', notes: '' });
+  const [departmentForm, setDepartmentForm] = useState({ name: '', code: '', managerId: '', costCentre: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', kraPin: '', contactName: '', phone: '', email: '', address: '' });
   const [reqForm, setReqForm] = useState({ branchId: defaultBranchId, vendorId: '', description: '', amount: '' });
   const [receiptReferences, setReceiptReferences] = useState<Record<string, string>>({});
@@ -241,6 +245,10 @@ export const OperationsWorkspace: React.FC = () => {
               <div className="grid grid-cols-2 gap-3"><label className="text-xs text-slate-400">Leave policy<input className={inputClass} value={employeeForm.leavePolicyKey} onChange={(e) => setEmployeeForm({ ...employeeForm, leavePolicyKey: e.target.value })} /></label><label className="text-xs text-slate-400">Annual CPD target<input type="number" min="0" className={inputClass} value={employeeForm.cpdsRequiredAnnual} onChange={(e) => setEmployeeForm({ ...employeeForm, cpdsRequiredAnnual: e.target.value })} /></label></div>
               <button className={primaryButton} disabled={busy}>Save employee profile</button>
             </form>
+          </Panel>}
+
+          {canHr && <Panel title="Departments" description="Departments and managers are persisted to the firm organization record.">
+            <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!departmentForm.name.trim() || !departmentForm.code.trim()) throw new Error('Department name and code are required.'); await organizationApi.createDepartment({ name: departmentForm.name.trim(), code: departmentForm.code.trim(), managerId: departmentForm.managerId || undefined, costCentre: departmentForm.costCentre.trim() || undefined }); setDepartmentForm({ name: '', code: '', managerId: '', costCentre: '' }); }, 'Department created.'); }}><div className="grid grid-cols-2 gap-2"><input className={inputClass} placeholder="Department name" value={departmentForm.name} onChange={(event) => setDepartmentForm({ ...departmentForm, name: event.target.value })} /><input className={inputClass} placeholder="Code" value={departmentForm.code} onChange={(event) => setDepartmentForm({ ...departmentForm, code: event.target.value.toUpperCase() })} /></div><select className={inputClass} value={departmentForm.managerId} onChange={(event) => setDepartmentForm({ ...departmentForm, managerId: event.target.value })}><option value="">No manager</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select><input className={inputClass} placeholder="Cost centre (optional)" value={departmentForm.costCentre} onChange={(event) => setDepartmentForm({ ...departmentForm, costCentre: event.target.value })} /><button className={primaryButton} disabled={busy}>Create department</button></form><div className="mt-4 space-y-2">{departments.map((department) => <div key={department.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2 text-xs"><div><div className="font-medium text-slate-200">{department.name} <span className="font-mono text-slate-500">{department.code}</span></div><div className="text-slate-500">Manager</div></div><div className="flex items-center gap-2"><select className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100" value={department.managerId || ''} disabled={busy} onChange={(event) => void run(() => organizationApi.updateDepartment(department.id, { managerId: event.target.value || null }), 'Department manager updated.')}><option value="">Unassigned</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select><Status value={department.active ? 'ACTIVE' : 'INACTIVE'} /></div></div>)}{!departments.length && <p className="py-2 text-xs text-slate-500">No departments configured.</p>}</div>
           </Panel>}
         </div>
 

@@ -25,6 +25,19 @@ export interface BackendBranch {
   updatedAt: string;
 }
 
+export interface BackendDepartment {
+  id: string;
+  firmId: string;
+  branchId?: string | null;
+  name: string;
+  code: string;
+  managerId?: string | null;
+  costCentre?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BackendRole {
   id: string;
   firmId: string;
@@ -58,6 +71,14 @@ export const organizationApi = {
   getFirm: () => apiClient.get<BackendFirm>('/organization'),
 
   listBranches: () => apiClient.get<BackendBranch[]>('/organization/branches'),
+
+  listDepartments: () => apiClient.get<BackendDepartment[]>('/organization/departments'),
+
+  createDepartment: (data: { name: string; code: string; branchId?: string; managerId?: string; costCentre?: string }) =>
+    apiClient.post<BackendDepartment>('/organization/departments', data),
+
+  updateDepartment: (id: string, data: { name?: string; managerId?: string | null; costCentre?: string | null; active?: boolean }) =>
+    apiClient.patch<BackendDepartment>(`/organization/departments/${id}`, data),
 
   createBranch: (data: CreateBranchInput) =>
     apiClient.post<BackendBranch>('/organization/branches', data),
