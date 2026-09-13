@@ -109,12 +109,12 @@ export const OperationsWorkspace: React.FC = () => {
       const leavePromise = operationsApi.leave(canHr ? 'all' : 'self');
       const employeePromise = canHr ? operationsApi.employees() : Promise.resolve([] as EmployeeRowDto[]);
       const operationalPromises = canOpenOperations
-        ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.purchaseCategories(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings()])
-        : Promise.resolve([[], [], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseCategoryDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[]]);
+        ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.purchaseCategories(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings(), operationsApi.meetingSeries()])
+        : Promise.resolve([[], [], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseCategoryDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[], MeetingSeriesDto[]]);
       const departmentPromise = canHr ? organizationApi.listDepartments() : Promise.resolve([] as BackendDepartment[]);
-      const [leaveRows, employeeRows, departmentRows, [vendorRows, requisitionRows, categoryRows, orderRows, receiptRows, assetRows, projectRows, meetingRows]] = await Promise.all([leavePromise, employeePromise, departmentPromise, operationalPromises]);
+      const [leaveRows, employeeRows, departmentRows, [vendorRows, requisitionRows, categoryRows, orderRows, receiptRows, assetRows, projectRows, meetingRows, seriesRows]] = await Promise.all([leavePromise, employeePromise, departmentPromise, operationalPromises]);
       setLeave(leaveRows); setEmployees(employeeRows); setVendors(vendorRows); setRequisitions(requisitionRows);
-      setDepartments(departmentRows); setPurchaseCategories(categoryRows); setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows);
+      setDepartments(departmentRows); setPurchaseCategories(categoryRows); setOrders(orderRows); setReceipts(receiptRows); setAssets(assetRows); setProjects(projectRows); setMeetings(meetingRows); setMeetingSeriesList(seriesRows || []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load operations data.');
     } finally { setLoading(false); }
@@ -133,6 +133,21 @@ export const OperationsWorkspace: React.FC = () => {
   }, [canHr]);
 
   useEffect(() => { void loadHrRecords(selectedHrEmployeeId); }, [loadHrRecords, selectedHrEmployeeId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setProjectFinancials(null);
+      return;
+    }
+    let active = true;
+    setLoadingFinancials(true);
+    void operationsApi.projectFinancials(selectedProjectId)
+      .then((data) => { if (active) setProjectFinancials(data); })
+      .catch(() => { if (active) setProjectFinancials(null); })
+      .finally(() => { if (active) setLoadingFinancials(false); });
+    return () => { active = false; };
+  }, [selectedProjectId]);
+
 
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true); setError(''); setMessage('');
@@ -358,13 +373,121 @@ export const OperationsWorkspace: React.FC = () => {
           </Panel>}
 
           {canManageOperations && <Panel title="Schedule meeting">
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!meetingForm.title || !meetingForm.startsAt) throw new Error('Meeting title and start time are required.'); await operationsApi.createMeeting({ projectId: meetingForm.projectId || undefined, title: meetingForm.title, startsAt: toIso(meetingForm.startsAt)!, endsAt: toIso(meetingForm.endsAt), location: meetingForm.location || undefined, agenda: meetingForm.agenda ? { text: meetingForm.agenda } : undefined, recurrenceRule: meetingForm.recurrenceRule || undefined, recurrenceUntil: toIso(meetingForm.recurrenceUntil), participantUserIds: meetingForm.participantUserIds }); setMeetingForm({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '', recurrenceRule: '', recurrenceUntil: '', participantUserIds: [] }); }, 'Meeting scheduled.'); }}>
+            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => {
+              if (!meetingForm.title || !meetingForm.startsAt) throw new Error('Meeting title and start time are required.');
+              if (isRecurring) {
+                const rule = `FREQ=${recurrenceFreq};INTERVAL=${recurrenceInterval}${recurrenceFreq === 'WEEKLY' ? `;BYDAY=${selectedByDays.join(',')}` : ''}`;
+                await operationsApi.createMeetingSeries({
+                  projectId: meetingForm.projectId || undefined,
+                  title: meetingForm.title,
+                  startsAt: toIso(meetingForm.startsAt)!,
+                  location: meetingForm.location || undefined,
+                  agendaTemplate: meetingForm.agenda ? { text: meetingForm.agenda } : undefined,
+                  recurrenceRule: rule,
+                  defaultAttendeeIds: meetingForm.participantUserIds,
+                  rollingHorizonDays: 90
+                });
+              } else {
+                await operationsApi.createMeeting({
+                  projectId: meetingForm.projectId || undefined,
+                  title: meetingForm.title,
+                  startsAt: toIso(meetingForm.startsAt)!,
+                  endsAt: toIso(meetingForm.endsAt),
+                  location: meetingForm.location || undefined,
+                  agenda: meetingForm.agenda ? { text: meetingForm.agenda } : undefined,
+                  recurrenceRule: meetingForm.recurrenceRule || undefined,
+                  recurrenceUntil: toIso(meetingForm.recurrenceUntil),
+                  participantUserIds: meetingForm.participantUserIds
+                });
+              }
+              setMeetingForm({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '', recurrenceRule: '', recurrenceUntil: '', participantUserIds: [] });
+              setIsRecurring(false);
+            }, isRecurring ? 'Recurring meeting series created with 90-day occurrences.' : 'Meeting scheduled.'); }}>
               <label className="block text-xs text-slate-400">Project<select className={inputClass} value={meetingForm.projectId} onChange={(e) => setMeetingForm({ ...meetingForm, projectId: e.target.value })}><option value="">Standalone meeting</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
               <input className={inputClass} placeholder="Meeting title" value={meetingForm.title} onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })} />
               <div className="grid grid-cols-2 gap-3"><input type="datetime-local" className={inputClass} value={meetingForm.startsAt} onChange={(e) => setMeetingForm({ ...meetingForm, startsAt: e.target.value })} /><input type="datetime-local" className={inputClass} value={meetingForm.endsAt} onChange={(e) => setMeetingForm({ ...meetingForm, endsAt: e.target.value })} /></div>
               <input className={inputClass} placeholder="Location / room" value={meetingForm.location} onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })} />
               <input className={inputClass} placeholder="Recurrence rule (metadata only, e.g. FREQ=WEEKLY)" value={meetingForm.recurrenceRule} onChange={(e) => setMeetingForm({ ...meetingForm, recurrenceRule: e.target.value })} />
               <label className="block text-xs text-slate-400">Recurrence ends (optional)<input type="datetime-local" className={`${inputClass} mt-1`} value={meetingForm.recurrenceUntil} onChange={(e) => setMeetingForm({ ...meetingForm, recurrenceUntil: e.target.value })} /></label>
+                            <div className="rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 space-y-2.5">
+                <label className="flex items-center gap-2 text-xs font-semibold text-amber-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-950 text-amber-500 focus:ring-amber-500"
+                  />
+                  <span>Recurring Meeting Series (90-Day Rolling Horizon)</span>
+                </label>
+                {isRecurring && (
+                  <div className="space-y-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block text-[11px] text-slate-400">Cadence
+                        <select
+                          className={inputClass}
+                          value={recurrenceFreq}
+                          onChange={(e) => setRecurrenceFreq(e.target.value as any)}
+                        >
+                          <option value="WEEKLY">Weekly</option>
+                          <option value="DAILY">Daily</option>
+                          <option value="MONTHLY">Monthly</option>
+                        </select>
+                      </label>
+                      <label className="block text-[11px] text-slate-400">Interval
+                        <input
+                          type="number"
+                          min="1"
+                          max="12"
+                          className={inputClass}
+                          value={recurrenceInterval}
+                          onChange={(e) => setRecurrenceInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        />
+                      </label>
+                    </div>
+                    {recurrenceFreq === 'WEEKLY' && (
+                      <div>
+                        <span className="block text-[11px] text-slate-400 mb-1">Days of week</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            ['MO', 'Mon'],
+                            ['TU', 'Tue'],
+                            ['WE', 'Wed'],
+                            ['TH', 'Thu'],
+                            ['FR', 'Fri'],
+                          ].map(([code, label]) => {
+                            const active = selectedByDays.includes(code);
+                            return (
+                              <button
+                                type="button"
+                                key={code}
+                                onClick={() =>
+                                  setSelectedByDays((prev) =>
+                                    prev.includes(code)
+                                      ? prev.length > 1
+                                        ? prev.filter((d) => d !== code)
+                                        : prev
+                                      : [...prev, code]
+                                  )
+                                }
+                                className={`px-2 py-1 rounded text-xs font-mono font-semibold transition ${
+                                  active
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-amber-400/80">
+                      Will automatically generate meeting occurrences for up to 90 days from the start time.
+                    </p>
+                  </div>
+                )}
+              </div>
               <textarea className={`${inputClass} min-h-20`} placeholder="Agenda" value={meetingForm.agenda} onChange={(e) => setMeetingForm({ ...meetingForm, agenda: e.target.value })} />
               <label className="block text-xs text-slate-400">Participants (optional; use Ctrl/Cmd to select multiple)<select multiple className={`${inputClass} mt-1 min-h-28`} value={meetingForm.participantUserIds} onChange={(event) => setMeetingForm({ ...meetingForm, participantUserIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value) })}>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label>
               <button className={primaryButton} disabled={busy}>Schedule meeting</button>
@@ -382,7 +505,83 @@ export const OperationsWorkspace: React.FC = () => {
               <label className="block text-xs text-slate-400">Project<select className={inputClass} value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}><option value="">Select a project</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
               {!selectedProject && <p className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">{selectedProjectId ? 'This project is unavailable or no longer exists.' : 'Select a project to view and update its persisted milestones and spend register.'}</p>}
               {selectedProject && <>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400"><Status value={selectedProject.status} /><span>{selectedProject.milestones?.length || 0} milestones</span><span>{selectedProject.spend?.length || 0} spend entries</span><label className="ml-auto flex items-center gap-2">Status<select className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100" value={selectedProject.status} disabled={busy} onChange={(event) => void run(() => operationsApi.setProjectStatus(selectedProject.id, event.target.value as 'PLANNED' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'), 'Project status updated.')}><option value="PLANNED">Planned</option><option value="ACTIVE">Active</option><option value="ON_HOLD">On hold</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></select></label></div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400"><Status value={selectedProject.status} /><span>{selectedProject.milestones?.length || 0} milestones</span><span>{selectedProject.spend?.length || 0} spend entries</span><label className="ml-auto flex items-center gap-2">Status<select className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100" value={selectedProject.status} disabled={busy} onChange={(event) => void run(() => operationsApi.setProjectStatus(selectedProject.id, event.target.value as 'PLANNED' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'), 'Project status updated.')}><option value="PLANNED">Planned</option><option value="ACTIVE">Active</option><option value="ON_HOLD">On hold</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></select></label></div>                {/* 3-Tier Financial Intelligence Dashboard */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 space-y-3 shadow-md">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-amber-500" />
+                      <span className="font-semibold text-xs text-slate-200">Financial Performance & Budget Tracking</span>
+                    </div>
+                    {projectFinancials && (
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                        projectFinancials.healthStatus === 'on_track'
+                          ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700'
+                          : projectFinancials.healthStatus === 'at_risk'
+                            ? 'bg-amber-950/60 text-amber-300 border-amber-700'
+                            : 'bg-rose-950/60 text-rose-300 border-rose-700'
+                      }`}>
+                        {projectFinancials.healthStatus === 'on_track' ? 'ON TRACK (<85%)' : projectFinancials.healthStatus === 'at_risk' ? 'AT RISK (>85%)' : 'OVER BUDGET (>100%)'}
+                      </span>
+                    )}
+                  </div>
+
+                  {loadingFinancials && <div className="text-xs text-slate-500 py-2">Loading financial metrics…</div>}
+
+                  {projectFinancials && (
+                    <div className="space-y-3">
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+                          <div className="text-[11px] text-slate-400">Total Budget</div>
+                          <div className="text-base font-bold text-slate-100 mt-0.5">{money(projectFinancials.budget)}</div>
+                          <div className="text-[11px] text-slate-500 mt-1">Remaining: {money(projectFinancials.remaining)}</div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+                          <div className="text-[11px] text-slate-400">Committed (POs + Requisitions)</div>
+                          <div className="text-base font-bold text-amber-400 mt-0.5">{money(projectFinancials.committed)}</div>
+                          <div className="text-[11px] text-slate-500 mt-1">
+                            {projectFinancials.breakdown.approvedOrders.length} POs, {projectFinancials.breakdown.approvedRequisitions.length} Reqs
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+                          <div className="text-[11px] text-slate-400">Actual Verified (Disbursed)</div>
+                          <div className="text-base font-bold text-emerald-400 mt-0.5">{money(projectFinancials.actual)}</div>
+                          <div className="text-[11px] text-slate-500 mt-1">
+                            {projectFinancials.breakdown.paidExpenses.length} Expenses, {projectFinancials.breakdown.financePostedSpend.length} Vouchers
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                          <span>Budget Utilization</span>
+                          <span className="font-mono font-bold text-slate-200">{projectFinancials.utilizationPercent}%</span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-2 rounded-full transition-all ${
+                              projectFinancials.healthStatus === 'on_track'
+                                ? 'bg-emerald-500'
+                                : projectFinancials.healthStatus === 'at_risk'
+                                  ? 'bg-amber-500'
+                                  : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${Math.min(100, projectFinancials.utilizationPercent)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {projectFinancials.manualUnverified > 0 && (
+                        <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between">
+                          <span>Unverified Operational Spend (Manual Logs):</span>
+                          <span className="font-mono font-semibold text-slate-300">{money(projectFinancials.manualUnverified)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid gap-3 lg:grid-cols-2">
                   <form className="rounded-xl border border-slate-800 p-3" onSubmit={(event) => { event.preventDefault(); void run(async () => { if (!projectWork.milestoneTitle.trim()) throw new Error('Milestone title is required.'); await operationsApi.addProjectMilestone(selectedProject.id, { title: projectWork.milestoneTitle.trim(), dueAt: toIso(projectWork.milestoneDueAt) }); setProjectWork((current) => ({ ...current, milestoneTitle: '', milestoneDueAt: '' })); }, 'Milestone recorded.'); }}>
                     <div className="mb-2 text-xs font-semibold text-slate-200">Add milestone</div>
