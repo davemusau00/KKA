@@ -246,7 +246,7 @@ export class OperationsController {
   @Get("hr/employees/:userId/records")
   @RequirePermissions("hr.manage")
   employeeRecords(@CurrentUser() user: RequestUser, @Param("userId") userId: string) {
-    return this.ops.hrRecords(user.firmId, userId);
+    return this.ops.hrRecords(user, userId);
   }
 
   @Post("hr/employees/:userId/lifecycle")

@@ -535,7 +535,8 @@ export class OperationsService {
     return updated;
   }
 
-  async hrRecords(firmId: string, userId: string) {
+  async hrRecords(viewer: RequestUser, userId: string) {
+    const firmId = viewer.firmId;
     await this.assertFirmUsers(firmId, [userId]);
     const year = new Date().getUTCFullYear();
     const [profile, lifecycle, appraisals, cpd, credentials, balances, notes, documents] = await Promise.all([
@@ -545,7 +546,7 @@ export class OperationsService {
       this.prisma.client.cpdRecord.findMany({ where: { userId }, orderBy: { occurredOn: "desc" } }),
       this.prisma.client.advocateCredential.findMany({ where: { firmId, userId }, orderBy: { certificateExpiresAt: "asc" } }),
       this.prisma.client.leaveBalance.findMany({ where: { firmId, userId, year }, orderBy: { policyKey: "asc" } }),
-      this.prisma.client.hrRestrictedNote.findMany({ where: { firmId, userId }, orderBy: { createdAt: "desc" } }),
+      this.prisma.client.hrRestrictedNote.findMany({ where: { firmId, userId, OR: [{ authorUserId: viewer.id }, { visibleToUserIds: { has: viewer.id } }] }, orderBy: { createdAt: "desc" } }),
       this.prisma.client.staffDocument.findMany({ where: { firmId, userId }, orderBy: { createdAt: "desc" } })
     ]);
     return { profile, lifecycle, appraisals, cpd, credentials, balances, notes, documents };
