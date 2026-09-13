@@ -510,20 +510,20 @@ model User {
 }
 
 model UserOnboardingState {
-  id               String               @id @default(cuid())
-  userId           String               @unique
-  onboardingVersion Int                 @default(1)
-  status           UserOnboardingStatus @default(NOT_STARTED)
-  currentStepKey   String?
-  completedSteps   Json                 @default("[]")
-  startedAt        DateTime?
-  lastSeenAt       DateTime?
-  completedAt      DateTime?
-  tourCompletedAt  DateTime?
-  manualViewedAt   DateTime?
-  dismissedUntil   DateTime?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  id                String               @id @default(cuid())
+  userId            String               @unique
+  onboardingVersion Int                  @default(1)
+  status            UserOnboardingStatus @default(NOT_STARTED)
+  currentStepKey    String?
+  completedSteps    Json                 @default("[]")
+  startedAt         DateTime?
+  lastSeenAt        DateTime?
+  completedAt       DateTime?
+  tourCompletedAt   DateTime?
+  manualViewedAt    DateTime?
+  dismissedUntil    DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -923,6 +923,7 @@ model Matter {
   auditEvents        AuditEvent[]
   channels           CommunicationChannel[]
   meetings           Meeting[]
+  meetingSeries      MeetingSeries[]
   projectLinks       ProjectMatterLink[]
   customValues       CustomFieldValue[]
   personalInjuryCase PersonalInjuryCase?
@@ -1194,21 +1195,21 @@ model Deadline {
 }
 
 model DeadlineRevision {
-  id                   String   @id @default(cuid())
-  deadlineId           String
-  revisionNumber       Int
-  action               String
-  priorOfficialDueAt   DateTime?
-  nextOfficialDueAt    DateTime?
+  id                    String    @id @default(cuid())
+  deadlineId            String
+  revisionNumber        Int
+  action                String
+  priorOfficialDueAt    DateTime?
+  nextOfficialDueAt     DateTime?
   priorInternalTargetAt DateTime?
-  nextInternalTargetAt DateTime?
-  source               String
-  reason               String?
-  legalRuleCode        String?
-  courtOrderDocumentId String?
-  calculationSnapshot  Json?
-  changedById          String
-  createdAt            DateTime @default(now())
+  nextInternalTargetAt  DateTime?
+  source                String
+  reason                String?
+  legalRuleCode         String?
+  courtOrderDocumentId  String?
+  calculationSnapshot   Json?
+  changedById           String
+  createdAt             DateTime  @default(now())
 
   deadline Deadline @relation(fields: [deadlineId], references: [id], onDelete: Cascade)
 
@@ -1244,12 +1245,12 @@ model CalendarEvent {
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
 
-  matter       Matter?                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  organizer    User                    @relation("CalendarOrganizer", fields: [organizerId], references: [id], onDelete: Restrict)
-  assignedUser User                    @relation("CalendarAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
-  participants CalendarParticipant[]
-  documents    CalendarEventDocument[]
-  revisions    CalendarRevision[]
+  matter        Matter?                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  organizer     User                    @relation("CalendarOrganizer", fields: [organizerId], references: [id], onDelete: Restrict)
+  assignedUser  User                    @relation("CalendarAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
+  participants  CalendarParticipant[]
+  documents     CalendarEventDocument[]
+  revisions     CalendarRevision[]
   outcomeRecord CourtOutcomeRecord?
 
   @@index([assignedUserId, startAt, endAt])
@@ -1370,28 +1371,28 @@ model CourtFilingPackage {
 }
 
 model ServiceRecord {
-  id                  String    @id @default(cuid())
-  matterId            String
-  proceedingId        String?
-  documentId          String?
-  partyName           String
-  partyAddress        String?
-  partyContact        String?
-  processServerName   String?
-  assignedDate        DateTime?
-  dueDate             DateTime?
-  serviceDate         DateTime?
-  serviceMethod       String?
-  affidavitDocumentId String?
-  affidavitStatus     String    @default("AWAITED")
+  id                               String    @id @default(cuid())
+  matterId                         String
+  proceedingId                     String?
+  documentId                       String?
+  partyName                        String
+  partyAddress                     String?
+  partyContact                     String?
+  processServerName                String?
+  assignedDate                     DateTime?
+  dueDate                          DateTime?
+  serviceDate                      DateTime?
+  serviceMethod                    String?
+  affidavitDocumentId              String?
+  affidavitStatus                  String    @default("AWAITED")
   substituteServiceOrderDocumentId String?
-  returnedService     Boolean   @default(false)
-  nextAction          String?
-  nextDeadlineId      String?
-  status              String    @default("REQUESTED")
-  notes               String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  returnedService                  Boolean   @default(false)
+  nextAction                       String?
+  nextDeadlineId                   String?
+  status                           String    @default("REQUESTED")
+  notes                            String?
+  createdAt                        DateTime  @default(now())
+  updatedAt                        DateTime  @updatedAt
 
   proceeding CourtProceeding? @relation(fields: [proceedingId], references: [id], onDelete: SetNull)
   attempts   ServiceAttempt[]
@@ -1400,16 +1401,16 @@ model ServiceRecord {
 }
 
 model ServiceAttempt {
-  id              String   @id @default(cuid())
-  serviceRecordId String
-  attemptNo       Int
-  attemptedAt     DateTime
-  outcome         String
-  serviceAddress  String?
+  id                  String   @id @default(cuid())
+  serviceRecordId     String
+  attemptNo           Int
+  attemptedAt         DateTime
+  outcome             String
+  serviceAddress      String?
   affidavitDocumentId String?
-  returnedService Boolean @default(false)
-  failureReason   String?
-  notes           String?
+  returnedService     Boolean  @default(false)
+  failureReason       String?
+  notes               String?
 
   serviceRecord ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
 
@@ -1776,16 +1777,16 @@ model CommunicationChannel {
   memberships ChannelMembership[]
   messages    ChannelMessage[]
 
-  @@index([matterId])
   @@unique([firmId, channelKey])
+  @@index([matterId])
 }
 
 model ChannelMembership {
-  channelId String
-  userId    String
-  role      String?
-  joinedAt  DateTime @default(now())
-  lastReadAt DateTime?
+  channelId         String
+  userId            String
+  role              String?
+  joinedAt          DateTime  @default(now())
+  lastReadAt        DateTime?
   lastReadMessageId String?
 
   channel CommunicationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -1823,11 +1824,11 @@ model MessageAttachment {
 }
 
 model MessageMention {
-  id         String   @id @default(cuid())
-  messageId  String
-  userId     String
-  readAt     DateTime?
-  createdAt  DateTime @default(now())
+  id        String    @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
 
   message ChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
@@ -2057,15 +2058,15 @@ model JournalLine {
 }
 
 model PaymentReceipt {
-  id                       String   @id @default(cuid())
+  id                       String    @id @default(cuid())
   firmId                   String
   matterId                 String?
   clientId                 String?
   accountId                String
   journalEntryId           String?
-  receiptNumber            String   @unique
-  amount                   Decimal  @db.Decimal(18, 2)
-  currency                 String   @default("KES")
+  receiptNumber            String    @unique
+  amount                   Decimal   @db.Decimal(18, 2)
+  currency                 String    @default("KES")
   payerName                String
   paymentMethod            String
   referenceNumber          String
@@ -2073,10 +2074,10 @@ model PaymentReceipt {
   receivedAt               DateTime
   clearedAt                DateTime?
   clearingReference        String?
-  allocatedToFees          Decimal  @default(0) @db.Decimal(18, 2)
-  allocatedToDisbursements Decimal  @default(0) @db.Decimal(18, 2)
+  allocatedToFees          Decimal   @default(0) @db.Decimal(18, 2)
+  allocatedToDisbursements Decimal   @default(0) @db.Decimal(18, 2)
   createdById              String
-  createdAt                DateTime @default(now())
+  createdAt                DateTime  @default(now())
 
   @@unique([firmId, referenceNumber])
   @@index([matterId, receivedAt])
@@ -2087,6 +2088,7 @@ model ExpenseRequest {
   id                  String        @id @default(cuid())
   firmId              String
   matterId            String?
+  projectId           String?
   branchId            String
   expenseNumber       String        @unique
   category            String
@@ -2098,7 +2100,7 @@ model ExpenseRequest {
   approvedById        String?
   disbursedById       String?
   receiptDocumentId   String?
-  purchaseReceiptId   String?        @unique
+  purchaseReceiptId   String?       @unique
   journalEntryId      String?
   status              ExpenseStatus @default(DRAFT)
   requestedAt         DateTime      @default(now())
@@ -2107,10 +2109,12 @@ model ExpenseRequest {
   reconciledAt        DateTime?
   reconciliationNotes String?
 
-  matter Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matter  Matter?          @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  project InternalProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([matterId, status])
   @@index([branchId, status])
+  @@index([projectId, status])
 }
 
 model FeeNote {
@@ -2502,63 +2506,71 @@ model InternalProject {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  firm     Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  members  ProjectMember[]
-  meetings Meeting[]
-  milestones ProjectMilestone[]
-  spend ProjectSpend[]
-  matterLinks ProjectMatterLink[]
-  documentLinks ProjectDocumentLink[]
+  firm                 Firm                  @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  members              ProjectMember[]
+  meetings             Meeting[]
+  meetingSeries        MeetingSeries[]
+  expenseRequests      ExpenseRequest[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseOrders       PurchaseOrder[]
+  milestones           ProjectMilestone[]
+  spend                ProjectSpend[]
+  matterLinks          ProjectMatterLink[]
+  documentLinks        ProjectDocumentLink[]
 
   @@index([firmId, status])
 }
 
 model ProjectMilestone {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   projectId   String
   title       String
   description String?
   dueAt       DateTime?
-  status      String   @default("OPEN")
+  status      String          @default("OPEN")
   completedAt DateTime?
   ownerUserId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  project     InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([projectId, status, dueAt])
 }
 
 model ProjectSpend {
-  id          String   @id @default(cuid())
-  projectId   String
-  description String
-  amount      Decimal  @db.Decimal(18, 2)
-  occurredAt  DateTime
-  source      String   @default("MANUAL")
+  id               String          @id @default(cuid())
+  projectId        String
+  description      String
+  amount           Decimal         @db.Decimal(18, 2)
+  occurredAt       DateTime
+  source           String          @default("MANUAL")
   financeReference String?
-  recordedById String
-  createdAt   DateTime @default(now())
-  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recordedById     String
+  createdAt        DateTime        @default(now())
+  project          InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([projectId, occurredAt])
 }
 
 model ProjectMatterLink {
-  projectId String
-  matterId String
+  projectId  String
+  matterId   String
   linkedById String
-  createdAt DateTime @default(now())
-  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  project    InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  matter     Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
   @@id([projectId, matterId])
 }
 
 model ProjectDocumentLink {
-  projectId String
+  projectId  String
   documentId String
   linkedById String
-  createdAt DateTime @default(now())
-  project InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  project    InternalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document   Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
   @@id([projectId, documentId])
 }
 
@@ -2573,32 +2585,66 @@ model ProjectMember {
   @@id([projectId, userId])
 }
 
+model MeetingSeries {
+  id                 String    @id @default(cuid())
+  firmId             String
+  title              String
+  description        String?
+  recurrenceRule     String
+  startsAt           DateTime
+  durationMinutes    Int       @default(60)
+  location           String?
+  projectId          String?
+  matterId           String?
+  organizerId        String
+  agendaTemplate     Json?
+  defaultAttendeeIds String[]
+  rollingHorizonDays Int       @default(90)
+  lastGeneratedUntil DateTime?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  project  InternalProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  matter   Matter?          @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  meetings Meeting[]
+
+  @@index([firmId, isActive])
+  @@index([projectId])
+  @@index([matterId])
+}
+
 model Meeting {
-  id          String    @id @default(cuid())
-  firmId      String
-  projectId   String?
-  matterId    String?
-  title       String
-  startsAt    DateTime
-  endsAt      DateTime?
-  location    String?
-  agenda      Json?
-  minutes     Json?
-  status      String    @default("SCHEDULED")
-  organizerId String
-  recurrenceRule String?
-  recurrenceUntil DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  firmId                String
+  projectId             String?
+  matterId              String?
+  title                 String
+  startsAt              DateTime
+  endsAt                DateTime?
+  location              String?
+  agenda                Json?
+  minutes               Json?
+  status                String    @default("SCHEDULED")
+  organizerId           String
+  seriesId              String?
+  seriesOccurrenceStart DateTime?
+  recurrenceRule        String?
+  recurrenceUntil       DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   project      InternalProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   matter       Matter?              @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  series       MeetingSeries?       @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   participants MeetingParticipant[]
   decisions    MeetingDecision[]
   actions      MeetingAction[]
 
+  @@unique([seriesId, seriesOccurrenceStart])
   @@index([matterId, startsAt])
   @@index([projectId, startsAt])
+  @@index([seriesId])
 }
 
 model MeetingParticipant {
@@ -2623,16 +2669,16 @@ model MeetingDecision {
 }
 
 model MeetingAction {
-  id         String    @id @default(cuid())
-  meetingId  String
-  taskId     String?
-  text       String
-  assigneeId String?
-  dueAt      DateTime?
-  status     String    @default("OPEN")
-  completedAt DateTime?
+  id            String    @id @default(cuid())
+  meetingId     String
+  taskId        String?
+  text          String
+  assigneeId    String?
+  dueAt         DateTime?
+  status        String    @default("OPEN")
+  completedAt   DateTime?
   completedById String?
-  createdAt  DateTime  @default(now())
+  createdAt     DateTime  @default(now())
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 }
@@ -2657,29 +2703,29 @@ model EmployeeProfile {
 }
 
 model LeaveRequest {
-  id         String      @id @default(cuid())
-  userId     String
-  type       String
-  startsOn   DateTime
-  endsOn     DateTime
-  days       Decimal     @db.Decimal(8, 2)
-  reason     String?
-  policyKey  String?
-  chargeableDates String[] @default([])
-  calculation Json?
-  revision Int @default(0)
-  idempotencyKey String?
-  status     LeaveStatus @default(DRAFT)
-  approverId String?
-  approvedAt DateTime?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  userId          String
+  type            String
+  startsOn        DateTime
+  endsOn          DateTime
+  days            Decimal     @db.Decimal(8, 2)
+  reason          String?
+  policyKey       String?
+  chargeableDates String[]    @default([])
+  calculation     Json?
+  revision        Int         @default(0)
+  idempotencyKey  String?
+  status          LeaveStatus @default(DRAFT)
+  approverId      String?
+  approvedAt      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   requester User  @relation("LeaveRequester", fields: [userId], references: [id], onDelete: Cascade)
   approver  User? @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
 
-  @@index([userId, status])
   @@unique([userId, idempotencyKey])
+  @@index([userId, status])
 }
 
 model CpdRecord {
@@ -2697,54 +2743,54 @@ model CpdRecord {
 }
 
 model HrLifecycleChecklistItem {
-  id          String   @id @default(cuid())
-  firmId      String
-  userId      String
-  lifecycle   String
-  key         String
-  title       String
-  dueAt       DateTime?
-  status      String   @default("PENDING")
-  completedAt DateTime?
+  id            String    @id @default(cuid())
+  firmId        String
+  userId        String
+  lifecycle     String
+  key           String
+  title         String
+  dueAt         DateTime?
+  status        String    @default("PENDING")
+  completedAt   DateTime?
   completedById String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([firmId, userId, lifecycle, key])
   @@index([firmId, userId, lifecycle, status])
 }
 
 model EmployeeAppraisal {
-  id             String   @id @default(cuid())
-  firmId         String
-  userId         String
-  reviewerUserId String
-  periodStartsAt DateTime
-  periodEndsAt   DateTime
-  status         String   @default("DRAFT")
-  rating         Decimal? @db.Decimal(4, 2)
-  summary        String?
+  id              String    @id @default(cuid())
+  firmId          String
+  userId          String
+  reviewerUserId  String
+  periodStartsAt  DateTime
+  periodEndsAt    DateTime
+  status          String    @default("DRAFT")
+  rating          Decimal?  @db.Decimal(4, 2)
+  summary         String?
   developmentPlan String?
-  acknowledgedAt DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  acknowledgedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([firmId, userId, periodEndsAt])
 }
 
 model AdvocateCredential {
-  id                       String   @id @default(cuid())
-  firmId                   String
-  userId                   String
-  admissionNumber          String
-  admissionDate            DateTime?
-  practicingCertificateNo  String?
-  certificateExpiresAt     DateTime?
-  status                   String   @default("ACTIVE")
-  notes                    String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                      String    @id @default(cuid())
+  firmId                  String
+  userId                  String
+  admissionNumber         String
+  admissionDate           DateTime?
+  practicingCertificateNo String?
+  certificateExpiresAt    DateTime?
+  status                  String    @default("ACTIVE")
+  notes                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   @@unique([firmId, admissionNumber])
   @@index([firmId, userId, certificateExpiresAt])
@@ -2790,32 +2836,32 @@ model LeaveBalance {
 }
 
 model HrRestrictedNote {
-  id              String   @id @default(cuid())
-  firmId          String
-  userId          String
-  authorUserId    String
-  category        String
-  body            String
+  id               String   @id @default(cuid())
+  firmId           String
+  userId           String
+  authorUserId     String
+  category         String
+  body             String
   visibleToUserIds String[] @default([])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([firmId, userId, createdAt])
 }
 
 model StaffDocument {
-  id             String   @id @default(cuid())
-  firmId         String
-  userId         String
-  category       String
-  title          String
-  storageState   String   @default("MANUAL")
+  id                String    @id @default(cuid())
+  firmId            String
+  userId            String
+  category          String
+  title             String
+  storageState      String    @default("MANUAL")
   externalReference String?
-  expiresAt      DateTime?
-  recordedById   String
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  expiresAt         DateTime?
+  recordedById      String
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([firmId, userId, expiresAt])
 }
@@ -2844,72 +2890,78 @@ model Vendor {
 }
 
 model PurchaseCategory {
-  id                   String   @id @default(cuid())
-  firmId               String
-  key                  String
-  name                 String
-  approvalThreshold    Decimal? @db.Decimal(18, 2)
-  financeAccountCode   String?
-  active               Boolean  @default(true)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  firmId             String
+  key                String
+  name               String
+  approvalThreshold  Decimal? @db.Decimal(18, 2)
+  financeAccountCode String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   requisitions PurchaseRequisition[]
+
   @@unique([firmId, key])
 }
 
 model PurchaseRequisition {
-  id            String         @id @default(cuid())
-  firmId        String
-  branchId      String
-  vendorId      String?
-  categoryId    String?
-  requisitionNo String         @unique
-  requestedById String
-  description   String
-  amount        Decimal        @db.Decimal(18, 2)
+  id             String         @id @default(cuid())
+  firmId         String
+  branchId       String
+  projectId      String?
+  vendorId       String?
+  categoryId     String?
+  requisitionNo  String         @unique
+  requestedById  String
+  description    String
+  amount         Decimal        @db.Decimal(18, 2)
   idempotencyKey String?
-  status        PurchaseStatus @default(DRAFT)
-  approvedById  String?
-  approvedAt    DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  status         PurchaseStatus @default(DRAFT)
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendor   Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   category PurchaseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  quotes VendorQuote[]
+  quotes   VendorQuote[]
+  project  InternalProject?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@unique([firmId, idempotencyKey])
+  @@index([projectId, status])
 }
 
 model VendorDocument {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   vendorId          String
   category          String
   title             String
-  storageState      String   @default("MANUAL")
+  storageState      String    @default("MANUAL")
   externalReference String?
   expiresAt         DateTime?
   recordedById      String
-  createdAt         DateTime @default(now())
-  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  vendor            Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
   @@index([vendorId, expiresAt])
 }
 
 model VendorQuote {
-  id              String   @id @default(cuid())
-  requisitionId   String
-  vendorId        String
-  reference       String
-  amount          Decimal  @db.Decimal(18, 2)
-  currency        String   @default("KES")
-  validUntil      DateTime?
-  status          String   @default("RECEIVED")
-  notes           String?
-  recordedById    String
-  createdAt       DateTime @default(now())
-  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  vendor      Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  id            String              @id @default(cuid())
+  requisitionId String
+  vendorId      String
+  reference     String
+  amount        Decimal             @db.Decimal(18, 2)
+  currency      String              @default("KES")
+  validUntil    DateTime?
+  status        String              @default("RECEIVED")
+  notes         String?
+  recordedById  String
+  createdAt     DateTime            @default(now())
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  vendor        Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
   @@unique([requisitionId, vendorId, reference])
   @@index([requisitionId, status])
 }
@@ -2918,6 +2970,7 @@ model PurchaseOrder {
   id            String         @id @default(cuid())
   firmId        String
   branchId      String
+  projectId     String?
   vendorId      String
   orderNo       String         @unique
   requisitionId String?        @unique
@@ -2930,8 +2983,11 @@ model PurchaseOrder {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  vendor   Vendor            @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   receipts PurchaseReceipt[]
+  project  InternalProject?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
 }
 
 model PurchaseReceipt {
@@ -2947,53 +3003,54 @@ model PurchaseReceipt {
   createdAt         DateTime @default(now())
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  asset Asset?
+  asset         Asset?
 
   @@unique([firmId, idempotencyKey])
   @@index([purchaseOrderId, receivedAt])
 }
 
 model Asset {
-  id             String      @id @default(cuid())
-  firmId         String
-  branchId       String?
-  assetTag       String      @unique
-  category       String
-  name           String
-  serialNumber   String?
-  purchaseDate   DateTime?
-  purchaseCost   Decimal?    @db.Decimal(18, 2)
-  status         AssetStatus @default(IN_STOCK)
-  warrantyEndsAt DateTime?
-  notes          String?
-  purchaseReceiptId String? @unique
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  firmId            String
+  branchId          String?
+  assetTag          String      @unique
+  category          String
+  name              String
+  serialNumber      String?
+  purchaseDate      DateTime?
+  purchaseCost      Decimal?    @db.Decimal(18, 2)
+  status            AssetStatus @default(IN_STOCK)
+  warrantyEndsAt    DateTime?
+  notes             String?
+  purchaseReceiptId String?     @unique
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
-  firm        Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  assignments AssetAssignment[]
-  maintenance AssetMaintenance[]
-  purchaseReceipt PurchaseReceipt? @relation(fields: [purchaseReceiptId], references: [id], onDelete: SetNull)
+  firm            Firm               @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  branch          Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  assignments     AssetAssignment[]
+  maintenance     AssetMaintenance[]
+  purchaseReceipt PurchaseReceipt?   @relation(fields: [purchaseReceiptId], references: [id], onDelete: SetNull)
 }
 
 model AssetMaintenance {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   assetId           String
   vendorId          String?
   type              String
   description       String
-  status            String   @default("OPEN")
-  openedAt          DateTime @default(now())
+  status            String    @default("OPEN")
+  openedAt          DateTime  @default(now())
   completedAt       DateTime?
-  cost              Decimal? @db.Decimal(18, 2)
+  cost              Decimal?  @db.Decimal(18, 2)
   externalReference String?
   notes             String?
   recordedById      String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  asset             Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  vendor            Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
   @@index([assetId, status, openedAt])
 }
 
