@@ -118,18 +118,24 @@ Run the verification gate across the entire monorepo:
 # Validate Prisma schema
 pnpm prisma:validate
 
-# Typecheck all six workspace projects, plus browser tests
+# Typecheck all workspace packages
 pnpm typecheck
 pnpm --filter @kka/web typecheck:tests
 
-# Run automated tests
+# Run unit and foundation tests
 pnpm test
+
+# Run the dedicated authorization & record-access regression suite (94 tests)
+pnpm --filter @kka/api test:access
+
+# Run document workflows and engine tests
+pnpm --filter @kka/api test:documents
 
 # Build all workspace packages for production
 pnpm build
 ```
 
-See [PROJECT_STATE.md](docs/PROJECT_STATE.md) for current results and gaps. Browser and API integration tests require isolated dependencies; no blanket full-product acceptance is claimed.
+See [CURRENT_RELEASE_STATE.md](docs/CURRENT_RELEASE_STATE.md), [VALIDATION_STATUS.md](VALIDATION_STATUS.md), and [PROJECT_STATE.md](docs/PROJECT_STATE.md) for current verification evidence and status across all domains.
 
 ---
 

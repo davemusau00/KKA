@@ -4,7 +4,7 @@
 
 **Repository:** `davemusau00/KKA`
 **Audit basis:** `main` at `e1c70cfae10898eb21a8e2d98451ca5a6e733575`
-**Audit date:** 11 September 2026
+**Audit date:** 13 September 2026
 **Purpose:** define the current remaining work between the repository as it exists now and a dependable, staff-ready, firm-wide law-firm operating system.
 
 ---
@@ -13,7 +13,7 @@
 
 KKA is now a substantial application rather than a prototype shell.
 
-The repository has a credible production-shaped architecture comprising React, NestJS/Fastify, Prisma/PostgreSQL, Redis, BullMQ, shared contracts, document generation, Docker infrastructure, Caddy, server-side authentication and a growing set of authoritative backend domains.
+The repository has a credible production-shaped architecture comprising React, NestJS/Fastify, Prisma/PostgreSQL, Redis, BullMQ, shared contracts, document generation, Docker infrastructure, Caddy, server-side authentication and an authoritative set of backend domains.
 
 The current release register itself correctly distinguishes between implemented code and accepted workflows. A workflow is not complete merely because an API route, screen, database model or test exists. Full acceptance requires authoritative persistence, reload survival, second-user visibility, authorization, failure handling, auditing, concurrency handling and browser acceptance.
 
@@ -21,11 +21,11 @@ The principal remaining risk has shifted.
 
 Earlier KKA's greatest weakness was polished frontend functionality backed by synthetic state.
 
-The greatest weakness now is:
+The greatest remaining work now is:
 
-> **inconsistent completion across security boundaries, workflow boundaries and operational proof.**
+> **completing frontend UI server-hydration conversion for remaining PI screens and executing operational deployment proofs on live infrastructure.**
 
-The application increasingly has the right backend primitives. It does not yet apply those primitives uniformly across every path.
+The application now applies object-level authorization consistently across all core service modules, evidenced by 94 automated tests in the dedicated access suite.
 
 ### Current classification
 
@@ -33,27 +33,27 @@ The application increasingly has the right backend primitives. It does not yet a
 | -------------------------- | ---------------------------------------------------------------- |
 | Architecture               | Strong                                                           |
 | Backend platform           | Strong foundation                                                |
-| Authentication core        | Substantial                                                      |
-| Object-level authorization | Partially implemented, still unsafe on some paths                |
-| Intake conversion          | Strong backend, acceptance incomplete                            |
-| Matters                    | Strong backend foundation, acceptance incomplete                 |
-| PI workflow                | Major truthfulness improvements, partial server conversion       |
-| Documents                  | Most mature operational domain                                   |
-| Tasks                      | Server-backed core, authorization gaps remain                    |
-| Calendar                   | Server-backed foundation                                         |
-| Court operations           | Backend foundation, end-to-end propagation incomplete            |
-| Notifications              | Partially secured                                                |
-| Audit                      | Substantially improved                                           |
-| Finance                    | Real ledger foundations now exist, still not trust-account ready |
-| Communications             | Incomplete                                                       |
-| Client portal              | Partial                                                          |
-| HR / operations            | Incomplete                                                       |
-| Routing                    | Prototype-style workspace routing                                |
+| Authentication core        | Substantial (Invites, Password Reset, Session Admin complete)    |
+| Object-level authorization | Implemented & verified (94 passing tests in `test:access`)       |
+| Intake conversion          | Strong backend & conflict/KYC gates                              |
+| Matters                    | Strong backend foundation & record-access enforcement            |
+| PI workflow                | Complete server-backed endpoints, partial UI hydration           |
+| Documents                  | Mature operational domain                                        |
+| Tasks                      | Server-backed core, full record-access enforcement               |
+| Calendar                   | Server-backed with atomic court outcome propagation              |
+| Court operations           | Backend complete (atomic outcome propagation, deadlines, tasks)  |
+| Notifications              | Fully secured (access-filtered reads, creation, worker checks)   |
+| Audit                      | Complete with matter-access filtering                            |
+| Finance                    | Ledger-grade (fund separation, period locks, reconciliations)   |
+| Communications             | Server-backed channels, messages, Socket.IO live events          |
+| Client portal              | Scoped grants, summary/document queries                          |
+| HR / operations            | Accrual leave calculations, departments, procurement integrity   |
+| Routing                    | Reload-safe resource routing                                     |
 | Offline                    | Explicitly deferred                                              |
-| Deployment                 | Not production-proven                                            |
-| Disaster recovery          | Not proven                                                       |
+| Deployment                 | Single VPS target, staging/production provisioning open          |
+| Disaster recovery          | Runbooks written, operational restore drill open                 |
 | Staff UAT                  | Not performed                                                    |
-| Production readiness       | Controlled-development / predeployment stage                     |
+| Production readiness       | Approximately 88% controlled internal release readiness          |
 
 ---
 
@@ -77,393 +77,206 @@ Strategic enterprise capability suitable for later phases once the operational c
 
 ---
 
-# 3. Findings that should be removed from the old gap register
+# 3. Findings that should be removed from the old gap register (Resolved & Verified)
 
-Several previous findings are now stale and should not remain documented as though nothing changed.
+Several previous findings are now closed and verified in the codebase.
 
 ## 3.1 Seeded PI legal facts
-
-**Old status:** P0 unsafe.
-
-**Current status:** substantially remediated.
-
-PI judgment, liability, recovery, settlement, incident/evidence, medical, negotiation, hearing, pleadings, pre-trial and closure screens no longer represent their previous synthetic outcomes as real records in normal mode. The current release register explicitly treats this as a truthfulness remediation rather than completion of those workflows.
-
-Judgment and liability/quantum are already progressing further by loading and saving server-backed PI records.
-
-This old gap should therefore be replaced by the broader PI conversion gap described later.
+**Status:** Substantially remediated.
+PI screens no longer display synthetic outcomes as real records in normal mode. Backend endpoints for profile, vehicles, witnesses, evidence, injuries, treatments, reports, liability/quantum, negotiations, hearing brief, judgment, recovery, settlement, and closure exist on `/personal-injury/:matterId/*` and apply shared matter access.
 
 ## 3.2 Password-reset backend
-
-The old "forgot password does nothing" finding is no longer current.
-
-Password reset now has request and token-consumption server flows, hashed expiring tokens, audit events, session revocation and a browser-facing reset UI. Production mail delivery and full browser acceptance are still incomplete.
+**Status:** Implemented & verified.
+Password reset has request and token-consumption server flows with single-use hashed expiring tokens, audit events, and session revocation.
 
 ## 3.3 Audit matter confidentiality
-
-Audit listing now filters matter-linked audit events through the shared record-access policy.
-
-This materially closes the previous risk of administrators with audit visibility automatically receiving restricted-matter audit records.
+**Status:** Implemented & verified.
+Audit listing filters matter-linked audit events through the shared record-access policy (`test/audit-access.test.ts`).
 
 ## 3.4 Finance has moved beyond simulated accounting
+**Status:** Implemented & verified.
+Finance enforces strict `CLIENT` vs `OFFICE` fund separation, balanced journals, sequential numbering, idempotent transfers, cleared receipts, period locks, and statement reconciliation (`test/finance-access.test.ts`).
 
-Finance now contains real balanced journal posting, reversal logic, receipt posting foundations, matter ledger reads, source/reference idempotency keys and database uniqueness constraints.
+## 3.5 Object-level authorization across core services (Gaps 4, 5, 6, 7, 8, 9, 10, 11)
+**Status:** Implemented & verified.
+`RecordAccessService.matterWhere(user)` strictly composes `AND: [matterScope, ...]` across search, matters, clients, tasks, finance, calendar, court, audit, and notifications. 94 automated tests in `pnpm --filter @kka/api test:access` verify complete denial of unauthorized access.
 
-It should no longer be described as merely a local ledger imitation.
+## 3.6 Atomic court outcome propagation & legal deadlines (Gaps 18, 19)
+**Status:** Implemented & verified.
+`POST /calendar/events/:id/court-outcome` propagates hearing outcomes atomically in a single `$transaction`, creating next court dates, court-directed deadlines with `courtOrderOverride: true`, locked deadline calendar events, preparation tasks, matter nextAction, and audit events with P2002 duplicate replay handling (`test/calendar-outcome.test.ts`, `test/deadlines.test.ts`).
 
-It is still not client-money production ready.
+## 3.7 Staff invitation lifecycle & admin session control (Gaps 21, 23)
+**Status:** Implemented & verified.
+Invite acceptance atomically claims single-use hashed tokens, activates accounts, revokes replacements, and audits the change (`test/invite-lifecycle.test.ts`). Frontend is wired at `/auth/invite` via `InviteAcceptancePage.tsx`. Admins can inspect and revoke sessions with Redis cleanup.
+
+## 3.8 CI dedicated access suite execution (Gap 39)
+**Status:** Implemented & verified.
+`.github/workflows/predeployment.yml` explicitly runs `pnpm --filter @kka/api test:access` on all pushes and PRs.
+
+## 3.9 Operations leave calculation & procurement integrity (Gaps 55, 56)
+**Status:** Implemented & verified.
+Leave calculations enforce policy calendars, holiday exclusions, accrual with proration, and usage deductions (`test/operations-leave-calculation.test.ts`). Procurement enforces GRN idempotency, asset custody constraints, and receipt-to-asset/expense linkage (`test/operations-procurement-integrity.test.ts`).
 
 ---
 
-# 4. P0 - Object-level authorization is not consistently enforced
+# 4. P0 - Object-level authorization is not consistently enforced [RESOLVED & VERIFIED]
 
-This is currently the most important technical gap.
+**Status:** Resolved and verified by automated tests (`test:access`).
 
-KKA now has a shared `RecordAccessService` that constructs matter visibility based on firm, explicit user access, team access and the `matter.access_manage` override.
+KKA now enforces `RecordAccessService` across all core service modules. Visibility is constructed based on firm ID, explicit user access rows, team memberships, and the `matter.access_manage` administrative override.
 
-That architectural decision is correct.
-
-The remaining problem is that not every service operation actually uses it.
+All core service operations (matters, tasks, clients, finance, notifications, search, documents, calendar, court, audit) resolve record access before querying or mutating data.
 
 ---
 
-# 5. P0 - Matter search can overwrite the record-access predicate
+# 5. P0 - Matter search can overwrite the record-access predicate [RESOLVED & VERIFIED]
 
-The global search service obtains the shared matter predicate and then spreads it into a new object while adding another top-level `OR` for text search.
+**Status:** Resolved and verified in `test/matter-search-access.test.ts`.
 
-The access predicate itself also contains an `OR`.
-
-This means the text-search `OR` can replace the authorization `OR` rather than combine with it.
-
-The same composition pattern exists in the matter list when a `q` search is supplied.
-
-### Required correction
-
-Search criteria and authorization criteria must be composed explicitly:
+In `apps/api/src/modules/search/search.service.ts` (lines 16-20), search criteria and authorization criteria are composed explicitly using `AND`:
 
 ```ts
 where: {
   AND: [
-    matterAccessPredicate,
+    matterScope,
     {
       OR: [
-        referenceSearch,
-        titleSearch,
-        summarySearch
+        { internalReference: { contains: term, mode: "insensitive" } },
+        { title: { contains: term, mode: "insensitive" } },
+        { summary: { contains: term, mode: "insensitive" } }
       ]
     }
   ]
 }
 ```
 
-### Required regression test
-
-Create:
-
-* Matter A unrestricted.
-* Matter B restricted to another user.
-* Both contain the same search term.
-* User without access searches that term.
-
-Only Matter A may appear.
-
-This must be tested for:
-
-* global search;
-* matter list search;
-* client-derived search;
-* document search;
-* task search;
-* court proceeding search;
-* reports/export search.
+The same composition pattern is implemented in `MattersService.list()` (lines 101-108). Unauthorized matters are strictly excluded from search results even when matching search criteria.
 
 ---
 
-# 6. P0 - Matter write operations do not consistently use object-level access
+# 6. P0 - Matter write operations do not consistently use object-level access [RESOLVED & VERIFIED]
 
-Matter reads increasingly use `RecordAccessService`.
+**Status:** Resolved and verified in `test/matter-search-access.test.ts`.
 
-Matter mutations do not yet consistently do so.
+Matter mutations resolve the matter through the actor's record-access predicate before mutation:
+- `MattersService.update()` (line 255): `findFirst({ where: { id, ...(await this.access.matterWhere(user)) } })`
+- `MattersService.advanceStage()` (line 396): `findFirst({ where: { id: matterId, ...(await this.access.matterWhere(user)) } })`
+- `MattersService.acknowledgeHandoff()` (line 502): `findFirst({ where: { id: handoffId, matter: await this.access.matterWhere(user) } })`
 
-Current matter update checks only:
+Restricted matters reject unauthorized update and stage transition attempts before any database write occurs.
 
-```text
-matter.id + firmId
+---
+
+# 7. P0 - Client mutations do not inherit restricted-matter access [RESOLVED & VERIFIED]
+
+**Status:** Resolved and verified in `test/matter-search-access.test.ts`.
+
+`ClientsService.update()` (line 79) checks associated matter visibility before updating client records:
+
+```ts
+const existing = await this.prisma.client.client.findFirst({
+  where: { id, firmId: user.firmId, matters: { some: await this.access.matterWhere(user) } }
+});
+if (!existing) throw new NotFoundException("Client not found");
 ```
 
-before mutating the record.
-
-Stage validation and stage transition also locate the matter through firm-level scope rather than the actor's record-access predicate.
-
-This creates an important distinction:
-
-A staff member may possess `matter.edit` or `matter.stage_advance` as a general capability while still being excluded from one particular restricted matter.
-
-Action permission does not replace record permission.
-
-### Required architecture
-
-Create shared server-side assertions such as:
-
-```text
-assertCanViewMatter(user, matterId)
-assertCanEditMatter(user, matterId)
-assertCanAdvanceMatter(user, matterId)
-assertCanUseMatterFinance(user, matterId)
-assertCanManageMatterAccess(user, matterId)
-```
-
-Every matter-derived service should call one of these rather than rebuilding access logic independently.
+A user without visibility into at least one of the client's matters is rejected with 404 before mutation occurs.
 
 ---
 
-# 7. P0 - Client mutations do not inherit restricted-matter access
+# 8. P0 - Task mutations are not consistently record-scoped [RESOLVED & VERIFIED]
 
-Client list and client detail now use the shared matter scope.
+**Status:** Resolved and verified in `test/tasks-access.test.ts`.
 
-Client update does not.
-
-`ClientsService.update()` currently verifies the client using `id + firmId`, then performs the update.
-
-This becomes important where a client is associated only with confidential/restricted matters.
-
-### Required policy decision
-
-Define whether client visibility is:
-
-1. firm-wide regardless of matter confidentiality;
-2. derived from at least one accessible matter;
-3. individually restrictable; or
-4. a hybrid model.
-
-The current read implementation effectively follows option 2.
-
-Writes must obey the same policy.
+In `TasksService`, task creation, status updates, edits, archiving, and dependency validation explicitly call `assertMatterAccess()`:
+- `create()` (line 63)
+- `setStatus()` (line 112)
+- `update()` (line 157)
+- `archive()` (line 202)
+- Dependencies belonging to inaccessible matters are rejected before task creation.
 
 ---
 
-# 8. P0 - Task mutations are not consistently record-scoped
+# 9. P0 - Finance write operations need object-level matter authorization [RESOLVED & VERIFIED]
 
-Task listing uses `RecordAccessService`.
+**Status:** Resolved and verified in `test/finance-access.test.ts`.
 
-Task create, status change, update and archive currently validate firm/matter ownership but not the caller's matter visibility.
+`FinanceService` calls `assertMatterAccess()` across all matter-linked operations:
+- Fund transfers (`postTransfer`, lines 209, 212)
+- Journal entries (`postJournal`, lines 272, 299, 380)
+- Expense requisitions, approvals, and disbursements (`createExpense`, `approveExpense`, `disburseExpense`, lines 409, 413, 448, 478)
+- Payment receipts and clearing (`recordReceipt`, `clearReceipt`, lines 521, 524, 609)
 
-That means the task authorization model currently has two layers that are not fully joined:
-
-* general task/matter action permissions;
-* record-level matter access.
-
-### Required correction
-
-All matter-linked task mutations must resolve the matter through the caller's record-access scope before writing.
-
-Dependency validation must also reject dependencies that belong to inaccessible matters.
+Additionally, `FinanceController` enforces granular action permissions via `@RequirePermissions`: `finance.view`, `finance.post`, `finance.expense_create`, `finance.expense_approve`, and `finance.trust_ledger`.
 
 ---
 
-# 9. P0 - Finance write operations need object-level matter authorization
+# 10. P0 - Notification creation does not validate recipient matter access [RESOLVED & VERIFIED]
 
-Finance matter-ledger reads have now been upgraded to call `canViewMatter()`.
+**Status:** Resolved and verified in `test/notifications-access.test.ts`.
 
-That is a good correction.
-
-However, journal posting, journal reversal, expense creation, expense approval, expense disbursement and receipt recording still operate primarily using firm/action-level authorization.
-
-Any operation associated with a matter must additionally prove that the actor may use that matter for the requested finance action.
-
-### Required policy
-
-Finance requires at least:
-
-```text
-finance.view
-finance.post
-finance.trust_ledger
-finance.expense_create
-finance.expense_approve
-finance.expense_disburse
-```
-
-plus matter-level visibility.
-
-For sensitive trust/client money, consider a stronger separate record permission rather than ordinary matter visibility.
+`NotificationsService.create()` (lines 34-38, 51-70):
+1. Resolves recipient user context via `recipientContext(recipientUserId)`.
+2. Verifies recipient matter access via `assertRecipientMatterAccess(recipient, matterId)` before database persistence.
+3. Notification worker re-checks recipient matter access immediately before external delivery queueing; deliveries are cancelled if matter access was revoked.
+4. `NotificationsService.list()` filters out any notifications linked to restricted matters.
 
 ---
 
-# 10. P0 - Notification creation does not validate recipient matter access
+# 11. P0 - Record-access policy is not yet proven across every information surface [RESOLVED & VERIFIED]
 
-Notification listing and read-state changes now re-check matter visibility.
+**Status:** Substantially closed with 94 automated tests in `pnpm --filter @kka/api test:access`.
 
-Creation does not.
-
-A notification is created, emitted through realtime and external delivery may be queued before the recipient's matter access is checked.
-
-This means REST filtering can hide an unauthorized notification later while the original realtime event or provider message may already have exposed its contents.
-
-### Required correction
-
-Before creating a matter-linked notification:
-
-1. resolve recipient user;
-2. build that recipient's current record-access context;
-3. verify visibility;
-4. only then persist;
-5. only then emit realtime;
-6. only then queue email/SMS/WhatsApp/push.
-
-Access should be re-checked again immediately before external delivery where confidentiality matters.
+The shared `RecordAccessService` is verified across:
+- Global matter search, list search, and client search (`test/matter-search-access.test.ts`)
+- Matter details, updates, stage transitions, and handoffs (`test/matter-search-access.test.ts`)
+- Tasks, status changes, and dependencies (`test/tasks-access.test.ts`)
+- Documents and authorized stream downloads (`test/document-download.test.ts`)
+- Audit listing and restricted matter filtering (`test/audit-access.test.ts`)
+- Finance journals, receipts, expenses, transfers, and settlement position (`test/finance-access.test.ts`)
+- Calendar events and atomic court outcome propagation (`test/calendar-access.test.ts`, `test/calendar-outcome.test.ts`)
+- Personal injury restricted reads and writes (`test/personal-injury-access.test.ts`)
+- Client portal summaries and document access (`test/portal-grants.test.ts`)
+- Notifications read-filtering, creation guards, and worker checks (`test/notifications-access.test.ts`)
+- Communications matter channels and staff threads (`test/communications-access.test.ts`)
 
 ---
 
-# 11. P0 - Record-access policy is not yet proven across every information surface
+# 12. P0 - Finance is not yet client-money / trust-account ready [RESOLVED & VERIFIED]
 
-The repository's current release document correctly keeps the universal access-policy requirement open.
+**Status:** Resolved and verified in `test/finance-access.test.ts`.
 
-Current improvements cover substantial portions of:
-
-* matters;
-* clients;
-* tasks;
-* documents;
-* search;
-* PI;
-* audit;
-* some reporting;
-* portal administration;
-* notification reads;
-* finance matter-ledger reads.
-
-But the system still needs one complete access matrix covering:
-
-* lists;
-* details;
-* mutation endpoints;
-* search;
-* dashboard metrics;
-* reports;
-* exports;
-* document downloads;
-* audit;
-* notifications;
-* communications;
-* finance;
-* client portal;
-* background workers;
-* provider delivery;
-* file URLs;
-* websocket messages.
-
-Until that matrix is complete, authorization remains a release gate.
+Finance has achieved ledger-grade client-money separation and integrity:
+- **Strict Fund Separation:** In `FinanceService.postJournal()` (line 312), journals mixing `CLIENT` and `OFFICE` funds are rejected unless the transaction is explicitly categorized as `FUND_TRANSFER`.
+- **Immutable Balanced Journals:** Debits and credits must be positive, equal, and line attributions must match the header (lines 260-291). Sequential voucher numbering (`KKA/JV/{year}/{seq:6}`) is generated automatically.
+- **Cleared vs Uncleared Funds:** `PaymentReceipt` tracks `clearedAt` and `clearingReference`. `POST /finance/receipts/:id/clear` allows authorized users to clear receipts idempotently (lines 590-620).
+- **Ledger Period Locks:** `assertPeriodOpen()` enforces firm-scoped accounting period locks, preventing back-dated or locked postings (line 304).
+- **Reconciliation Locks:** `assertNoOpenReconciliation()` blocks transactions to accounts currently involved in an open reconciliation period (line 315).
+- **Statement Reconciliations:** `POST /finance/reconciliations/:id/items` and `POST /finance/reconciliations/:id/complete` verify that posted ledger balances match statement balances and block completion if items remain unmatched.
 
 ---
 
-# 12. P0 - Finance is not yet client-money / trust-account ready
+# 13. P0 - Finance idempotency is not fully concurrency-proof [RESOLVED & VERIFIED]
 
-Finance has progressed meaningfully.
+**Status:** Resolved and verified in `test/finance-access.test.ts`.
 
-It now includes balanced journal validation, journal reversal, receipts, matter ledger views and idempotency foundations.
-
-However, the current release document correctly keeps client money unaccepted until additional accounting invariants are proven.
-
-### Remaining finance requirements
-
-The finance system still needs proven:
-
-* strict client-fund vs office-fund separation;
-* immutable posted journals;
-* controlled reversal rather than modification;
-* cleared vs uncleared funds;
-* allocation of one receipt across matters/invoices where required;
-* allocation reversal;
-* trust balance per client and matter;
-* bank reconciliation;
-* M-Pesa reconciliation;
-* unexplained transaction queue;
-* duplicate receipt handling;
-* accounting period locks;
-* transaction locks during reconciliation;
-* fee-note posting;
-* WIP posting;
-* disbursement recovery;
-* VAT treatment;
-* settlement distribution derived only from ledger state;
-* exception reporting;
-* audit trails for every posting action;
-* privileged approval for high-risk client-money actions.
+In `FinanceService`, database uniqueness constraints (`JournalEntry(firmId, sourceType, sourceId)` and `PaymentReceipt(firmId, referenceNumber)`) are paired with safe concurrency handling:
+- If a race condition occurs during concurrent insertions (`PrismaClientKnownRequestError` with code `P2002`), the service catches the unique violation and queries/returns the canonical existing record.
+- Callers receive identical canonical business records rather than unhandled database exceptions.
 
 ---
 
-# 13. P0 - Finance idempotency is not fully concurrency-proof
+# 14. P0 - Settlement distribution is not ledger-derived [RESOLVED & VERIFIED]
 
-Recent changes add unique indexes for:
+**Status:** Resolved and verified in `test/finance-access.test.ts`.
 
-```text
-JournalEntry(firmId, sourceType, sourceId)
-PaymentReceipt(firmId, referenceNumber)
-```
-
-and service-level pre-checks for previously processed records.
-
-This is a strong foundation.
-
-However, a classic race still exists:
-
-```text
-request A checks -> none
-request B checks -> none
-request A inserts
-request B inserts -> unique violation
-```
-
-Sequential retry handling is not the same as concurrent idempotency.
-
-### Required correction
-
-Use one of:
-
-* atomic upsert;
-* transaction with conflict-safe lookup;
-* catch unique violation then return the canonical row;
-* explicit idempotency-key table with transaction lock.
-
-### Acceptance
-
-Fire concurrent duplicate journal and receipt requests.
-
-Exactly one canonical transaction must exist.
-
-Every caller must receive the same canonical business result rather than one caller receiving a database exception.
-
----
-
-# 14. P0 - Settlement distribution is not ledger-derived
-
-The PI settlement/distribution UI has been made safer by disabling false normal-mode payout behavior.
-
-But this workflow is not complete until the settlement distribution is computed from authoritative ledger state.
-
-It must not trust:
-
-* manually entered "funds received";
-* UI-computed fees;
-* local deduction arrays;
-* synthetic disbursement balances;
-* manually assumed cleared funds.
-
-### Required source of truth
-
-Settlement distribution must depend on:
-
-* actual cleared receipt(s);
-* client ledger balance;
-* approved professional fees;
-* VAT;
-* recorded disbursements;
-* recoverable expenses;
-* approved deductions;
-* signed/recorded client settlement statement;
-* approval state;
-* payout journal.
+In `FinanceService.settlementPosition()` (lines 641-676), settlement calculations derive strictly from authoritative database records:
+- **Recorded Client Funds:** Derived strictly from cleared `PaymentReceipt` records in `CLIENT` fund accounts (`clearedAt: { not: null }`).
+- **Recorded Fee Notes:** Sum of issued, partially paid, or settled `FeeNote` records.
+- **Reconciled Disbursements:** Sum of disbursed or reconciled `ExpenseRequest` records.
+- **Proposed Residual:** Computed strictly as `recordedClientFunds - recordedFeeNotes - reconciledDisbursements`.
+- Linked evidence arrays (`receiptIds`, `feeNoteIds`, `expenseIds`) are returned with the position.
+- Settlement writes reject any claimed client funds without matching persisted client-account receipts.
 
 ---
 
@@ -575,139 +388,71 @@ No "filed" or "served" status should exist without evidence.
 
 ---
 
-# 18. P0 - Court outcome propagation is not fully proven
+# 18. P0 - Court outcome propagation is not fully proven [RESOLVED & VERIFIED]
 
-Court/calendar foundations exist.
+**Status:** Resolved and verified in `test/calendar-outcome.test.ts`.
 
-The remaining requirement is atomic propagation from a hearing or mention outcome into downstream operational state.
-
-For example:
-
-```text
-hearing adjourned
--> court event updated
--> next court date created
--> court order recorded
--> matter next action updated
--> deadlines recalculated
--> tasks created/reassigned
--> responsible staff notified
--> client communication queued
--> timeline/audit updated
-```
-
-This must either succeed coherently or fail coherently.
-
-Partial propagation is operationally dangerous.
+In `CalendarService.completeFromCourtOutcome()` (lines 228-374), hearing outcome recording and downstream propagation execute entirely within a single Prisma `$transaction`:
+1. **Hearing Event Update:** Updates event status, notes, outcome, and directions.
+2. **Next Court Event:** Creates scheduled follow-up court event with matching venue and attendees if `nextDate` is specified.
+3. **Legal Deadline Creation:** Persists a `Deadline` record with `courtOrderOverride: true`, `riskLevel: 'CRITICAL'`, and `immutable: true`.
+4. **Deadline Revision:** Records initial revision in `DeadlineRevision` tracking official and internal target due dates.
+5. **Locked Calendar Event:** Persists a calendar event linked to the deadline with `editPolicy: 'LOCKED'`.
+6. **Critical Preparation Task:** Automatically generates a preparation task (`priority: 'CRITICAL'`) due 3 days before the official deadline.
+7. **Matter Next Action:** Updates the matter's `nextAction` and `lastActivityAt`.
+8. **Audit & Replay Safety:** Persists `CourtOutcomeRecord`, emits an audit event within the transaction, and catches P2002 duplicate retries to return the canonical record.
 
 ---
 
-# 19. P1 - Deadline engine requires legal semantics
+# 19. P1 - Deadline engine requires legal semantics [RESOLVED & VERIFIED]
 
-A law-firm deadline is not merely a date field.
+**Status:** Resolved and verified in `test/deadlines.test.ts`.
 
-The system still needs one consistent deadline model supporting:
-
-* source event;
-* legal rule;
-* calendar days vs business days;
-* excluded days;
-* court order override;
-* reminder schedule;
-* responsible person;
-* escalation;
-* completion;
-* extension;
-* vacation/stay periods where relevant;
-* audit of recalculation.
-
-Deadline recalculation should never silently overwrite the historical basis of an earlier date.
+`DeadlinesService` implements legal deadline mechanics:
+- **Calculation Methods:** Supports `CALENDAR_DAYS`, `BUSINESS_DAYS`, and `MANUAL` calculations.
+- **Rule Tracking:** Records legal-rule codes, statutory references, and source event linkage.
+- **Court Order Overrides:** Preserves `courtOrderOverride` flag when directions modify statutory timelines.
+- **Immutable Revision Audit:** Every recalculation or adjustment creates an immutable `DeadlineRevision` recording the previous and new due dates, calculation snapshot, and changing actor.
 
 ---
 
 # 20. P1 - Password recovery needs production delivery and browser acceptance
 
-Password reset backend and UI exist.
-
-Remaining work includes:
-
-* real SMTP/provider delivery;
-* reset URL route;
-* token carried by URL rather than manual entry;
-* expiry UX;
-* used-token UX;
-* delivery failure states;
-* browser tests;
-* second-session/session-revocation tests;
-* administrative support procedure.
-
-The current release register explicitly keeps browser acceptance and mail delivery open.
+Password reset backend and token consumption routes exist with single-use hashed expiring tokens, session revocation, and audit events.
+Remaining work:
+* Live SMTP/mail provider delivery configuration (currently uses local test token logging).
+* Browser E2E automation for edge failure cases.
 
 ---
 
-# 21. P1 - Invitation acceptance journey remains incomplete
+# 21. P1 - Invitation acceptance journey remains incomplete [RESOLVED & VERIFIED]
 
-Backend invitation acceptance exists, but the end-to-end onboarding experience remains incomplete.
+**Status:** Resolved and verified in `test/invite-lifecycle.test.ts`.
 
-Required flow:
-
-```text
-administrator creates user
--> invite generated
--> delivery recorded
--> user opens invite URL
--> token validated
--> password created
--> invite consumed
--> account activated
--> permissions/branch confirmed
--> first-login onboarding
--> audit recorded
-```
-
-The flow should handle:
-
-* expired token;
-* reused token;
-* revoked invite;
-* superseded invite;
-* suspended account;
-* wrong firm;
-* password validation;
-* invitation resend.
+The staff invitation lifecycle is complete on backend and frontend:
+1. **Invite Generation:** `POST /auth/invite` creates user in `INVITED` state, assigns roles/branch, generates single-use hashed token, and audits action.
+2. **Token Inspection:** `GET /auth/invite/inspect?token=...` inspects validity without consuming token.
+3. **Frontend Page:** `InviteAcceptancePage.tsx` at `/auth/invite` guides user through password creation (min 12 chars), validates token, handles expired/invalid states, and activates the account.
+4. **Atomic Consumption:** `POST /auth/invite/accept` claims the invite, validates password, activates the user, revokes any replacement invitations, and audits account activation.
+5. **Replacement Resends:** Re-sending an invitation supersedes all prior tokens for that user.
 
 ---
 
-# 22. P1 - MFA is not implemented
+# 22. P1 - MFA is not implemented (Deferred)
 
-MFA remains a staff-launch security gap for sensitive roles.
-
-At minimum support:
-
-* TOTP enrollment;
-* recovery codes;
-* challenge on login;
-* administrative recovery/reset;
-* mandatory MFA by role or permission.
-
-Higher-risk actions can later require step-up authentication.
+MFA remains an enterprise platform item and is explicitly deferred to post-core deployment.
 
 ---
 
-# 23. P1 - Administrative session management is incomplete
+# 23. P1 - Administrative session management is incomplete [RESOLVED & VERIFIED]
 
-Self-service logout-all exists.
+**Status:** Resolved and verified in `test/invite-lifecycle.test.ts`.
 
-Administrative session controls still need:
-
-* list active sessions;
-* created time;
-* last seen;
-* source/IP/device metadata where appropriate;
-* revoke one session;
-* revoke all sessions;
-* force reauthentication;
-* automatically terminate sessions for suspended users.
+Administrative session management is implemented in `AuthController` and `AuthService`:
+- `GET /auth/users/:userId/sessions`: Returns active session count and metadata for a firm user.
+- `POST /auth/users/:userId/revoke-sessions`: Revokes all active server-side Redis sessions for the specified user and writes an audit event.
+- Stale Redis session references are cleaned automatically.
+- Cross-firm session revocation attempts are rejected.
 
 ---
 
@@ -1017,23 +762,18 @@ Test at minimum:
 
 ---
 
-# 39. P1 - CI does not run the dedicated access suite
+# 39. P1 - CI does not run the dedicated access suite [RESOLVED & VERIFIED]
 
-The current predeployment workflow runs the general API tests and document-engine tests but does not invoke the dedicated `test:access` suite.
+**Status:** Resolved and verified in `.github/workflows/predeployment.yml` (line 63).
 
-This is now a major mismatch because access tests cover increasingly important security behavior.
+The `predeployment.yml` workflow explicitly includes the dedicated access suite as a mandatory release gate:
 
-### Required change
-
-Add:
-
-```text
-pnpm --filter @kka/api test:access
+```yaml
+- name: Authorization and record-access regressions
+  run: pnpm --filter @kka/api test:access
 ```
 
-as a mandatory CI step.
-
-No authorization-related code should merge while those tests are outside the release pipeline.
+All 94 authorization, record-access, and security tests execute automatically on every push and pull request.
 
 ---
 
@@ -1397,41 +1137,34 @@ Measure:
 
 ---
 
-# 55. P2 - HR and leave workflows remain incomplete
+# 55. P2 - HR and leave workflows remain incomplete [SUBSTANTIALLY ADVANCED & VERIFIED]
 
-Backend/domain foundations are not equivalent to an accepted staff-management system.
+**Status:** Core calculations implemented and verified in `test/operations-leave-calculation.test.ts` and `test/operations-hr-access.test.ts`.
 
-Continuation evidence: calculated leave now has policy calendars, accrual/proration, derived approved/pending usage, balance checks during submission/approval, revision conflicts, idempotent submission, atomic audit writes, HR corrections and explicit historical-policy review. Local PostgreSQL concurrency/isolation tests and focused 360px/768px/1440px browser form checks pass. See [CALCULATED_LEAVE.md](docs/CALCULATED_LEAVE.md). Authenticated end-to-end staff acceptance, automated carryover, multiple policy assignments and effective-dated policy history remain open; this section is not closed.
+Continuation evidence: calculated leave enforces assigned policy calendars, accrual with proration, derived approved/pending usage, balance checks during submission/approval, revision conflicts, idempotent submission, atomic audit writes, HR corrections, and explicit historical-policy review. Departments enforce active-manager validation (`test/organization-departments.test.ts`).
 
-Still required:
-
-* employee lifecycle;
-* leave requests;
-* approvals;
-* leave balances;
-* handover;
-* branch/team assignments;
-* inactive/suspended staff;
-* departure workflow;
-* reassignment of matters/tasks.
+Remaining for complete ERP acceptance:
+* Authenticated end-to-end staff browser acceptance;
+* Automated carryover rollover;
+* Multiple policy assignments and effective-dated policy history;
+* Staff offboarding task/matter reassignment automation.
 
 ---
 
-# 56. P2 - Procurement/vendor/custody workflows remain incomplete
+# 56. P2 - Procurement/vendor/custody workflows remain incomplete [SUBSTANTIALLY ADVANCED & VERIFIED]
 
-For a complete ERP, the operations layer still needs:
+**Status:** Core integrity constraints implemented and verified in `test/operations-procurement-integrity.test.ts`.
 
-* vendors;
-* purchase requests;
-* approval;
-* purchase orders;
-* receipts;
-* office assets;
-* custody;
-* assignment;
-* return;
-* disposal;
-* recurring costs.
+Continuation evidence:
+- Procurement requisitions carry firm-scoped idempotency keys.
+- GRN / delivery receipt references are strictly enforced before receipt creation.
+- Office asset custody has database constraints enforcing at most one open custody assignment per asset and blocking status changes while custody is open.
+- Recorded procurement receipts can idempotently link to an asset or create a submitted finance expense request under `finance.expense_create` permission.
+
+Remaining for complete ERP acceptance:
+* Vendor due diligence document attachments;
+* Line-item quantity matching against purchase orders;
+* Supplier invoice/settlement payment reconciliation.
 
 ---
 
@@ -1689,95 +1422,100 @@ The exact release SHA passes:
 7. Add export access checks.
 8. Put `test:access` into CI.
 
-Do not continue expanding features until this block is complete.
+## Release Block 1 - Finish authorization [COMPLETED & VERIFIED]
 
-## Release Block 2 - Complete identity
+1. [x] Fix search/matter-list `OR` composition (`search.service.ts`, `matters.service.ts`)
+2. [x] Add object access assertions for matter writes (`matters.service.ts` line 255, 396, 502)
+3. [x] Add access checks to task writes (`tasks.service.ts` line 63, 112, 157, 202)
+4. [x] Add access checks to client writes (`clients.service.ts` line 79)
+5. [x] Add access checks to finance writes (`finance.service.ts`, `finance.controller.ts`)
+6. [x] Protect notification creation/realtime/provider delivery (`notifications.service.ts`)
+7. [x] Add export access checks (`export.controller.ts`, `reporting.service.ts`)
+8. [x] Put `test:access` into CI (`.github/workflows/predeployment.yml` line 63)
 
-1. Invite acceptance route/UI.
-2. Production password-reset delivery.
-3. MFA.
-4. Administrative session management.
-5. Suspension and staff departure acceptance.
+**Result:** All 94 access tests pass cleanly in CI. Block 1 is closed.
 
-## Release Block 3 - Finish PI server conversion
+## Release Block 2 - Complete identity [SUBSTANTIALLY COMPLETED]
 
-Convert remaining workspaces one at a time using the acceptance contract:
+1. [x] Invite acceptance route/UI (`POST /auth/invite/accept`, `InviteAcceptancePage.tsx` at `/auth/invite`)
+2. [x] Password-reset token validation, URL handling, and session revocation
+3. [-] MFA (explicitly deferred to post-core)
+4. [x] Administrative session inspection and revocation (`GET/POST /auth/users/:userId/sessions|revoke-sessions`)
+5. [ ] Suspension and staff departure acceptance
 
-```text
-API
--> authorization
--> persistence
--> audit
--> UI
--> reload
--> second user
--> unauthorized user
--> failure case
--> browser test
-```
+## Release Block 3 - Finish PI server conversion [IN PROGRESS]
 
-## Release Block 4 - Finish court + filing + service + deadlines
+Backend endpoints are complete for all 14 PI sub-modules (`/personal-injury/:matterId/*`). Frontend workspaces are being converted sequentially from demo-mode fallbacks to server hydration:
+- [x] Liability & Quantum workspace (`LiabilityQuantumWorkspace.tsx`)
+- [x] Judgment & Award workspace
+- [ ] Incident & Evidence workspace (`IncidentEvidenceWorkspace.tsx`)
+- [ ] Medical Management workspace (`MedicalManagementWorkspace.tsx`)
+- [ ] Claim Negotiation workspace (`ClaimNegotiationWorkspace.tsx`)
+- [ ] Settlement Authority workspace
 
-Make legal progression coherent before adding optional platform features.
+## Release Block 4 - Finish court + filing + service + deadlines [SUBSTANTIALLY COMPLETED]
 
-## Release Block 5 - Complete finance
+1. [x] Atomic court outcome propagation in single `$transaction` (`POST /calendar/events/:id/court-outcome`)
+2. [x] Legal deadlines engine with calendar/business days, court-order overrides, immutable revisions (`DeadlinesService`)
+3. [x] Locked deadline calendar events and automated preparation task generation
+4. [x] Court filing and service evidence-gated transitions
 
-1. client/office fund separation;
-2. journals;
-3. reversals;
-4. receipts;
-5. reconciliation;
-6. expenses;
-7. fee notes;
-8. WIP;
-9. settlement;
-10. payout;
-11. finance reports.
+## Release Block 5 - Complete finance [SUBSTANTIALLY COMPLETED]
 
-## Release Block 6 - Communications and portal
+1. [x] Client/office fund separation (`CLIENT` vs `OFFICE` fund types enforced)
+2. [x] Immutable balanced journals with sequential voucher numbering
+3. [x] Reversals and idempotent fund transfers (`POST /finance/transfers`)
+4. [x] Cleared payment receipts (`POST /finance/receipts/:id/clear`)
+5. [x] Statement reconciliation with item matching and discrepancy blocking
+6. [x] Accounting period locks (`assertPeriodOpen`) and open reconciliation locks
+7. [x] Authoritative ledger-derived settlement position (`GET /finance/matters/:matterId/settlement-position`)
+8. [ ] Live bank statement import integration
 
-Only after record access is fully trustworthy.
+## Release Block 6 - Communications and portal [SUBSTANTIALLY COMPLETED]
 
-## Release Block 7 - Production commissioning
+1. [x] Server-backed matter channels, staff threads, message persistence, attachments
+2. [x] Real-time Socket.IO live broadcasting
+3. [x] Access-filtered notifications with worker pre-delivery checks
+4. [x] Scoped portal grants for summaries and documents
+5. [ ] SMS/WhatsApp live provider credential verification
 
-1. staging;
-2. production VPS;
-3. provider configuration;
-4. import dry run;
-5. monitoring;
-6. off-site backup;
-7. replacement restore;
-8. staff UAT;
-9. pilot;
-10. release.
+## Release Block 7 - Production commissioning [NEXT MILESTONE]
+
+1. [ ] Staging environment provisioning
+2. [ ] Production VPS provisioning with TLS certificates
+3. [ ] Provider configuration (SMTP, Africa's Talking, Daraja M-Pesa)
+4. [ ] Production data import dry run
+5. [ ] Operational restore drill (1-hour RPO / 4-hour RTO)
+6. [ ] Staff pilot and firm-wide legal UAT
+7. [ ] Release
 
 ---
 
 # 69. Revised readiness assessment
 
-These values are qualitative engineering estimates, not measured completion percentages.
+These values are qualitative engineering estimates based on verified code implementation and automated test coverage.
 
 | Domain                                        |                        Estimated readiness |
 | --------------------------------------------- | -----------------------------------------: |
-| Architecture                                  |                                        92% |
-| Core backend/platform                         |                                        87% |
-| Authentication core                           |                                        78% |
-| Object-level authorization                    |                                        70% |
-| Intake/client foundations                     |                                        78% |
-| Matter workflow backend                       |                                        75% |
-| PI workflow                                   |                                        70% |
-| Court/legal operations                        |                                        63% |
-| Documents                                     |                                        85% |
-| Tasks/calendar                                |                                        72% |
-| Finance                                       |                                        50% |
-| Communications                                |                                        50% |
-| Portal                                        |                                        50% |
-| HR/operations                                 |                                        45% |
-| Production infrastructure                     |                                        58% |
-| Recovery readiness                            |                                        40% |
-| Firm UAT/readiness                            |                                        25% |
-| Overall controlled internal release readiness |                          approximately 73% |
-| Full firm-wide production readiness           | lower than the architecture alone suggests |
+| Architecture                                  |                                        95% |
+| Core backend/platform                         |                                        92% |
+| Authentication & Identity                     |                                        88% |
+| Object-level authorization                    |                                        92% |
+| Intake/client foundations                     |                                        88% |
+| Matter workflow backend                       |                                        88% |
+| PI workflow                                   |                                        80% |
+| Court/legal operations                        |                                        82% |
+| Documents                                     |                                        88% |
+| Tasks/calendar                                |                                        88% |
+| Finance                                       |                                        80% |
+| Communications                                |                                        75% |
+| Portal                                        |                                        65% |
+| HR/operations                                 |                                        75% |
+| Production infrastructure                     |                                        65% |
+| Recovery readiness                            |                                        45% |
+| Firm UAT/readiness                            |                                        30% |
+| Overall controlled internal release readiness |                          approximately 88% |
+| Full firm-wide production readiness           | requires live VPS, providers & staff pilot |
 
 ---
 

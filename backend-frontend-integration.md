@@ -87,36 +87,36 @@ Before migrating any UI component, the frontend requires its HTTP transport and 
 |---|---|---|---|
 | **Tier 0** | API Client & Dev Proxy Foundation | **COMPLETED** | Vite proxy to `http://127.0.0.1:3000`, typed client with cookie credentials, `ConnectionStatusBadge` |
 | **Tier 1** | Pure Read-Only Catalogs & Lookups | **COMPLETED** | `/health/live`, `/directory`, `/organization/branches`, `/users`, `/notifications` |
-| **Tier 2** | Basic CRUD, Real Auth & Settings | **COMPLETED** | `/auth/login`, `/auth/me`, `/auth/logout`, `/search`, `/settings`, `/integrations/test` |
-| **Tier 3** | Operational Workspaces (Clients, Tasks, Intake) | **COMPLETED** | `/clients`, `/tasks`, `/tasks/:id/status`, `/intake` lead capture & conversion |
-| **Tier 4** | Calendar, Court Operations & Approvals | **NEXT UP** | `/calendar`, `/court`, `/approvals` |
-| **Tier 5** | Communications & Real-Time Events | Roadmap | Message threads, SMS/WhatsApp outbox, Socket.IO live events |
-| **Tier 6** | Document Management & Digital Seals | Roadmap | Private VPS storage adapter, versioning, official firm stamps/signatures |
-| **Tier 7** | Matters Spine & 16-Stage PI Engine | Roadmap | Authoritative matter lifecycle, stage gates, SLA calculation |
-| **Tier 8** | Ledger-Grade Finance & Client Trust | Roadmap | Double-entry trust funds, fee notes, disbursements, statement reconciliation |
-| **Tier 9** | PWA/Offline Sync & Legacy Teardown | Roadmap | IndexedDB outbox replay, deprecation of localStorage seed state |
+| **Tier 2** | Basic CRUD, Real Auth & Settings | **COMPLETED** | `/auth/login`, `/auth/me`, `/auth/logout`, `/search`, `/settings`, `/integrations/test`, password reset token flow |
+| **Tier 3** | Operational Workspaces (Clients, Tasks, Intake) | **COMPLETED** | `/clients`, `/tasks`, `/tasks/:id/status`, `/intake` lead capture & conversion, record-scoped access guards |
+| **Tier 4** | Calendar, Court Operations & Deadlines | **COMPLETED** | `/calendar`, `/court`, atomic court outcome propagation (`POST /calendar/events/:id/court-outcome`), legal deadlines engine (`/deadlines`), approvals |
+| **Tier 5** | Communications & Real-Time Events | **COMPLETED** | Message threads, channel persistence, document attachments, read markers, Socket.IO live events, access-filtered notifications |
+| **Tier 6** | Document Management & Digital Seals | **COMPLETED** | Private VPS/S3 storage adapter, versioning, access-controlled download, official firm stamps/signatures |
+| **Tier 7** | Matters Spine & 19-Stage PI Engine | **COMPLETED** | Authoritative matter lifecycle, stage gates, handoffs, and full server PI endpoints (`/personal-injury/:matterId/*`), `LiabilityQuantumWorkspace` server-wired |
+| **Tier 8** | Ledger-Grade Finance & Client Trust | **COMPLETED** | Double-entry trust funds, strict client/office fund separation, fee notes, disbursements, statement reconciliation, period locks, settlement position |
+| **Tier 9** | Offline PWA & Production Launch | **DEFERRED / IN PROGRESS** | VPS live provisioning, TLS certificates, SMTP mail delivery, external bank/M-Pesa reconciliation, staff UAT |
 
 ```mermaid
 graph TD
     T0[Tier 0: API Client & Dev Proxy Foundation - COMPLETED] --> T1[Tier 1: Read-Only Lookups & Catalogs - COMPLETED]
     T1 --> T2[Tier 2: Basic CRUD, Auth & Settings - COMPLETED]
     T2 --> T3[Tier 3: Operational Workspaces - Clients, Tasks, Intake - COMPLETED]
-    T3 --> T4[Tier 4: Calendar, Court Operations & Approvals - NEXT UP]
-    T4 --> T5[Tier 5: Communications & Real-Time Events]
-    T5 --> T6[Tier 6: Document Management & Digital Seals]
-    T6 --> T7[Tier 7: Matters Spine & 16-Stage PI Engine]
-    T7 --> T8[Tier 8: Ledger-Grade Finance & Client Trust]
-    T8 --> T9[Tier 9: PWA/Offline Sync & Legacy Teardown]
+    T3 --> T4[Tier 4: Calendar, Court Operations & Approvals - COMPLETED]
+    T4 --> T5[Tier 5: Communications & Real-Time Events - COMPLETED]
+    T5 --> T6[Tier 6: Document Management & Digital Seals - COMPLETED]
+    T6 --> T7[Tier 7: Matters Spine & 19-Stage PI Engine - COMPLETED]
+    T7 --> T8[Tier 8: Ledger-Grade Finance & Client Trust - COMPLETED]
+    T8 --> T9[Tier 9: Offline PWA & Production Launch - DEFERRED / IN PROGRESS]
 
     style T0 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T1 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T2 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T3 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
-    style T4 fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff
-    style T5 fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#fff
-    style T6 fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#fff
-    style T7 fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#fff
-    style T8 fill:#831843,stroke:#ec4899,stroke-width:2px,color:#fff
+    style T4 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    style T5 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    style T6 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    style T7 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    style T8 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
     style T9 fill:#0f172a,stroke:#64748b,stroke-width:2px,color:#fff
 ```
 

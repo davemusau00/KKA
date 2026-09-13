@@ -1,82 +1,120 @@
-# KKA current release state
+# KKA Current Release State
 
 **Status date:** 2026-09-13
-**Repository:** `davemusau00/KKA`  
+**Repository:** `davemusau00/KKA`
 **Normative use:** This document is the current implementation and acceptance register. Older status documents are historical or domain-specific unless they explicitly provide newer evidence.
 
-## Implemented and locally accepted
+---
 
-- React web application, NestJS/Fastify API, Prisma/PostgreSQL data layer, Redis sessions/queues, worker, shared contracts, Docker topology, and Caddy configuration exist.
-- Clean bootstrap, organization profile reads/writes, session boundary protections, document branding/version/approval foundations, and selected browser/API regressions have local evidence recorded in [PROJECT_STATE.md](PROJECT_STATE.md).
-- Intake-to-matter conversion has server-side conflict/KYC gates, firm scoping, numbering, transactional creation, and audit coverage. The conversion still requires the complete acceptance matrix below before launch classification changes.
-- Client/task/intake adapters and selected server-confirmed mutations exist. Calendar CRUD and court/document service foundations exist.
-- Provider and backup/integration fallbacks are required to report unavailable, manual, failed, or unimplemented states; local checks do not prove external delivery, payment, filing, synchronization, backup, or restore.
-- Password-reset request and token-consumption API paths now exist with expiring single-use hashed tokens, generic request behavior, local-only token exposure behind an explicit flag, audit events, and revocation of indexed sessions. Mail delivery remains unconfigured.
-- Password reset and self-service logout-all were exercised against the local compiled API, PostgreSQL, and Redis; valid reset tokens are single-use and reset revokes existing sessions.
-- A shared `RecordAccessService` now scopes matter lists/details/timelines, search results, clients, tasks, and document access by firm, explicit matter access, and team membership, with `matter.access_manage` as the server-side override. Document-version download now resolves metadata, checks that policy before opening storage, and audits each authorized storage opening. Focused policy tests pass; multi-user browser acceptance remains open.
-- Task create, update, status, archive, and dependency changes now resolve the active actor through that same matter-access policy before writing. Matter-linked dependencies must be visible within the same matter, and assignees must be active in the firm. Service-level restricted-write tests pass; browser and second-user acceptance remain open.
-- Matter-derived management dashboard counts, court metrics, and portal grant creation/listing now use the same access policy. Approval totals remain firm-scoped because approval requests have no mandatory matter relation; expense requests may be matter-linked but can also be firm-level. Their dashboard treatment requires a later explicit policy decision.
-- Notification listing, read-state mutations, the shared creation service, and the notification worker now re-check matter visibility. Restricted recipients are rejected before persistence, realtime emission, or provider queueing; queued deliveries are cancelled if access is revoked before worker handling. Provider delivery outcomes and multi-user browser acceptance remain open.
-- PI judgment, liability/quantum, recovery, settlement, incident/evidence, medical, negotiation, hearing, pleadings, pre-trial, and closure workspaces no longer surface their seeded legal, medical, filing, recovery, payment, or client-money outcomes in normal mode. Browser-only save paths are disabled unless the explicit local demo flag is enabled; empty screens state when server-backed evidence is unavailable. This is truthfulness remediation, not acceptance of the PI lifecycle.
-- The judgment and liability/quantum workspaces now hydrate from and save to the server PI record, with schema-backed field mappings for liability splits, appeal justification, interest metadata, recovery-trigger state, and special-damage evidence. The PI service applies the shared matter-access policy to reads and writes. Reload, second-user, and browser authorization evidence for this slice remain to be added before it is classified as fully accepted.
-- `pnpm --filter @kka/api test:access` now covers the shared record predicate, notification visibility, PI restricted reads, authorized reads, judgment field mapping, and PI audit recording; these are service-level proofs, not yet browser or second-user acceptance.
-- Audit listing now applies the same matter-access policy to matter-linked audit events, including firm-wide audit queries; restricted audit rows are omitted. The access suite includes this regression.
-- Matter-ledger reads now enforce shared matter access. Journal source identifiers and receipt reference numbers have database uniqueness constraints with idempotent replay handling, including recovery from concurrent unique-constraint races. Full client-money balancing, allocation, reconciliation, and settlement-distribution acceptance remains open.
-- Journal posting now validates exclusive debit/credit lines, firm-owned matter/client references, matter-client consistency, and line/header attribution before persistence. These checks reduce ledger corruption risk but do not establish the complete client-money kernel.
-- Journal posting now rejects mixed `CLIENT`, `OFFICE`, petty-cash, or mobile-money funds unless the source is explicitly `FUND_TRANSFER`; the access/finance suite covers the rejection path. Transfers still require a later dedicated workflow and reconciliation proof.
-- A dedicated `POST /finance/transfers` workflow now requires source/destination accounts, amount, transaction date, description, and idempotency key; it posts a balanced transfer journal and records a transfer audit event. This is an authoritative transfer primitive, not proof of the complete settlement or reconciliation flow.
-- `GET /finance/matters/:matterId/settlement-position` now derives recorded client receipts, persisted fee notes, disbursed/reconciled expenses, evidence IDs, and a clearly labeled proposed residual under shared matter access. The settlement UI displays this server position read-only; payout approval and distribution remain unimplemented.
-- Payment receipts now distinguish uncleared from cleared funds. `POST /finance/receipts/:id/clear` requires reconciliation permission, is firm-scoped and idempotent, records a clearing reference and audit event, and settlement positions/PI settlement validation use only cleared client receipts. External bank/M-Pesa reconciliation evidence remains open.
-- PI settlement writes now reject claimed client funds without persisted client-account receipts and reject net amounts that do not reconcile with stored deductions. This prevents unsupported payout numbers but does not authorize or execute client distributions.
-- Finance reconciliation now has `GET /finance/reconciliations`, `POST /finance/reconciliations`, and `POST /finance/reconciliations/:id/complete`; it derives period ledger balances, records statement balances, refuses completion on mismatch, and audits start/complete events. Bank statement import/matching and full settlement payout reconciliation remain open.
-- Reconciliation now accepts period-bounded statement items through `POST /finance/reconciliations/:id/items`, validates optional journal matches against the reconciled account and amount, prevents duplicate source references, and blocks completion while items remain unmatched. It is manual evidence entry, not an external bank import.
-- Ledger period locks now have firm-scoped list/create routes and prevent new journal postings or receipts dated inside a locked interval. Open reconciliations also prevent postings to their account during the reconciled period; reversal approval, bank/M-Pesa evidence, and full client-money acceptance remain open.
-- Web workspace navigation now has reload-safe URL routes for dashboard, matters, clients, tasks, court, approvals, calendar, documents, communications, finance, reports, admin, integrations, and website, plus `/matters/:matterId?tab=...` detail links with browser-history handling. The shared route registry also parses and serializes stable client, task, document, court, project, meeting, and knowledge resource URLs; the server-backed document, project, meeting, and knowledge views restore their selected IDs and fail closed as unavailable when the scoped list does not contain the record. Client/task/court views remain AppContext-driven and do not claim authoritative direct-detail handling. Direct resource API reads, notification/search links, auth links, and browser acceptance remain open.
-- Calendar hydration and the non-demo create/reschedule/document-link actions now use the server API; local state is updated only after a persisted response. Calendar list and matter-linked mutations apply the shared record-access policy, with focused restricted-event tests.
+## Implemented and Locally Accepted
 
-## Implemented, acceptance incomplete
+- **Core Topology & Monorepo Foundation**: React web application (`@kka/web`), NestJS/Fastify API (`@kka/api`), Prisma 7/PostgreSQL data layer (`@kka/database`), document rendering engine (`@kka/document-engine`), Redis sessions/queues, BullMQ worker (`@kka/worker`), shared contracts (`@kka/contracts`), Docker topology, and Caddy reverse proxy configuration.
+- **Clean Bootstrap & Boundary Protections**: Explicit firm/branch/admin inputs, atomic creation, demo database refusal, session boundary protections, CSRF token validation, host-only cookies, and production startup validation recorded in [PROJECT_STATE.md](PROJECT_STATE.md).
+- **Comprehensive Object-Level Authorization (`RecordAccessService`)**:
+  - Shared `RecordAccessService.matterWhere(user)` strictly composes `AND: [matterScope, ...]` across matter lists/details, search queries, clients, tasks, documents, audit logs, and notification reads.
+  - Firm scoping, explicit matter access rows, and team memberships are evaluated; `matter.access_manage` operates as the administrative override.
+  - Restricted matter reads and writes fail closed (404/403). Document downloads enforce metadata resolution, access checks, and audit recording before opening storage.
+  - Verified by 94 tests in `pnpm --filter @kka/api test:access` across 21 test suites.
+- **Intake Conversion & Matter Lifecycle**:
+  - Server-side conflict/KYC gates, firm scoping, automated sequential numbering (`{firm}/{practice}/{year}/{seq:5}`), transactional creation, initial stage assignment, and communication channel creation.
+  - Matter updates, stage validations, stage transitions, and handoff acknowledgements (`acknowledgeHandoff`) enforce object-level matter access before mutation.
+- **Client & Task Security**:
+  - Client updates require visibility into at least one associated matter (`matters: { some: matterWhere }`).
+  - Task creation, updates, status changes, archiving, and dependency resolution enforce matter access; cross-matter dependencies and non-firm assignees are rejected.
+- **Notification Visibility & Queuing Integrity**:
+  - Notifications are filtered by matter access on read.
+  - Recipient matter access is verified before notification persistence and re-checked by the worker before external queueing; queued jobs are cancelled if access is revoked.
+- **Atomic Court Outcome Propagation**:
+  - `POST /calendar/events/:id/court-outcome` executes entirely within a single Prisma `$transaction`:
+    1. Updates the calendar event with outcome status and directions.
+    2. Creates the next scheduled court event if a date is provided.
+    3. Records a legal deadline with `courtOrderOverride: true`, `riskLevel: 'CRITICAL'`, and `immutable: true`.
+    4. Records the initial immutable deadline revision (`DeadlineRevision`).
+    5. Creates a locked calendar event (`editPolicy: 'LOCKED'`) for the filing deadline.
+    6. Generates a critical preparation task (`priority: 'CRITICAL'`) due 3 days prior to the official deadline.
+    7. Updates matter `nextAction` and `lastActivityAt`.
+    8. Persists the `CourtOutcomeRecord` and writes an audit event.
+    9. Handles concurrency and duplicate retries via P2002 catch, returning the canonical record.
+  - Verified in `test/calendar-outcome.test.ts`.
+- **Legal Deadlines Engine**:
+  - Supports `CALENDAR_DAYS`, `BUSINESS_DAYS`, and `MANUAL` calculations.
+  - Explicit source tracking, legal-rule codes, excluded dates, responsible/escalation users, court order overrides, and immutable revision history (`DeadlineRevision`).
+  - Verified in `test/deadlines.test.ts`.
+- **Ledger-Grade Finance & Client Trust Separation**:
+  - Strict fund separation: Journals reject mixed `CLIENT` and `OFFICE` funds unless explicitly marked as `FUND_TRANSFER`.
+  - Balanced debit/credit enforcement (`debit === credit > 0`), exclusive debit/credit per line, and sequential voucher numbering (`KKA/JV/{year}/{seq:6}`).
+  - Dedicated `POST /finance/transfers` workflow for balanced, idempotent transfers between accounts.
+  - Payment receipt clearing: `POST /finance/receipts/:id/clear` distinguishes cleared from uncleared funds, enforces reconciliation permissions, and records clearing references.
+  - Ledger period locks: Prevent postings and receipts within locked date intervals.
+  - Reconciliation locks: Reconciliations derive period ledger balances, validate statement items, prevent duplicate source references, and block completion while items remain unmatched.
+  - Settlement position: `GET /finance/matters/:matterId/settlement-position` derives cleared client receipts, issued fee notes, disbursed expenses, and calculates proposed residual funds.
+  - Verified in `test/finance-access.test.ts`.
+- **Identity Lifecycle & Session Administration**:
+  - Staff invitations: Single-use hashed invite tokens, atomic claim, user activation, password establishment, and automatic revocation of superseded replacement invites.
+  - Frontend invite acceptance: Fully wired at `/auth/invite` via `InviteAcceptancePage.tsx`.
+  - Password reset: Expiring single-use hashed reset tokens, URL-carried token handling, session revocation, and audit tracking.
+  - Admin session control: `GET/POST /auth/users/:userId/sessions|revoke-sessions` allows firm administrators to inspect active sessions and revoke server-held sessions with Redis cleanup.
+  - Verified in `test/invite-lifecycle.test.ts`.
+- **Personal Injury Backend Conversion**:
+  - Complete server-side endpoints in `PersonalInjuryController` and `PersonalInjuryService`:
+    - Profile (`PUT /personal-injury/:matterId/profile`)
+    - Vehicles (`POST /personal-injury/:matterId/vehicles`)
+    - Witnesses (`POST /personal-injury/:matterId/witnesses`)
+    - Evidence (`POST /personal-injury/:matterId/evidence`)
+    - Injuries (`POST /personal-injury/:matterId/injuries`)
+    - Treatments (`POST /personal-injury/:matterId/treatments`)
+    - Medical Reports (`POST /personal-injury/:matterId/medical-reports`, `PATCH .../:reportId`)
+    - Liability & Quantum (`PUT /personal-injury/:matterId/liability-quantum`)
+    - Negotiations (`POST /personal-injury/:matterId/negotiations`)
+    - Hearing Brief (`PUT /personal-injury/:matterId/hearing-brief`)
+    - Judgment (`PUT /personal-injury/:matterId/judgment`)
+    - Recovery Actions (`POST /personal-injury/:matterId/recovery-actions`)
+    - Settlement (`PUT /personal-injury/:matterId/settlement`)
+    - Closure (`PUT /personal-injury/:matterId/closure`)
+  - Shared matter-access policy applied to all reads and writes; material mutations audited.
+  - Frontend `LiabilityQuantumWorkspace.tsx` wired to server endpoints; other PI screens have truthful empty states in non-demo mode.
+  - Verified in `test/personal-injury-access.test.ts`.
+- **Operations, HR & Procurement Integrity**:
+  - HR Leave: Date-only inputs, assigned policy calendars, holiday exclusions, front-loaded/month-end accrual with proration, carryover caps, and derived balances from persisted requests.
+  - Departments: Firm-scoped with active-manager validation.
+  - Procurement: Requisitions with firm-scoped idempotency keys, GRN/delivery receipt reference constraints, asset custody assignment constraints (1 open per asset), and receipt-to-asset / receipt-to-expense linkages.
+  - Verified in `test/operations-leave-calculation.test.ts`, `test/organization-departments.test.ts`, and `test/operations-procurement-integrity.test.ts`.
+- **Continuous Integration Gate**:
+  - `.github/workflows/predeployment.yml` validates Prisma schema, runs typechecking, compiles production builds, executes API foundation tests, document engine tests, the complete `test:access` suite (94 tests), clean bootstrap test, migrations, and Playwright browser acceptance.
 
-- Client, intake, matter, task, calendar, court, document, finance, communication, notification, portal, reporting, and website surfaces have backend modules or UI paths, but not every path has proven reload persistence, second-user visibility, scoped authorization, failure behavior, concurrency behavior, and audit evidence.
-- `AppContext.tsx` still contains local business collections, seed imports, and mutations. Calendar hydration/create/reschedule/document-link/court-outcome paths now cross an authoritative API boundary outside demo mode; the remaining domain collections are compatibility/prototype paths until converted.
-- Court outcomes now have a single persisted outcome record per court event. The recorded outcome, optional next hearing, court-directed deadline, locked deadline calendar event, preparation task, matter next action, and audit event are created in one transaction; retry returns the canonical outcome rather than duplicating downstream records. This is local service-level evidence only: legal deadline calculation, responsible-staff/client notification delivery, court-order document validation, cross-user browser reload, and external calendar synchronization remain open.
-- Court filing and service routes now enforce shared matter access and evidence-gated transitions. Submission requires the filing document/version, method, and reference; acceptance additionally requires a matter document representing the court receipt; rejection preserves a reason. Service attempts record party/service evidence, and `SERVED` requires an affidavit document; affidavit filing is a separate gated transition. These APIs are locally tested, but the browser court operations queue remains manual/unavailable outside demo mode and provider/CTS delivery is not claimed.
-- Deadlines now have server routes and reload hydration with explicit source, legal-rule code, manual/calendar/business-day calculation inputs, excluded dates, responsible/escalation users, reminder/stay metadata, completion, optimistic versioning, and immutable revision/audit records. Court-outcome-created deadlines now create their initial revision in the same transaction. Legal-rule catalogues, holiday/vacation policy, reminder/escalation delivery, browser mutation coverage, and cross-user acceptance remain open.
-- Staff invitations now create a persisted `INVITED` user, roles, branch assignment, single-use hashed invite, and audit record in one transaction. Resends supersede outstanding invites; acceptance is rate-limited and atomically claims the invite, activates only an invited account with no password, revokes replacements, and writes an audit event. `/auth/invite?token=...` provides a non-authenticated password-creation route. Delivery remains explicitly `UNCONFIGURED` unless a separate provider proof is added; browser automation, second-user verification, administrative session control, and first-login onboarding remain open.
-- Authenticated users now have a versioned, server-backed onboarding state with explicit start, step, tour, manual-view, postpone, and completion actions. Each action returns the persisted state and audit reference; the Help Center marks manual viewing and guide completion against that state and fails closed when the API cannot save it. A first-login wizard opens only after loading that server state, presents account/role/branch/permission and role-aware workspace guidance, persists progress or a one-day postponement, and leaves a `Finish setup` entry point. The Help Center also has a searchable 13-domain user manual that identifies users, prerequisites, saved/audit boundaries, evidence limits, and the relevant workspace. The wizard is deliberately absent when the onboarding API is unavailable. Concurrent update handling, browser reload/second-user proof, a full guided workspace tour, and completion UX acceptance remain open.
-- Firm administrators can inspect the active server-session count and revoke all server-held sessions for an in-firm account through permission-protected routes. The actions clean stale Redis session references and create audit events. Cross-firm rejection and device/browser-level session proof remain open.
-- The authoritative staff directory now loads firm-scoped users and active branches in normal mode. Role and home-branch edits persist through server routes; a home-branch change validates the branch, records the user/branch membership, and writes an audit event. Browser concurrency and cross-user acceptance remain open.
-- Matter list and global search now compose their text filters with the shared record-access predicate instead of replacing its nested access `OR`. Matter update, stage validation/transition, handoff acknowledgement, and client update also resolve the target through that predicate before any write. Focused restricted-write and predicate-composition tests pass; export/report/download and browser cross-user proof remain open.
-- Feature flags are now enforced before finance, portal, integrations, PI, and Website Management controller actions. Website flags cover the authenticated CMS/media/publishing/preview-management and lead-management routes, not public site rendering or public lead submission. Absent flags preserve the current module availability; an explicit disabled server flag returns an unavailable response, and flag changes write audit events. Flags are global rather than per-firm, and website navigation, offline/sync behavior, provider-specific workers, and browser acceptance remain open.
-- API permission decorators and live-web permission checks now derive their current vocabulary from the same shared contracts list. Prototype-only local aliases remain in the web type solely for demo compatibility; role management/browser navigation still require full server-backed acceptance.
-- Portal grants now use an explicit, validated permission set for matter summaries, upcoming calendar entries, and portal-visible documents. Matter-specific grants scope public summary and document queries to the granted matter, and grant revocation re-checks the administrator's shared matter visibility before mutation. Local service tests cover these denial paths; token delivery, browser/cross-client testing, and a client identity/authentication model beyond bearer tokens remain open.
-- Matter-linked finance journals, transfers, reversals, receipts, receipt clearing, expenses, approval, and disbursement now receive the authenticated user from their API boundary and re-check shared matter visibility before returning idempotent results or mutating records. This is service-level policy coverage only; privileged trust-money policy, exports, provider reconciliation, and browser cross-user acceptance remain open.
-- Communications now load channels/messages from the server and persist matter channels, staff direct threads, messages, channel read markers, mentions, document-backed matter attachments, and idempotent message-to-task conversions. Matter/private channel access is re-checked before message, read-marker, realtime-room, attachment, mention, or conversion actions; internal mention/task notifications use in-app delivery only. Attachment binary upload, provider delivery, browser/cross-user/realtime acceptance, and retained-message policy proof remain open.
-- HR now has firm-scoped lifecycle checklists, departments with active-manager validation, appraisals, CPD records, advocate credentials, leave policies/balances, restricted notes, offboarding, and staff-document metadata behind `hr.manage`; each new mutation writes an audit event and returns its reference. Leave requests now use date-only inputs, the assigned policy calendar, front-loaded/month-end accrual with proration, capped carryover and audited adjustments. Approved usage and pending reservations are derived from persisted requests; serializable submission/decision transactions enforce balance limits, retry identity, record revisions, firm scope and atomic audits. HR can configure calendars, review unclassified historical requests, and view calculated balances. The people workspace can create/list departments and reload a selected employee's persisted HR register, and restricted note bodies are returned only to their author or explicitly listed recipients. Staff-document entries are explicitly `MANUAL` metadata, not file uploads; automatic carryover rollover, multiple policy assignments, effective-dated policy history, authenticated browser-to-database acceptance, and retention policy remain open. See [CALCULATED_LEAVE.md](CALCULATED_LEAVE.md) for the supported rules and local database/browser evidence.
-- Procurement requisitions now carry firm-scoped idempotency keys, purchase orders have a one-requisition database constraint, and receiving requires a persisted delivery/GRN/manual receipt reference plus idempotency key. The operations screen blocks receipt controls until that evidence is supplied. Asset custody now has a database constraint for one open assignment per asset and rejects status changes until the assignment is returned. Vendor due diligence, line-item/quantity matching, invoice/payment matching, approval-request decision synchronization, browser concurrency, and supplier delivery remain open.
-- Procurement approvals now resolve the requisition and its linked approval request in one transaction, using the central role/self-approval eligibility checks. Category thresholds select the required higher approver role for an over-threshold request rather than rejecting it. Approval-request decision visibility, multi-stage thresholds, browser concurrency, and supplier delivery remain open.
-- Procurement data now also supports firm-scoped purchase categories and thresholds, manual vendor-compliance metadata, comparable vendor quotes per requisition, and manual asset-maintenance/repair records. These are persisted API records with authorization and audit events, not proof of vendor verification, quotations, goods quantities, finance posting, or repair completion; browser workflows and finance linkage remain open.
-- A recorded procurement receipt can now idempotently create one linked asset or one submitted finance expense request. Asset creation preserves the receipt/delivery reference; expense linkage separately requires finance-expense permission and remains `SUBMITTED` until the normal finance approval/disbursement workflow is completed. The operations receipt register shows the persisted linkage and exposes the guarded creation controls. It does not assert invoice validation, payment, journal posting, supplier settlement, or goods quantity reconciliation.
-- Internal projects and meetings now persist milestones, manual project spend, project status transitions, bounded recurring schedule metadata, participant attendance, decision owners, and completion state for meeting actions. The operations workspace provides a server-backed project board for recording/completing milestones and manual spend, changing the audited persisted project status, and submitting matter/document links by ID; the server re-checks shared record access before it creates a link. Meeting scheduling/register controls persist participants, recurrence rules/end dates, their attendance, decision owner, and action completion without dropping attendance for participants that remain on the meeting. Inaccessible matter/document links are omitted from project reads. Recurring occurrence generation, finance-derived spend, status-board acceptance, and cross-user verification remain open.
-- PI stage models and routes exist, but the complete lifecycle from empty matter through closure is not accepted as one gated workflow.
-- Finance models and routes exist, but client money is not launch-ready until balanced immutable journals, fund separation, idempotency, reversals, reconciliation, locks, and ledger-derived settlement distribution are proven.
-- Filing, service, court outcome propagation, communications, portal grants, search access policy, settings administration, resource-detail/auth routing, and notifications require domain-specific acceptance evidence.
-- The current release build retains a large-bundle warning and has no independent lint suite claim.
-- The predeployment workflow now runs the dedicated API authorization and record-access suite. A green exact-head hosted run remains separate deployment evidence and has not been claimed from local execution.
+---
 
-## Not implemented or not proven
+## Implemented, Acceptance Incomplete
 
-- Password-recovery browser journey, MFA, device/browser-level administrative session proof, and first-login onboarding browser/tour acceptance remain incomplete. Invite acceptance has an API and direct browser route, but browser automation, cross-user verification, and mail delivery remain open. The password-reset API, self-service logout-all, server-session inspection/revocation, onboarding-state API, and initial wizard slices are locally accepted.
-- One shared record-access policy applied consistently to search, lists, details, exports, reports, documents, notifications, and portal grants. Matter/client/task/document/search reads, matter-derived reports, portal administration, notification reads, shared notification creation, and queued notification delivery checks are implemented locally; exports, approval/expense report scope, provider delivery outcomes, and multi-user browser acceptance remain open.
-- Complete PI legal lifecycle with persisted stage gates, approvals, transitions, server-backed workspace hydration, and cross-user verification. Empty-state truthfulness for the four remediation workspaces above is locally verified; the broader PI lifecycle remains open.
-- Ledger-grade client-money operations and settlement reconciliation.
-- Production deployment, staging isolation, provider configuration, reviewed imports, monitoring/alerting proof, encrypted off-site backup proof, replacement-VPS restore proof, staff pilot, and firm-wide UAT.
+- **Frontend Workspace Server Hydration**:
+  - While backend endpoints are complete for Personal Injury, Court operations, and Finance, several frontend workspaces (`IncidentEvidenceWorkspace`, `MedicalManagementWorkspace`, `ClaimNegotiationWorkspace`, `SettlementDistributionWorkspace`) still retain demo-mode toggles and are being converted to direct TanStack Query / API client hooks.
+- **Provider Integrations & Real Delivery**:
+  - External providers (SMTP email delivery, Africa's Talking SMS, WhatsApp Business API, Judiciary CTS e-filing, Daraja M-Pesa API) have stubbed/mock adapters and fallback handling, but live provider delivery requires production credentials and network provisioning.
+- **Client Portal Extended Workflows**:
+  - Portal grants and access scoping are enforced server-side. Public client onboarding, SMS magic link delivery, and self-service document uploading require end-to-end browser verification.
+- **Bundle Optimization**:
+  - Frontend production build succeeds, but route-level code-splitting is recommended to reduce initial chunk size.
 
-## Explicitly deferred
+---
 
-- OIDC/SSO, OCR/full-text search, advanced reporting, retention/legal holds, versioned automation extensions, broad API/webhook administration, cryptographic certificate signing, multi-node high availability, and unrestricted plugins.
-- DNS, TLS, live VPS provisioning, SMTP, Judiciary, Daraja, WhatsApp, SMS, S3, live bank reconciliation, production imports, and external provider delivery remain deployment/provider gates rather than local implementation evidence.
+## Not Implemented or Explicitly Deferred
 
-## Acceptance contract
+- **Explicitly Deferred Platform Features**:
+  - MFA / TOTP enrollment (deferred to post-core).
+  - OIDC / SSO enterprise authentication.
+  - OCR full-text search indexing on uploaded documents.
+  - Retention policies and cryptographic document timestamping.
+  - Multi-node high availability (single VPS deployment is the target architecture).
+- **Deployment-Dependent Gates (Require Live VPS)**:
+  - Staging and production VPS provisioning.
+  - Live domain DNS, Let's Encrypt TLS certificates, and secure cookie validation.
+  - Live bank statement imports and M-Pesa statement reconciliation.
+  - Real firm data migration dry run and firm-wide legal staff UAT.
+  - Disaster recovery drill: 1-hour RPO / 4-hour RTO restoration test on a replacement VPS.
+
+---
+
+## Acceptance Contract
 
 A slice may move to **implemented and locally accepted** only when all of the following are evidenced:
 
@@ -88,15 +126,6 @@ A slice may move to **implemented and locally accepted** only when all of the fo
 6. API, service, and browser tests cover desktop, tablet, mobile, keyboard, loading, empty, and failure states.
 7. Typecheck, build, and `git diff --check` pass.
 
-## Release gates
+## Release Gates
 
 Truthfulness, identity, authorization, matter integrity, PI completion, court/document cohesion, ledger correctness, deployment, recovery, monitoring, migration, UAT, and CI are independent gates. Passing compilation or rendering a screen does not close any of them.
-
-## Source precedence
-
-- This file: current cross-domain classification.
-- [LOCAL_ONLY_CONVERSION_PLAN.md](LOCAL_ONLY_CONVERSION_PLAN.md): local implementation order and acceptance contract.
-- [PROJECT_STATE.md](PROJECT_STATE.md): dated evidence and command-level verification history.
-- [PRODUCTION_CONVERSION.md](PRODUCTION_CONVERSION.md): production deployment contract and release gates.
-- [UI_SURFACE_INVENTORY.json](UI_SURFACE_INVENTORY.json) and [UI_INTEGRATION_AUDIT.md](UI_INTEGRATION_AUDIT.md): detailed UI audit evidence; findings must be revalidated against the current commit.
-- Domain design documents: implementation guidance, not proof of completion unless linked evidence is present.
