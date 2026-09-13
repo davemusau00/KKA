@@ -42,7 +42,7 @@ export function calculateRRuleOccurrences(
         occurrences.push(new Date(current));
       } else {
         const dayCode = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][current.getDay()];
-        if (byDays.includes(dayCode)) {
+        if (dayCode && byDays.includes(dayCode)) {
           occurrences.push(new Date(current));
         }
       }
@@ -216,7 +216,7 @@ export class OperationsService {
     });
 
     const paidExpenses = await this.prisma.client.expenseRequest.findMany({
-      where: { projectId, firmId: user.firmId, status: 'PAID' }
+      where: { projectId, firmId: user.firmId, status: { in: ['DISBURSED', 'RECONCILED'] } }
     });
 
     const approvedRequisitions = await this.prisma.client.purchaseRequisition.findMany({
@@ -545,7 +545,7 @@ export class OperationsService {
       updates: {
         title?: string;
         description?: string;
-        location?: string;
+        location?: string | null;
         agenda?: any;
         status?: string;
       }
