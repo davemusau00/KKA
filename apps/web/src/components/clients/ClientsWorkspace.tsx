@@ -431,6 +431,9 @@ export const ClientsWorkspace: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
       {/* Focused Client Detail Modal for URL Deep-Linking */}
       {selectedClientId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
@@ -554,7 +557,7 @@ export const ClientsWorkspace: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-amber-400 font-bold text-xs">{m.internalReference}</span>
                                 <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono uppercase">
-                                  {m.caseType || 'Personal Injury'}
+                                  {m.matterType || m.practiceArea || 'Personal Injury'}
                                 </span>
                               </div>
                               <div className="text-sm font-medium text-slate-200 mt-1">{m.title}</div>
