@@ -2664,6 +2664,11 @@ model LeaveRequest {
   endsOn     DateTime
   days       Decimal     @db.Decimal(8, 2)
   reason     String?
+  policyKey  String?
+  chargeableDates String[] @default([])
+  calculation Json?
+  revision Int @default(0)
+  idempotencyKey String?
   status     LeaveStatus @default(DRAFT)
   approverId String?
   approvedAt DateTime?
@@ -2674,6 +2679,7 @@ model LeaveRequest {
   approver  User? @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
+  @@unique([userId, idempotencyKey])
 }
 
 model CpdRecord {
@@ -2752,6 +2758,12 @@ model LeavePolicy {
   annualEntitlementDays Decimal  @db.Decimal(8, 2)
   carryoverLimitDays    Decimal? @db.Decimal(8, 2)
   active                Boolean  @default(true)
+  accrualMode           String   @default("FRONT_LOADED")
+  prorateNewEmployees   Boolean  @default(true)
+  allowNegative         Boolean  @default(false)
+  maximumNegativeDays   Decimal  @default(0) @db.Decimal(8, 2)
+  workingDays           Int[]    @default([1, 2, 3, 4, 5])
+  excludedDates         String[] @default([])
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

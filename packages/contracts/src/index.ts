@@ -2,6 +2,7 @@ import { z } from "zod";
 export * from './document-workflows';
 export * from './organization';
 export * from './permissions';
+export * from './leave';
 
 export const SettingScopeSchema = z.enum([
   "SYSTEM", "FIRM", "LEGAL_ENTITY", "BRANCH", "DEPARTMENT", "PRACTICE_AREA",

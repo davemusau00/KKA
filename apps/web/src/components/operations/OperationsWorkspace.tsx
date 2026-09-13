@@ -138,7 +138,7 @@ export const OperationsWorkspace: React.FC = () => {
     finally { setBusy(false); }
   }
 
-  const [leaveForm, setLeaveForm] = useState({ type: 'Annual Leave', startsOn: '', endsOn: '', days: '1', reason: '' });
+  const [leaveForm, setLeaveForm] = useState({ type: 'Annual Leave', startsOn: '', endsOn: '', reason: '' });
   const [employeeForm, setEmployeeForm] = useState({ userId: '', employeeNumber: '', employmentType: 'FULL_TIME', startDate: '', managerUserId: '', leavePolicyKey: 'STANDARD', cpdsRequiredAnnual: '0', notes: '' });
   const [departmentForm, setDepartmentForm] = useState({ name: '', code: '', branchId: '', managerId: '', costCentre: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', kraPin: '', contactName: '', phone: '', email: '', address: '' });
@@ -226,15 +226,15 @@ export const OperationsWorkspace: React.FC = () => {
 
       {!loading && tab === 'people' && <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-5">
-          <Panel title="Request leave" description="Requests are persisted immediately and can be approved by HR without browser-only state.">
+          <Panel title="Request leave" description="The server calculates inclusive weekdays from the selected dates; public holidays and entitlement checks remain a later policy slice.">
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void run(async () => {
               if (!leaveForm.startsOn || !leaveForm.endsOn) throw new Error('Choose the leave dates.');
-              await operationsApi.requestLeave({ type: leaveForm.type, startsOn: new Date(`${leaveForm.startsOn}T00:00:00`).toISOString(), endsOn: new Date(`${leaveForm.endsOn}T23:59:59`).toISOString(), days: Number(leaveForm.days), reason: leaveForm.reason || undefined });
-              setLeaveForm({ type: 'Annual Leave', startsOn: '', endsOn: '', days: '1', reason: '' });
+              await operationsApi.requestLeave({ type: leaveForm.type, startsOn: new Date(`${leaveForm.startsOn}T00:00:00`).toISOString(), endsOn: new Date(`${leaveForm.endsOn}T23:59:59`).toISOString(), reason: leaveForm.reason || undefined });
+              setLeaveForm({ type: 'Annual Leave', startsOn: '', endsOn: '', reason: '' });
             }, 'Leave request submitted.'); }}>
               <label className="block text-xs text-slate-400">Leave type<select className={inputClass} value={leaveForm.type} onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}><option>Annual Leave</option><option>Sick Leave</option><option>Compassionate Leave</option><option>Maternity Leave</option><option>Paternity Leave</option><option>Study Leave</option><option>Unpaid Leave</option></select></label>
               <div className="grid grid-cols-2 gap-3"><label className="text-xs text-slate-400">Starts<input type="date" className={inputClass} value={leaveForm.startsOn} onChange={(e) => setLeaveForm({ ...leaveForm, startsOn: e.target.value })} /></label><label className="text-xs text-slate-400">Ends<input type="date" className={inputClass} value={leaveForm.endsOn} onChange={(e) => setLeaveForm({ ...leaveForm, endsOn: e.target.value })} /></label></div>
-              <label className="block text-xs text-slate-400">Chargeable days<input type="number" min="0.5" step="0.5" className={inputClass} value={leaveForm.days} onChange={(e) => setLeaveForm({ ...leaveForm, days: e.target.value })} /></label>
+              <p className="rounded-xl border border-slate-800 bg-slate-950/45 p-3 text-xs text-slate-500">Chargeable weekdays are calculated by the server when this request is submitted.</p>
               <label className="block text-xs text-slate-400">Reason<textarea className={`${inputClass} min-h-24`} value={leaveForm.reason} onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })} /></label>
               <button className={primaryButton} disabled={busy}>Submit leave request</button>
             </form>

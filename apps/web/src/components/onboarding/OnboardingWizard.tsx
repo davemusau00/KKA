@@ -1,9 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, Compass, ShieldCheck, X } from 'lucide-react';
-import { authApi, type CurrentAuthUser, type OnboardingState } from '../../lib/api/auth.api';
+import { authApi, type OnboardingState } from '../../lib/api/auth.api';
+
+type OnboardingUser = {
+  fullName: string;
+  email: string;
+  homeBranchId?: string | null;
+  roleKeys: string[];
+  permissions: string[];
+};
 
 type Props = {
-  user: CurrentAuthUser;
+  user: OnboardingUser;
   state: OnboardingState;
   onStateChange: (state: OnboardingState) => void;
   onDismiss: () => void;

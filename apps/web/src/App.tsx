@@ -34,6 +34,7 @@ const MainWorkspaceRouter: React.FC = () => {
     selectedMatterTab,
     setSelectedMatterTab,
     currentUser,
+    effectivePermissions,
   } = useApp();
   const [routeReady, setRouteReady] = useState(false);
   const [resourceRoute, setResourceRoute] = useState<Pick<WorkspaceRoute, 'workspace' | 'resourceType' | 'resourceId'> | null>(null);
@@ -42,6 +43,7 @@ const MainWorkspaceRouter: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    if (!currentUser.id) return;
     let active = true;
     void authApi.onboarding().then((state) => {
       if (!active) return;
@@ -52,7 +54,7 @@ const MainWorkspaceRouter: React.FC = () => {
       // Do not show a pseudo-onboarding flow when the authoritative API is unavailable.
     });
     return () => { active = false; };
-  }, []);
+  }, [currentUser.id]);
 
   const applyLocation = useCallback((pathname: string, search: string) => {
     const route = parseWorkspaceLocation(pathname, search);
@@ -105,7 +107,7 @@ const MainWorkspaceRouter: React.FC = () => {
       {activeWorkspace === 'help' && <HelpCenterWorkspace />}
     </AppShell>
     {onboarding && onboarding.status !== 'COMPLETED' && !showOnboarding && <button type="button" onClick={() => setShowOnboarding(true)} className="fixed bottom-4 right-4 z-50 rounded-full border border-amber-700/60 bg-slate-900 px-4 py-2 text-sm font-semibold text-amber-300 shadow-xl hover:bg-slate-800">Finish setup</button>}
-    {onboarding && showOnboarding && <OnboardingWizard user={currentUser} state={onboarding} onStateChange={(state) => { setOnboarding(state); setShowOnboarding(state.status !== 'COMPLETED'); }} onDismiss={() => setShowOnboarding(false)} onOpenWorkspace={setActiveWorkspace} />}
+    {onboarding && showOnboarding && <OnboardingWizard user={{ fullName: currentUser.fullName, email: currentUser.email, homeBranchId: currentUser.homeBranchId, roleKeys: currentUser.roles, permissions: Array.from(effectivePermissions) }} state={onboarding} onStateChange={(state) => { setOnboarding(state); setShowOnboarding(state.status !== 'COMPLETED'); }} onDismiss={() => setShowOnboarding(false)} onOpenWorkspace={setActiveWorkspace} />}
     </>
   );
 };

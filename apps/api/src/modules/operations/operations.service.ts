@@ -27,6 +27,18 @@ export class OperationsService {
     if (count !== unique.length) throw new BadRequestException("One or more users are invalid for this firm");
   }
 
+  private chargeableWeekdays(startsOn: Date, endsOn: Date) {
+    let cursor = Date.UTC(startsOn.getUTCFullYear(), startsOn.getUTCMonth(), startsOn.getUTCDate());
+    const finalDay = Date.UTC(endsOn.getUTCFullYear(), endsOn.getUTCMonth(), endsOn.getUTCDate());
+    let days = 0;
+    while (cursor <= finalDay) {
+      const day = new Date(cursor).getUTCDay();
+      if (day !== 0 && day !== 6) days += 1;
+      cursor += 86_400_000;
+    }
+    return days;
+  }
+
   // ---------------------------------------------------------------------------
   // Projects and meetings
   // ---------------------------------------------------------------------------
@@ -448,6 +460,8 @@ export class OperationsService {
     const startsOn = new Date(input.startsOn);
     const endsOn = new Date(input.endsOn);
     if (endsOn < startsOn) throw new BadRequestException("Leave end date cannot be before the start date");
+    const days = this.chargeableWeekdays(startsOn, endsOn);
+    if (!days) throw new BadRequestException("Leave request must include at least one weekday");
 
     const overlap = await this.prisma.client.leaveRequest.findFirst({
       where: {
@@ -465,7 +479,7 @@ export class OperationsService {
         type: input.type,
         startsOn,
         endsOn,
-        days: input.days,
+        days,
         reason: input.reason,
         status: "SUBMITTED"
       },

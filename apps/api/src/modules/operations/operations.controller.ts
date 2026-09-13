@@ -338,7 +338,6 @@ export class OperationsController {
       type: z.string().min(2),
       startsOn: z.string().datetime(),
       endsOn: z.string().datetime(),
-      days: z.coerce.number().positive(),
       reason: z.string().max(5000).optional()
     }).parse(body);
     return this.ops.requestLeave(user.firmId, user.id, input);

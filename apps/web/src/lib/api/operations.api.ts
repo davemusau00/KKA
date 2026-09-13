@@ -251,7 +251,7 @@ export const operationsApi = {
     apiClient.post<AuditedMutation<EmployeeProfileDto>>(`/operations/hr/employees/${userId}/offboard`, input),
 
   leave: (scope: 'self' | 'all' = 'self') => apiClient.get<LeaveRequestDto[]>('/operations/leave', { params: { scope } }),
-  requestLeave: (input: { type: string; startsOn: string; endsOn: string; days: number; reason?: string }) =>
+  requestLeave: (input: { type: string; startsOn: string; endsOn: string; reason?: string }) =>
     apiClient.post<LeaveRequestDto>('/operations/leave', input),
   decideLeave: (id: string, decision: 'APPROVED' | 'REJECTED', reason?: string) =>
     apiClient.post<LeaveRequestDto>(`/operations/leave/${id}/decision`, { decision, reason }),
