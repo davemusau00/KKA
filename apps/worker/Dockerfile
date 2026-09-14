@@ -31,6 +31,7 @@ FROM deps AS build
 COPY apps/worker ./apps/worker
 COPY apps/site ./apps/site
 COPY scripts/render-public-release.mjs scripts/render-public-release.mjs
+COPY scripts/serve-public-release.mjs scripts/serve-public-release.mjs
 
 RUN pnpm --filter @kka/contracts build \
  && pnpm --filter @kka/database build \

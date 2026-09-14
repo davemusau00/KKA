@@ -20,7 +20,7 @@ async function mount(snapshot?:SiteSnapshot,url?:string){
 }
 if(location.pathname==='/preview'){
  document.title='Private website preview';const meta=document.createElement('meta');meta.name='robots';meta.content='noindex,nofollow';document.head.appendChild(meta);
- const allowed:string[]=(import.meta.env.VITE_OS_PREVIEW_ORIGINS||'http://127.0.0.1:5173,http://localhost:5173').split(',');
+ const allowed:string[]=(import.meta.env.VITE_OS_PREVIEW_ORIGINS||(import.meta.env.PROD?'https://os.kariukikagunda.com,https://kariukikagunda.com':'http://127.0.0.1:5173,http://localhost:5173')).split(',');
  let token='';let activeSlug='/';let initialLoaded=false;let requestVersion=0;
  const validSnapshot=(value:unknown):value is SiteSnapshot=>{if(!value||typeof value!=='object')return false;const s=value as any;return s.schemaVersion===1&&Array.isArray(s.pages)&&Array.isArray(s.mediaIds)&&s.bootstrap&&typeof s.bootstrap==='object'&&s.bootstrap.settings&&Array.isArray(s.bootstrap.partners)&&Array.isArray(s.bootstrap.practiceAreas)&&Array.isArray(s.bootstrap.publications)&&Array.isArray(s.bootstrap.testimonials)&&Array.isArray(s.bootstrap.metrics)&&(s.bootstrap.forms===undefined||Array.isArray(s.bootstrap.forms));};
  const receive=async(e:MessageEvent)=>{

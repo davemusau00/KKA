@@ -59,5 +59,6 @@ const server=createServer(async(req,res)=>{
   res.writeHead(status,headers);res.end(req.method==='HEAD'?undefined:body);
  }catch(error){res.writeHead(503,{'Content-Type':'text/plain'});res.end('Website temporarily unavailable.');}
 });
-server.listen(Number(process.env.PUBLIC_SITE_PORT||5175),'127.0.0.1',()=>console.log('Public release server listening on '+(process.env.PUBLIC_SITE_PORT||5175)));
+const host=process.env.PUBLIC_SITE_HOST||(process.env.NODE_ENV==='production'?'0.0.0.0':'127.0.0.1');
+server.listen(Number(process.env.PUBLIC_SITE_PORT||5175),host,()=>console.log('Public release server listening on '+host+':'+(process.env.PUBLIC_SITE_PORT||5175)));
 process.on('SIGTERM',()=>server.close(()=>void db.$disconnect()));

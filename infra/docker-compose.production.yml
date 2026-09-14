@@ -82,12 +82,47 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://redis:6379/0
       PUBLIC_BRANDING_FIRM_ID: ${PUBLIC_BRANDING_FIRM_ID}
+      WEBSITE_RELEASE_ROOT: /srv/kklaw/data/public-releases
+      LOCAL_STORAGE_ROOT: /srv/kklaw/data/documents
+      PUBLIC_SITE_ORIGIN: ${PUBLIC_SITE_ORIGIN:-https://kariukikagunda.com}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     volumes:
       - ${KKA_DATA_ROOT:-/srv/kklaw/data}/documents:/srv/kklaw/data/documents
       - ${KKA_DATA_ROOT:-/srv/kklaw/data}/marks:/srv/kklaw/data/marks
+      - ${KKA_DATA_ROOT:-/srv/kklaw/data}/public-releases:/srv/kklaw/data/public-releases
+    networks: [backend]
+    security_opt:
+      - no-new-privileges:true
+
+  site:
+    build:
+      context: ..
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    command: ["node", "scripts/serve-public-release.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      PUBLIC_BRANDING_FIRM_ID: ${PUBLIC_BRANDING_FIRM_ID}
+      WEBSITE_RELEASE_ROOT: /srv/kklaw/data/public-releases
+      SITE_API_ORIGIN: http://api:3000
+      PUBLIC_SITE_PORT: "5175"
+      PUBLIC_SITE_HOST: "0.0.0.0"
+      PUBLIC_SITE_ORIGIN: ${PUBLIC_SITE_ORIGIN:-https://kariukikagunda.com}
+    depends_on:
+      postgres: { condition: service_healthy }
+      api: { condition: service_healthy }
+    volumes:
+      - ${KKA_DATA_ROOT:-/srv/kklaw/data}/public-releases:/srv/kklaw/data/public-releases
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5175/').then(r=>{if(r.status>=500)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks: [backend]
     security_opt:
       - no-new-privileges:true
@@ -105,7 +140,6 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${WEB_DIST_PATH:-../apps/web/dist}:/srv/web:ro
-      - ${SITE_DIST_PATH:-../apps/site/dist}:/srv/site:ro
       - ${KKA_DATA_ROOT:-/srv/kklaw/data}/caddy/data:/data
       - ${KKA_DATA_ROOT:-/srv/kklaw/data}/caddy/config:/config
     networks: [backend]

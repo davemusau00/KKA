@@ -32,7 +32,7 @@ function localize(value){
 localize(snapshot);
 const template=await readFile(join(source,'index.html'),'utf8');
 const b=snapshot.bootstrap;
-const origin=process.env.PUBLIC_SITE_ORIGIN||'http://127.0.0.1:5175';
+const origin=process.env.PUBLIC_SITE_ORIGIN||(process.env.NODE_ENV==='production'?'https://kariukikagunda.com':'http://127.0.0.1:5175');
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeJson=value=>JSON.stringify(value).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
 const routes=new Map([['/',{title:b.settings.firmName,description:b.settings.tagline}],['/about',{title:'About Us'}],['/practice-areas',{title:'Areas of Practice'}],['/team',{title:'Our Team'}],['/insights',{title:'Legal Insights'}],['/contact',{title:'Contact Us'}],['/search',{title:'Search',noindex:true}]]);

@@ -10,9 +10,7 @@ kariukikagunda.com {
     }
 
     handle {
-        root * /srv/site
-        try_files {path} {path}/ /index.html
-        file_server
+        reverse_proxy site:5175
     }
 
     header {

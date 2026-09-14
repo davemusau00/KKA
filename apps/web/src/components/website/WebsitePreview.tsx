@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { websiteApi } from '../../lib/websiteApi';
+import { runtimeConfig } from '../../config/runtime';
 
-const origin = (import.meta.env.VITE_SITE_PREVIEW_ORIGIN || 'http://127.0.0.1:5174').replace(/\/$/, '');
+const origin = runtimeConfig.sitePreviewOrigin;
 type PreviewSession = { token: string; expiresAt: number };
 type PreviewDraft = Record<string, unknown>;
 
