@@ -65,8 +65,19 @@ export class SiteContentService {
       return value?[value]:[];
     });
     const b=previous?.bootstrap;
+    // Resolve asset IDs through the same firm-scoped DTO map; never trust a browser-supplied asset object.
+    const mediaMap=new Map(media.map((m:any)=>[m.id,m]));
+    const asset=(id:string)=>{const m=mediaMap.get(id);if(!m)throw new BadRequestException('Referenced media must belong to this firm');return this.assetDto(m);};
+    const logoTheme=((settings.theme as any)?.logos || {}) as Record<string, string | undefined>;
+    const resolveLogo=(id?:string)=>(id && mediaMap.has(id) ? this.assetDto(mediaMap.get(id)) : null);
+    const logos={
+      default:resolveLogo(logoTheme.defaultAssetId),
+      dark:resolveLogo(logoTheme.darkAssetId),
+      light:resolveLogo(logoTheme.lightAssetId),
+      mark:resolveLogo(logoTheme.markAssetId),
+    };
     const snapshot:SiteSnapshot={schemaVersion:1,bootstrap:{
-      settings:{firmName:settings.firmName,tagline:settings.tagline,phone:settings.phone,email:settings.email,address:settings.address,socials:settings.socials,navigation:settings.navigation,footer:settings.footer,defaultSeo:settings.defaultSeo,theme:settings.theme},
+      settings:{firmName:settings.firmName,tagline:settings.tagline,phone:settings.phone,email:settings.email,address:settings.address,socials:settings.socials,navigation:settings.navigation,footer:settings.footer,defaultSeo:settings.defaultSeo,theme:settings.theme,logos},
       partners:merge(profiles,b?.partners,p=>this.profileDto(p)),
       practiceAreas:merge(areas,b?.practiceAreas,p=>this.areaDto(p)),
       publications:merge(publications,b?.publications,p=>this.publicationDto(p)),
@@ -74,9 +85,6 @@ export class SiteContentService {
       metrics:merge(metrics,b?.metrics,p=>({id:p.id,value:p.value,label:p.label,icon:p.icon,sourceNote:p.sourceNote,verifiedAt:p.verifiedAt})),
       forms:forms.map((f:any)=>({id:f.id,key:f.key,version:f.version,consentText:f.consentText,fields:normalizePublicFormFields(f.schema)}))
     },pages:merge(pages,previous?.pages,p=>({id:p.id,slug:p.slug,title:p.title,description:p.description,seo:p.seo,heroAsset:p.heroAsset?this.assetDto(p.heroAsset):null,blocks:p.blocks.map((x:any)=>({id:x.id,blockType:x.blockType,variant:x.variant,theme:x.theme,content:x.content,settings:x.settings}))})),mediaIds:[]};
-    // Resolve block asset IDs through the same firm-scoped DTO map; never trust a browser-supplied asset object.
-    const mediaMap=new Map(media.map((m:any)=>[m.id,m]));
-    const asset=(id:string)=>{const m=mediaMap.get(id);if(!m)throw new BadRequestException('Referenced media must belong to this firm');return this.assetDto(m);};
     for(const p of snapshot.pages)for(const block of p.blocks){
       const c=block.content;
       if(c.assetId)c.asset=asset(c.assetId);

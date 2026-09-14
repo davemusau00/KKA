@@ -23,6 +23,13 @@ export type SeoSettings = {
 };
 export type FooterSettings = { statement: string };
 
+export type WebsiteLogosEditor = {
+  defaultAssetId: string;
+  darkAssetId: string;
+  lightAssetId: string;
+  markAssetId: string;
+};
+
 export type WebsiteSettingsEditor = {
   firmName: string;
   tagline: string;
@@ -33,6 +40,8 @@ export type WebsiteSettingsEditor = {
   socials: SocialLink[];
   defaultSeo: SeoSettings;
   footer: FooterSettings;
+  logos: WebsiteLogosEditor;
+  theme?: Record<string, any>;
 };
 
 export type FormFieldKey = 'name' | 'email' | 'phone' | 'practiceAreaSlug' | 'message' | 'consent' | 'website';
@@ -111,6 +120,7 @@ const inferPlatform = (label: string): SocialPlatform => {
 
 export function normalizeSettings(raw: any): WebsiteSettingsEditor {
   const defaultSeo = raw?.defaultSeo || {};
+  const logos = raw?.theme?.logos || raw?.logos || {};
   return {
     firmName: raw?.firmName || '',
     tagline: raw?.tagline || '',
@@ -127,6 +137,13 @@ export function normalizeSettings(raw: any): WebsiteSettingsEditor {
       imageId: defaultSeo.imageId || '',
     },
     footer: { statement: raw?.footer?.statement || '' },
+    logos: {
+      defaultAssetId: logos.defaultAssetId || '',
+      darkAssetId: logos.darkAssetId || '',
+      lightAssetId: logos.lightAssetId || '',
+      markAssetId: logos.markAssetId || '',
+    },
+    theme: raw?.theme || {},
   };
 }
 
@@ -146,6 +163,16 @@ export function serializeSettings(value: WebsiteSettingsEditor) {
       canonical: value.defaultSeo.canonical.trim(),
       noindex: Boolean(value.defaultSeo.noindex),
       ...(value.defaultSeo.imageId ? { imageId: value.defaultSeo.imageId } : {}),
+    },
+    theme: {
+      ...(value.theme || {}),
+      logos: {
+        ...(value.theme?.logos || {}),
+        defaultAssetId: value.logos.defaultAssetId.trim() || undefined,
+        darkAssetId: value.logos.darkAssetId.trim() || undefined,
+        lightAssetId: value.logos.lightAssetId.trim() || undefined,
+        markAssetId: value.logos.markAssetId.trim() || undefined,
+      },
     },
   };
 }

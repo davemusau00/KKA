@@ -16,14 +16,18 @@ import { WebsitePreview } from './WebsitePreview';
 export const WebsiteSettingsPanel: React.FC = () => {
   const { hasUserPermission } = useApp();
   const [value, setValue] = useState<WebsiteSettingsEditor | null>(null);
+  const [media, setMedia] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
 
   useEffect(() => {
-    websiteApi.settings()
-      .then(raw => setValue(normalizeSettings(raw)))
+    Promise.all([websiteApi.settings(), websiteApi.media()])
+      .then(([rawSettings, mediaList]) => {
+        setValue(normalizeSettings(rawSettings));
+        setMedia(mediaList || []);
+      })
       .catch((reason: any) => setError(reason.message || String(reason)))
       .finally(() => setLoading(false));
   }, []);
@@ -36,6 +40,7 @@ export const WebsiteSettingsPanel: React.FC = () => {
   };
   const updateSeo = (patch: Partial<WebsiteSettingsEditor['defaultSeo']>) => update({ defaultSeo: { ...value.defaultSeo, ...patch } });
   const updateFooter = (patch: Partial<WebsiteSettingsEditor['footer']>) => update({ footer: { ...value.footer, ...patch } });
+  const updateLogos = (patch: Partial<WebsiteSettingsEditor['logos']>) => update({ logos: { ...value.logos, ...patch } });
 
   async function save() {
     setError('');
@@ -72,6 +77,43 @@ export const WebsiteSettingsPanel: React.FC = () => {
             <Field label="Phone number"><input className="admin-input" value={value.phone} onChange={e => update({ phone: e.target.value })} placeholder="0722 333 569" /></Field>
             <Field label="Email address" required><input className="admin-input" type="email" value={value.email} onChange={e => update({ email: e.target.value })} placeholder="info@yourfirm.co.ke" /></Field>
             <Field label="Office address" wide hint="Use line breaks for floor, building, city, and country."><textarea className="admin-input min-h-24" value={value.address} onChange={e => update({ address: e.target.value })} /></Field>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="Firm branding & logos" description="Control how the firm logo appears across dark, light, and compact public website surfaces.">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Dark background logo (Header & Footer)" hint="Used on the dark navy header, compact scrolled navbar, and dark footer.">
+              <select className="admin-input" value={value.logos.darkAssetId} onChange={e => updateLogos({ darkAssetId: e.target.value })}>
+                <option value="">Use public composition default (/assets/logo-reference.png)</option>
+                {media.filter((item: any) => item.mimeType?.startsWith('image/')).map((item: any) => (
+                  <option key={item.id} value={item.id}>{item.originalName || item.alt}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Light background logo" hint="Used on white/ivory content pages and light header surfaces.">
+              <select className="admin-input" value={value.logos.lightAssetId} onChange={e => updateLogos({ lightAssetId: e.target.value })}>
+                <option value="">Use public composition default</option>
+                {media.filter((item: any) => item.mimeType?.startsWith('image/')).map((item: any) => (
+                  <option key={item.id} value={item.id}>{item.originalName || item.alt}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Seal mark / Monogram" hint="Used for compact mobile headers and square/circular badges.">
+              <select className="admin-input" value={value.logos.markAssetId} onChange={e => updateLogos({ markAssetId: e.target.value })}>
+                <option value="">Use standard logo</option>
+                {media.filter((item: any) => item.mimeType?.startsWith('image/')).map((item: any) => (
+                  <option key={item.id} value={item.id}>{item.originalName || item.alt}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Default / Master logo" hint="Fallback logo if surface-specific variants are not assigned.">
+              <select className="admin-input" value={value.logos.defaultAssetId} onChange={e => updateLogos({ defaultAssetId: e.target.value })}>
+                <option value="">Use public composition default</option>
+                {media.filter((item: any) => item.mimeType?.startsWith('image/')).map((item: any) => (
+                  <option key={item.id} value={item.id}>{item.originalName || item.alt}</option>
+                ))}
+              </select>
+            </Field>
           </div>
         </SettingsSection>
 
