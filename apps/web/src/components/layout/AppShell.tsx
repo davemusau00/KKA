@@ -330,8 +330,15 @@ export const AppShell: React.FC<Props> = ({ children }) => {
                           if (n.matterId) {
                             setSelectedMatterId(n.matterId);
                             setActiveWorkspace('matters');
+                            window.history.pushState({}, '', `/matters/${encodeURIComponent(n.matterId)}`);
+                            window.dispatchEvent(new PopStateEvent('popstate'));
                           } else if (n.actionUrl) {
-                            setActiveWorkspace(n.actionUrl.replace('/', ''));
+                            if (n.actionUrl.startsWith('/')) {
+                              window.history.pushState({}, '', n.actionUrl);
+                              window.dispatchEvent(new PopStateEvent('popstate'));
+                            } else {
+                              setActiveWorkspace(n.actionUrl);
+                            }
                           }
                           setIsNotifOpen(false);
                         }}

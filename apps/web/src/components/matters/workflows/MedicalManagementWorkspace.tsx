@@ -240,11 +240,19 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
     }
   };
 
-  const handleRemoveInjury = (id: string) => {
-    setLocalData((prev) => ({
-      ...prev,
-      injuries: prev.injuries.filter((i) => i.id !== id),
-    }));
+  const handleRemoveInjury = async (id: string) => {
+    try {
+      if (!runtimeConfig.enableDemoMode) {
+        await apiClient.delete(`/personal-injury/${matter.id}/injuries/${id}`);
+      }
+      setLocalData((prev) => ({
+        ...prev,
+        injuries: prev.injuries.filter((i) => i.id !== id),
+      }));
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to remove injury.');
+    }
   };
 
   const handleAddReport = async () => {
@@ -308,11 +316,19 @@ export const MedicalManagementWorkspace: React.FC<MedicalManagementWorkspaceProp
     }
   };
 
-  const handleRemoveReport = (id: string) => {
-    setLocalData((prev) => ({
-      ...prev,
-      medicalReportRequests: prev.medicalReportRequests.filter((r) => r.id !== id),
-    }));
+  const handleRemoveReport = async (id: string) => {
+    try {
+      if (!runtimeConfig.enableDemoMode) {
+        await apiClient.delete(`/personal-injury/${matter.id}/medical-reports/${id}`);
+      }
+      setLocalData((prev) => ({
+        ...prev,
+        medicalReportRequests: prev.medicalReportRequests.filter((r) => r.id !== id),
+      }));
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to remove medical report request.');
+    }
   };
 
   return (

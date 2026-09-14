@@ -16,6 +16,8 @@ import {
   UserCheck,
   Users,
   XCircle,
+  DollarSign,
+  Repeat,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -32,6 +34,8 @@ import {
   type PurchaseReceiptDto,
   type PurchaseRequisitionDto,
   type VendorDto,
+  type ProjectFinancialsDto,
+  type MeetingSeriesDto,
 } from '../../lib/api/operations.api';
 import { organizationApi, type BackendDepartment } from '../../lib/api/organization.api';
 import { parseWorkspaceLocation } from '../../lib/routing/workspaceRoutes';
@@ -100,6 +104,13 @@ export const OperationsWorkspace: React.FC = () => {
   const [assets, setAssets] = useState<AssetDto[]>([]);
   const [projects, setProjects] = useState<InternalProjectDto[]>([]);
   const [meetings, setMeetings] = useState<MeetingDto[]>([]);
+  const [projectFinancials, setProjectFinancials] = useState<ProjectFinancialsDto | null>(null);
+  const [loadingFinancials, setLoadingFinancials] = useState(false);
+  const [meetingSeriesList, setMeetingSeriesList] = useState<MeetingSeriesDto[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFreq, setRecurrenceFreq] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('WEEKLY');
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [selectedByDays, setSelectedByDays] = useState<string[]>(['MO']);
 
   const defaultBranchId = currentUser.homeBranchId || branches[0]?.id || '';
 
@@ -110,7 +121,7 @@ export const OperationsWorkspace: React.FC = () => {
       const employeePromise = canHr ? operationsApi.employees() : Promise.resolve([] as EmployeeRowDto[]);
       const operationalPromises = canOpenOperations
         ? Promise.all([operationsApi.vendors(), operationsApi.requisitions(), operationsApi.purchaseCategories(), operationsApi.orders(), operationsApi.receipts(), operationsApi.assets(), operationsApi.projects(), operationsApi.meetings(), operationsApi.meetingSeries()])
-        : Promise.resolve([[], [], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseCategoryDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[], MeetingSeriesDto[]]);
+        : Promise.resolve([[], [], [], [], [], [], [], [], []] as [VendorDto[], PurchaseRequisitionDto[], PurchaseCategoryDto[], PurchaseOrderDto[], PurchaseReceiptDto[], AssetDto[], InternalProjectDto[], MeetingDto[], MeetingSeriesDto[]]);
       const departmentPromise = canHr ? organizationApi.listDepartments() : Promise.resolve([] as BackendDepartment[]);
       const [leaveRows, employeeRows, departmentRows, [vendorRows, requisitionRows, categoryRows, orderRows, receiptRows, assetRows, projectRows, meetingRows, seriesRows]] = await Promise.all([leavePromise, employeePromise, departmentPromise, operationalPromises]);
       setLeave(leaveRows); setEmployees(employeeRows); setVendors(vendorRows); setRequisitions(requisitionRows);
@@ -134,21 +145,7 @@ export const OperationsWorkspace: React.FC = () => {
 
   useEffect(() => { void loadHrRecords(selectedHrEmployeeId); }, [loadHrRecords, selectedHrEmployeeId]);
 
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setProjectFinancials(null);
-      return;
-    }
-    let active = true;
-    setLoadingFinancials(true);
-    void operationsApi.projectFinancials(selectedProjectId)
-      .then((data) => { if (active) setProjectFinancials(data); })
-      .catch(() => { if (active) setProjectFinancials(null); })
-      .finally(() => { if (active) setLoadingFinancials(false); });
-    return () => { active = false; };
-  }, [selectedProjectId]);
-
-
+  
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true); setError(''); setMessage('');
     try { await action(); setMessage(success); await load(); }
@@ -164,6 +161,20 @@ export const OperationsWorkspace: React.FC = () => {
   const [assetForm, setAssetForm] = useState({ branchId: defaultBranchId, category: 'ICT', name: '', serialNumber: '', purchaseCost: '', notes: '' });
   const [projectForm, setProjectForm] = useState({ branchId: defaultBranchId, name: '', description: '', ownerUserId: currentUser.id, dueDate: '', budget: '' });
   const [selectedProjectId, setSelectedProjectId] = useState('');
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setProjectFinancials(null);
+      return;
+    }
+    let active = true;
+    setLoadingFinancials(true);
+    void operationsApi.projectFinancials(selectedProjectId)
+      .then((data) => { if (active) setProjectFinancials(data); })
+      .catch(() => { if (active) setProjectFinancials(null); })
+      .finally(() => { if (active) setLoadingFinancials(false); });
+    return () => { active = false; };
+  }, [selectedProjectId]);
   const [projectWork, setProjectWork] = useState({ milestoneTitle: '', milestoneDueAt: '', spendDescription: '', spendAmount: '', spendOccurredAt: '', spendReference: '' });
   const [projectLinks, setProjectLinks] = useState({ matterId: '', documentId: '' });
   const [meetingForm, setMeetingForm] = useState({ projectId: '', title: '', startsAt: '', endsAt: '', location: '', agenda: '', recurrenceRule: '', recurrenceUntil: '', participantUserIds: [] as string[] });

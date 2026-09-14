@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from "@nestjs/common";
 import { z } from "zod";
 import { CurrentUser, RequirePermissions } from "../../platform/auth/decorators";
 import type { RequestUser } from "../../platform/auth/auth.types";
@@ -61,4 +61,54 @@ export class PersonalInjuryController {
 
   @Put(":matterId/closure") @RequirePermissions("matter.close")
   closure(@CurrentUser() u: RequestUser,@Param("matterId") id:string,@Body() body:unknown) { const input=z.object({ checklist:z.any(), closingNote:z.string().optional(), financeReconciled:z.boolean().default(false), documentsComplete:z.boolean().default(false), clientInformed:z.boolean().default(false), supervisorApproved:z.boolean().default(false), archivedAt:z.string().datetime().optional() }).parse(body); return this.pi.updateClosure(u.firmId,u.id,id,input); }
+
+  @Delete(":matterId/vehicles/:vehicleId") @RequirePermissions("matter.edit")
+  deleteVehicle(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("vehicleId") vehicleId: string) {
+    return this.pi.deleteVehicle(u.firmId, u.id, id, vehicleId);
+  }
+
+  @Delete(":matterId/witnesses/:witnessId") @RequirePermissions("matter.edit")
+  deleteWitness(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("witnessId") witnessId: string) {
+    return this.pi.deleteWitness(u.firmId, u.id, id, witnessId);
+  }
+
+  @Delete(":matterId/evidence/:evidenceId") @RequirePermissions("matter.edit")
+  deleteEvidence(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("evidenceId") evidenceId: string) {
+    return this.pi.deleteEvidence(u.firmId, u.id, id, evidenceId);
+  }
+
+  @Delete(":matterId/injuries/:injuryId") @RequirePermissions("matter.edit")
+  deleteInjury(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("injuryId") injuryId: string) {
+    return this.pi.deleteInjury(u.firmId, u.id, id, injuryId);
+  }
+
+  @Delete(":matterId/treatments/:treatmentId") @RequirePermissions("matter.edit")
+  deleteTreatment(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("treatmentId") treatmentId: string) {
+    return this.pi.deleteTreatment(u.firmId, u.id, id, treatmentId);
+  }
+
+  @Delete(":matterId/medical-reports/:reportId") @RequirePermissions("matter.edit")
+  deleteMedicalReport(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("reportId") reportId: string) {
+    return this.pi.deleteMedicalReport(u.firmId, u.id, id, reportId);
+  }
+
+  @Delete(":matterId/negotiations/:negotiationId") @RequirePermissions("matter.edit")
+  deleteNegotiation(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("negotiationId") negotiationId: string) {
+    return this.pi.deleteNegotiation(u.firmId, u.id, id, negotiationId);
+  }
+
+  @Delete(":matterId/recovery-actions/:actionId") @RequirePermissions("matter.edit")
+  deleteRecovery(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Param("actionId") actionId: string) {
+    return this.pi.deleteRecovery(u.firmId, u.id, id, actionId);
+  }
+
+  @Post(":matterId/settlement/disburse") @RequirePermissions("matter.settlement_approve")
+  disburseSettlement(@CurrentUser() u: RequestUser, @Param("matterId") id: string, @Body() body: unknown) {
+    const input = z.object({
+      paymentMethod: z.string().optional(),
+      paymentReference: z.string().optional()
+    }).parse(body ?? {});
+    return this.pi.disburseSettlement(u.firmId, u.id, id, input);
+  }
 }
+

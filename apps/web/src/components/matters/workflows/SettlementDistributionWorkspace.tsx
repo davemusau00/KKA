@@ -76,11 +76,12 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
 
   // Dynamic fee & VAT calculations
   const gross = Number(localData.grossSettlementAmount) || 0;
-  const calculatedFee = Number(localData.professionalFees) || Math.round(gross * 0.20);
-  const vat = Number(localData.vatOnFees) || Math.round(calculatedFee * 0.16);
+  const calculatedFee = Number(localData.professionalFees) || (runtimeConfig.enableDemoMode ? Math.round(gross * 0.20) : 0);
+  const vat = Number(localData.vatOnFees) || (calculatedFee > 0 && runtimeConfig.enableDemoMode ? Math.round(calculatedFee * 0.16) : 0);
   const disbursements = localData.outstandingDisbursements.reduce((acc, d) => acc + d.amount, 0);
   const otherDed = localData.otherDeductions.reduce((acc, d) => acc + d.amount, 0);
-  const netPayout = gross - (calculatedFee + vat + disbursements + otherDed);
+  const totalOtherDeductions = otherDed + vat;
+  const netPayout = Math.max(0, gross - (calculatedFee + disbursements + totalOtherDeductions));
 
   const handleSave = async () => {
     const updated: SettlementDistributionData = {
@@ -94,13 +95,12 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
       if (runtimeConfig.enableDemoMode) {
         updateSettlementDistribution(matter.id, updated);
       } else {
-        const otherDeductions = otherDed;
         await apiClient.put(`/personal-injury/${matter.id}/settlement`, {
           grossAmount: gross,
           clientFundsReceived: Number(serverPosition?.recordedClientFunds ?? 0),
           professionalFees: calculatedFee,
           disbursements,
-          otherDeductions,
+          otherDeductions: totalOtherDeductions,
           netClientAmount: netPayout,
           clientApproved: ['approved', 'disbursed'].includes(updated.clientApprovalStatus),
           partnerApproved: false,
@@ -116,11 +116,22 @@ export const SettlementDistributionWorkspace: React.FC<SettlementDistributionWor
     }
   };
 
-  const handleDisburseNow = () => {
-    if (!runtimeConfig.enableDemoMode) return;
-    disburseClientSettlement(matter.id, localData.paymentMethod, localData.paymentReference || 'TX-DISBURSE-01');
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+  const handleDisburseNow = async () => {
+    try {
+      if (runtimeConfig.enableDemoMode) {
+        disburseClientSettlement(matter.id, localData.paymentMethod, localData.paymentReference || 'TX-DISBURSE-01');
+      } else {
+        await apiClient.post(`/personal-injury/${matter.id}/settlement/disburse`, {
+          paymentMethod: localData.paymentMethod,
+          paymentReference: localData.paymentReference || `DISB-${Date.now()}`
+        });
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+      setPositionError('');
+    } catch (error: any) {
+      setPositionError(error?.message || 'Failed to execute settlement disbursement.');
+    }
   };
 
   return (

@@ -90,13 +90,13 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
         }
         const persisted: ClaimNegotiationData = {
           insurer: {
-            name: '',
-            policyNumber: '',
-            claimReference: '',
+            name: profile.vehicles?.[0]?.insuranceCompany || '',
+            policyNumber: profile.vehicles?.[0]?.policyNumber || '',
+            claimReference: profile.insurerClaimReference || '',
             contactPerson: '',
             contactPhone: '',
             contactEmail: '',
-            status: 'notice_sent',
+            status: profile.negotiations?.length ? 'negotiating' : 'notice_sent',
           },
           negotiationLedger: (profile.negotiations || []).map((n: any) => ({
             id: n.id,
@@ -207,23 +207,31 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
     }
   };
 
-  const handleRemoveEntry = (id: string) => {
-    setLocalData((prev) => ({
-      ...prev,
-      negotiationLedger: prev.negotiationLedger.filter((e) => e.id !== id),
-    }));
+  const handleRemoveEntry = async (id: string) => {
+    try {
+      if (!runtimeConfig.enableDemoMode) {
+        await apiClient.delete(`/personal-injury/${matter.id}/negotiations/${id}`);
+      }
+      setLocalData((prev) => ({
+        ...prev,
+        negotiationLedger: prev.negotiationLedger.filter((e) => e.id !== id),
+      }));
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to remove negotiation entry.');
+    }
   };
 
   const latestInsurerOffer =
     [...localData.negotiationLedger]
       .reverse()
-      .find((e) => e.party === 'insurer' && e.offerAmount)?.offerAmount || 1200000;
+      .find((e) => e.party === 'insurer' && e.offerAmount)?.offerAmount || (runtimeConfig.enableDemoMode ? 1200000 : 0);
 
   const firmDemand =
-    localData.negotiationLedger.find((e) => e.party === 'firm' && e.offerAmount)?.offerAmount || 1850000;
+    localData.negotiationLedger.find((e) => e.party === 'firm' && e.offerAmount)?.offerAmount || (runtimeConfig.enableDemoMode ? 1850000 : 0);
 
-  const recommendedSettlement = localData.settlementApproval.recommendedAmount || 1400000;
-  const gapAmount = recommendedSettlement - latestInsurerOffer;
+  const recommendedSettlement = localData.settlementApproval.recommendedAmount || (runtimeConfig.enableDemoMode ? 1400000 : 0);
+  const gapAmount = (recommendedSettlement && latestInsurerOffer) ? Math.max(0, recommendedSettlement - latestInsurerOffer) : 0;
 
   return (
     <div className="space-y-6 text-xs">
@@ -273,7 +281,7 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
         <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl">
           <span className="text-[10px] font-mono text-slate-400 uppercase">Original Demand</span>
           <div className="text-lg font-bold font-mono text-slate-100 mt-1">
-            KES {firmDemand.toLocaleString()}
+            {firmDemand > 0 ? `KES ${firmDemand.toLocaleString()}` : (runtimeConfig.enableDemoMode ? 'KES 1,850,000' : 'Not recorded')}
           </div>
           <span className="text-[10px] text-slate-500">Notice dispatched</span>
         </div>
@@ -281,7 +289,7 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
         <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl">
           <span className="text-[10px] font-mono text-slate-400 uppercase">Insurer Current Offer</span>
           <div className="text-lg font-bold font-mono text-amber-400 mt-1">
-            KES {latestInsurerOffer.toLocaleString()}
+            {latestInsurerOffer > 0 ? `KES ${latestInsurerOffer.toLocaleString()}` : (runtimeConfig.enableDemoMode ? 'KES 1,200,000' : 'No offer recorded')}
           </div>
           <span className="text-[10px] text-slate-500">Latest counter-offer</span>
         </div>
@@ -289,7 +297,7 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
         <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl">
           <span className="text-[10px] font-mono text-slate-400 uppercase">Target Bottom Line</span>
           <div className="text-lg font-bold font-mono text-emerald-400 mt-1">
-            KES {recommendedSettlement.toLocaleString()}
+            {recommendedSettlement > 0 ? `KES ${recommendedSettlement.toLocaleString()}` : (runtimeConfig.enableDemoMode ? 'KES 1,400,000' : 'Not recorded')}
           </div>
           <span className="text-[10px] text-slate-500">Client authorized</span>
         </div>
@@ -297,9 +305,11 @@ export const ClaimNegotiationWorkspace: React.FC<ClaimNegotiationWorkspaceProps>
         <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-xl">
           <span className="text-[10px] font-mono text-slate-400 uppercase">Negotiation Gap</span>
           <div className={`text-lg font-bold font-mono mt-1 ${gapAmount <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            KES {Math.max(0, gapAmount).toLocaleString()}
+            {gapAmount > 0
+              ? `KES ${gapAmount.toLocaleString()}`
+              : (latestInsurerOffer > 0 && recommendedSettlement > 0 ? 'Target Reached' : '—')}
           </div>
-          <span className="text-[10px] text-slate-500">{gapAmount <= 0 ? 'Target Reached' : 'Distance to close'}</span>
+          <span className="text-[10px] text-slate-500">{gapAmount <= 0 && latestInsurerOffer > 0 ? 'Target Reached' : 'Distance to close'}</span>
         </div>
       </div>
 

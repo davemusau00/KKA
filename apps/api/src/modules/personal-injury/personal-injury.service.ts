@@ -250,4 +250,107 @@ export class PersonalInjuryService {
     await this.audit.record({ firmId, actorUserId: actorId, action: "pi.closure_record_updated", entityType: "pi_closure", entityId: row.id, matterId, metadata: { supervisorApproved: row.supervisorApproved, financeReconciled: row.financeReconciled } });
     return row;
   }
+
+  async deleteVehicle(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piVehicle.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Vehicle record not found");
+    await this.prisma.client.piVehicle.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.vehicle_deleted", entityType: "pi_vehicle", entityId: id, matterId, metadata: { registrationNo: existing.registrationNo } });
+    return { success: true };
+  }
+
+  async deleteWitness(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piWitness.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Witness record not found");
+    await this.prisma.client.piWitness.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.witness_deleted", entityType: "pi_witness", entityId: id, matterId, metadata: { name: existing.name } });
+    return { success: true };
+  }
+
+  async deleteEvidence(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piEvidenceItem.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Evidence item not found");
+    await this.prisma.client.piEvidenceItem.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.evidence_deleted", entityType: "pi_evidence", entityId: id, matterId, metadata: { category: existing.category, title: existing.title } });
+    return { success: true };
+  }
+
+  async deleteInjury(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piInjury.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Injury record not found");
+    await this.prisma.client.piInjury.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.injury_deleted", entityType: "pi_injury", entityId: id, matterId, metadata: { description: existing.description } });
+    return { success: true };
+  }
+
+  async deleteTreatment(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piTreatmentEpisode.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Treatment record not found");
+    await this.prisma.client.piTreatmentEpisode.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.treatment_deleted", entityType: "pi_treatment", entityId: id, matterId, metadata: { facilityName: existing.facilityName } });
+    return { success: true };
+  }
+
+  async deleteMedicalReport(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piMedicalReportRequest.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Medical report request not found");
+    await this.prisma.client.piMedicalReportRequest.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.medical_report_deleted", entityType: "pi_medical_report", entityId: id, matterId, metadata: { doctorName: existing.doctorName } });
+    return { success: true };
+  }
+
+  async deleteNegotiation(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piNegotiationEntry.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Negotiation entry not found");
+    await this.prisma.client.piNegotiationEntry.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.negotiation_deleted", entityType: "pi_negotiation", entityId: id, matterId, metadata: { party: existing.party, amount: existing.amount?.toString() } });
+    return { success: true };
+  }
+
+  async deleteRecovery(firmId: string, actorId: string, matterId: string, id: string) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const existing = await this.prisma.client.piRecoveryAction.findFirst({ where: { id, personalInjuryId: p.id } });
+    if (!existing) throw new NotFoundException("Recovery action not found");
+    await this.prisma.client.piRecoveryAction.delete({ where: { id } });
+    await this.audit.record({ firmId, actorUserId: actorId, action: "pi.recovery_action_deleted", entityType: "pi_recovery", entityId: id, matterId, metadata: { actionType: existing.actionType } });
+    return { success: true };
+  }
+
+  async disburseSettlement(firmId: string, actorId: string, matterId: string, input: { paymentMethod?: string; paymentReference?: string }) {
+    const p = await this.profile(firmId, actorId, matterId);
+    const settlement = await this.prisma.client.piSettlementDistribution.findUnique({ where: { personalInjuryId: p.id } });
+    if (!settlement) throw new NotFoundException("Settlement record not found for this matter");
+    if (!settlement.grossAmount || Number(settlement.grossAmount) <= 0) {
+      throw new BadRequestException("Cannot disburse a settlement with zero or unrecorded gross amount");
+    }
+    const updated = await this.prisma.client.piSettlementDistribution.update({
+      where: { personalInjuryId: p.id },
+      data: {
+        paidAt: new Date(),
+        paymentMethod: input.paymentMethod || settlement.paymentMethod || "BANK_TRANSFER",
+        paymentReference: input.paymentReference || settlement.paymentReference || `DISB-${Date.now()}`
+      }
+    });
+    await this.audit.record({
+      firmId,
+      actorUserId: actorId,
+      action: "pi.settlement_disbursed",
+      entityType: "pi_settlement",
+      entityId: updated.id,
+      matterId,
+      metadata: {
+        netClientAmount: updated.netClientAmount?.toString() ?? "0",
+        paymentMethod: updated.paymentMethod,
+        paymentReference: updated.paymentReference
+      }
+    });
+    return updated;
+  }
 }

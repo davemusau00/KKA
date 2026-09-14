@@ -289,11 +289,19 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
     }
   };
 
-  const handleRemoveVehicle = (id: string) => {
-    setLocalData((prev) => ({
-      ...prev,
-      vehicles: prev.vehicles.filter((v) => v.id !== id),
-    }));
+  const handleRemoveVehicle = async (id: string) => {
+    try {
+      if (!runtimeConfig.enableDemoMode) {
+        await apiClient.delete(`/personal-injury/${matter.id}/vehicles/${id}`);
+      }
+      setLocalData((prev) => ({
+        ...prev,
+        vehicles: prev.vehicles.filter((v) => v.id !== id),
+      }));
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to remove vehicle.');
+    }
   };
 
   const handleAddWitness = async () => {
@@ -350,11 +358,19 @@ export const IncidentEvidenceWorkspace: React.FC<IncidentEvidenceWorkspaceProps>
     }
   };
 
-  const handleRemoveWitness = (id: string) => {
-    setLocalData((prev) => ({
-      ...prev,
-      witnesses: prev.witnesses.filter((w) => w.id !== id),
-    }));
+  const handleRemoveWitness = async (id: string) => {
+    try {
+      if (!runtimeConfig.enableDemoMode) {
+        await apiClient.delete(`/personal-injury/${matter.id}/witnesses/${id}`);
+      }
+      setLocalData((prev) => ({
+        ...prev,
+        witnesses: prev.witnesses.filter((w) => w.id !== id),
+      }));
+      setLoadError('');
+    } catch (error: any) {
+      setLoadError(error?.message || 'Failed to remove witness.');
+    }
   };
 
   return (
