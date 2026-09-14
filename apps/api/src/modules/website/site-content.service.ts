@@ -67,7 +67,7 @@ export class SiteContentService {
     const b=previous?.bootstrap;
     // Resolve asset IDs through the same firm-scoped DTO map; never trust a browser-supplied asset object.
     const mediaMap=new Map(media.map((m:any)=>[m.id,m]));
-    const asset=(id:string)=>{const m=mediaMap.get(id);if(!m)throw new BadRequestException('Referenced media must belong to this firm');return this.assetDto(m);};
+    const asset=(id:string)=>{const m=mediaMap.get(id);return m ? this.assetDto(m) : null;};
     const logoTheme=((settings.theme as any)?.logos || {}) as Record<string, string | undefined>;
     const resolveLogo=(id?:string)=>(id && mediaMap.has(id) ? this.assetDto(mediaMap.get(id)) : null);
     const logos={
@@ -88,7 +88,12 @@ export class SiteContentService {
     for(const p of snapshot.pages)for(const block of p.blocks){
       const c=block.content;
       if(c.assetId)c.asset=asset(c.assetId);
-      if(c.videoAssetId)c.videoUrl=asset(c.videoAssetId).url;
+      if(c.heroAssetId && !c.asset)c.asset=asset(c.heroAssetId);
+      if(!c.asset && p.heroAsset)c.asset=p.heroAsset;
+      if(c.videoAssetId){
+        const vAsset = asset(c.videoAssetId);
+        if(vAsset) c.videoUrl=vAsset.url;
+      }
     }
     const json=JSON.stringify(snapshot);
     snapshot.mediaIds=media.filter((m:any)=>json.includes(JSON.stringify(m.id)) || json.includes(`/media/${m.id}`)).map((m:any)=>m.id);

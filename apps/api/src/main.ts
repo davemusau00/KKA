@@ -43,8 +43,11 @@ async function bootstrap() {
   // Prisma file sizes are bigint; JSON transports them as decimal strings.
   app.getHttpAdapter().getInstance().addHook('preSerialization', async (_request: unknown, _reply: unknown, payload: unknown) =>
     JSON.parse(JSON.stringify(payload, (_key, value: unknown) => typeof value === 'bigint' ? value.toString() : value)) as unknown);
+  const configuredOrigins = cfg.WEB_ORIGIN.split(",").map((origin) => origin.trim());
+  const publicOrigins = ["https://kariukikagunda.com", "https://www.kariukikagunda.com", "http://localhost:5175"];
+  const allOrigins = Array.from(new Set([...configuredOrigins, ...publicOrigins]));
   app.enableCors({
-    origin: cfg.WEB_ORIGIN.split(",").map((origin) => origin.trim()),
+    origin: allOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Accept", "X-Request-Id", "X-Elevation-Token", "X-CSRF-Token", "X-Website-Preview"]

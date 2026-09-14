@@ -24,7 +24,20 @@ export function SiteBlockRenderer({block,data}:{block:SiteBlock;data:SiteBootstr
   case 'TEAM_FEATURE': return <TeamPreview data={data} content={c}/>;
   case 'TESTIMONIALS': return <Testimonials data={data} content={c}/>;
   case 'CONSULTATION': return <Consultation data={data} content={c}/>;
-  case 'HERO': return <section className={`page-hero cms-hero hero-${block.variant||'default'}`}><Container><Eyebrow>{text(c.eyebrow,'Kariuki Kagunda & Co. Advocates')}</Eyebrow><Heading as="h1">{text(c.title,'Practical legal counsel.')}</Heading>{c.description&&<p>{text(c.description)}</p>}{c.ctaUrl&&<Link to={text(c.ctaUrl) as any} className="ui-button ui-button-gold"><span>{text(c.ctaLabel,'Contact Us')}</span><span>→</span></Link>}</Container></section>;
+  case 'HERO': {
+    const bgImg = c.asset?.url || c.imageUrl;
+    const style = bgImg ? { backgroundImage: `linear-gradient(90deg, rgba(6, 22, 35, 0.96), rgba(6, 22, 35, 0.68)), url('${bgImg}')`, backgroundSize: 'cover', backgroundPosition: 'right center' } : undefined;
+    return (
+      <section className={`page-hero cms-hero hero-${block.variant||'default'}`} style={style}>
+        <Container>
+          <Eyebrow>{text(c.eyebrow,'Kariuki Kagunda & Co. Advocates')}</Eyebrow>
+          <Heading as="h1">{text(c.title,'Practical legal counsel.')}</Heading>
+          {c.description&&<p>{text(c.description)}</p>}
+          {c.ctaUrl&&<Link to={text(c.ctaUrl) as any} className="ui-button ui-button-gold"><span>{text(c.ctaLabel,'Contact Us')}</span><span>→</span></Link>}
+        </Container>
+      </section>
+    );
+  }
   case 'RICH_TEXT': return <Section tone={sectionTone}><ReadingContainer className="prose cms-rich"><Eyebrow>{text(c.eyebrow)}</Eyebrow>{c.title&&<Heading>{text(c.title)}</Heading>}{text(c.body).split(/\n\n+/).filter(Boolean).map((p,i)=><p key={i}>{p}</p>)}</ReadingContainer></Section>;
   case 'QUOTE': return <Section tone={sectionTone} className="cms-quote"><ReadingContainer><blockquote>{text(c.quote)}</blockquote>{c.attribution&&<cite>{text(c.attribution)}</cite>}</ReadingContainer></Section>;
   case 'IMAGE_TEXT': return <Section tone={sectionTone}><Container className={`cms-image-text ${block.variant||''}`}><div><SafeImage asset={c.asset||null} fallback={text(c.fallbackImage,'/assets/partner-kariuki.png')} alt={text(c.alt,c.title||'')}/></div><div><Eyebrow>{text(c.eyebrow)}</Eyebrow><Heading>{text(c.title)}</Heading>{text(c.body).split(/\n\n+/).filter(Boolean).map((p,i)=><p key={i}>{p}</p>)}{c.ctaUrl&&<a className="ui-button ui-button-outline" href={text(c.ctaUrl)}><span>{text(c.ctaLabel,'Learn More')}</span><span>→</span></a>}</div></Container></Section>;

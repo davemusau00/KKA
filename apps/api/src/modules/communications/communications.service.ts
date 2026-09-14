@@ -21,17 +21,23 @@ export class CommunicationsService {
     private readonly notifications: NotificationsService
   ) {}
 
-  private async channelWhere(user: RequestUser) {
+  private async channelWhere(user: RequestUser): Promise<Prisma.CommunicationChannelWhereInput> {
     const matterScope = await this.access.matterWhere(user);
-    return { firmId: user.firmId, OR: [
-      { matterId: null, private: false },
-      { matterId: null, memberships: { some: { userId: user.id } } },
-      { matter: { AND: [matterScope, { OR: [
-        { private: false },
-        { memberships: { some: { userId: user.id } } },
-        { assignments: { some: { userId: user.id, endsAt: null } } }
-      ] }] } }
-    ] };
+    return {
+      firmId: user.firmId,
+      OR: [
+        { matterId: null, private: false },
+        { matterId: null, memberships: { some: { userId: user.id } } },
+        {
+          matter: matterScope,
+          OR: [
+            { private: false },
+            { memberships: { some: { userId: user.id } } },
+            { matter: { assignments: { some: { userId: user.id, endsAt: null } } } }
+          ]
+        }
+      ]
+    };
   }
 
   private async userContext(firmId: string, userId: string): Promise<RequestUser> {
