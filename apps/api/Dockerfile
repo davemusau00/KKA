@@ -14,6 +14,7 @@ COPY packages/document-engine/package.json packages/document-engine/package.json
 COPY packages/database/package.json packages/database/package.json
 
 COPY prisma ./prisma
+COPY scripts ./scripts
 
 RUN pnpm install --no-frozen-lockfile
 

@@ -1,3 +1,33 @@
+www.kariukikagunda.com {
+    redir https://kariukikagunda.com{uri} permanent
+}
+
+kariukikagunda.com {
+    encode zstd gzip
+
+    handle /api/* {
+        reverse_proxy api:3000
+    }
+
+    handle {
+        root * /srv/site
+        try_files {path} {path}/ /index.html
+        file_server
+    }
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options SAMEORIGIN
+        -Server
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}
+
 {$WEB_DOMAIN:os.kariukikagunda.com} {
     encode zstd gzip
 
@@ -20,12 +50,15 @@
 
 {$API_DOMAIN:api.kariukikagunda.com} {
     encode zstd gzip
+
     reverse_proxy api:3000
+
     header {
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
     }
+
     log {
         output stdout
         format json

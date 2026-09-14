@@ -95,8 +95,6 @@ services:
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
-    depends_on:
-      api: { condition: service_healthy }
     environment:
       WEB_DOMAIN: ${WEB_DOMAIN:-os.kariukikagunda.com}
       API_DOMAIN: ${API_DOMAIN:-api.kariukikagunda.com}
@@ -107,6 +105,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${WEB_DIST_PATH:-../apps/web/dist}:/srv/web:ro
+      - ${SITE_DIST_PATH:-../apps/site/dist}:/srv/site:ro
       - ${KKA_DATA_ROOT:-/srv/kklaw/data}/caddy/data:/data
       - ${KKA_DATA_ROOT:-/srv/kklaw/data}/caddy/config:/config
     networks: [backend]
